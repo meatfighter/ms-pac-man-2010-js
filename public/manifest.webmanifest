@@ -1,0 +1,19 @@
+{
+    "name": "MS PAC-MAN 2010",
+    "short_name": "MS PAC-MAN",
+    "description": "Desktop browser PWA port of MS PAC-MAN 2010.",
+    "start_url": "/?v=2026080201",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "landscape",
+    "background_color": "#05050a",
+    "theme_color": "#05050a",
+    "icons": [
+        {
+            "src": "/icon.svg?v=2026080201",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
+}
