@@ -1,9 +1,28 @@
 import "./styles.css";
-import { AppGameContainer, Display, ResourceLoader, SoundStore } from "slick2d-ts";
-import { Main } from "../mspacman/Main";
-import { ScalableGame2 } from "../mspacman/ScalableGame2";
 import { RESOURCE_REFS } from "./resourceManifest";
 import { APP_VERSION, CACHE_BUST } from "./version";
+
+type SlickRuntime = typeof import("slick2d-ts");
+
+type RuntimeContainer = {
+    destroy(): void;
+    setAlwaysRender(alwaysRender: boolean): void;
+    setClearEachFrame(clearEachFrame: boolean): void;
+    setDisplayMode(width: number, height: number, fullscreen: boolean): Promise<void> | void;
+    setErrorHandler(errorHandler: (error: unknown) => void): void;
+    setMusicVolume(volume: number): void;
+    setShowFPS(showFPS: boolean): void;
+    setSmoothDeltas(smoothDeltas: boolean): void;
+    setSoundVolume(volume: number): void;
+    setVSync(vsync: boolean): void;
+    start(): Promise<void>;
+};
+
+type RunningGame = {
+    appGameContainer?: RuntimeContainer;
+    scalableGame?: unknown;
+    stopAllSounds(): void;
+};
 
 const app = document.querySelector<HTMLDivElement>("#app");
 
@@ -11,13 +30,12 @@ if (!app) {
     throw new Error("Missing #app root.");
 }
 
-let container: AppGameContainer | null = null;
-let game: Main | null = null;
-let volume = readVolume();
+let slickRuntime: SlickRuntime | null = null;
+let container: RuntimeContainer | null = null;
+let game: RunningGame | null = null;
+let volume = safeReadVolume();
 
-ResourceLoader.setCacheBust(CACHE_BUST);
-ResourceLoader.setRetryOptions(3, 300);
-
+setupGlobalErrorHandlers();
 void registerServiceWorker();
 renderMenu();
 
@@ -60,6 +78,7 @@ function renderMenu(errorText = ""): void {
 
 async function startGame(): Promise<void> {
     try {
+        await configureSlickRuntime();
         await unlockAudio();
         renderBoot("Loading", 0);
         await preloadResources((loaded, total, ref) => {
@@ -120,11 +139,19 @@ async function mountGame(): Promise<void> {
         throw new Error("Missing game host.");
     }
 
-    game = new Main();
-    const scalableGame = new ScalableGame2(game, 800, 600, true);
-    container = new AppGameContainer(scalableGame);
-    game.scalableGame = scalableGame;
-    game.appGameContainer = container;
+    const [{ AppGameContainer, Display }, { Main }, { ScalableGame2 }] = await Promise.all([
+        getSlickRuntime(),
+        import("../mspacman/Main"),
+        import("../mspacman/ScalableGame2")
+    ]);
+
+    const mainGame = new Main();
+    const scalableGame = new ScalableGame2(mainGame, 800, 600, true);
+    const appContainer = new AppGameContainer(scalableGame);
+    container = appContainer;
+    mainGame.scalableGame = scalableGame;
+    mainGame.appGameContainer = appContainer;
+    game = mainGame;
 
     Display.setParent(host);
     container.setErrorHandler((error) => {
@@ -141,6 +168,7 @@ async function mountGame(): Promise<void> {
 }
 
 async function preloadResources(onProgress: (loaded: number, total: number, ref: string) => void): Promise<void> {
+    const { ResourceLoader } = await getSlickRuntime();
     ResourceLoader.clearCache();
     ResourceLoader.setCacheBust(CACHE_BUST);
     ResourceLoader.setRetryOptions(3, 300);
@@ -152,6 +180,7 @@ async function preloadResources(onProgress: (loaded: number, total: number, ref:
 }
 
 async function unlockAudio(): Promise<void> {
+    const { SoundStore } = await getSlickRuntime();
     const context = SoundStore.get().getAudioContext();
     if (context && context.state !== "running") {
         await context.resume();
@@ -160,8 +189,10 @@ async function unlockAudio(): Promise<void> {
 
 function applyVolume(): void {
     writeVolume(volume);
-    SoundStore.get().setMusicVolume(volume);
-    SoundStore.get().setSoundVolume(volume);
+    if (slickRuntime) {
+        slickRuntime.SoundStore.get().setMusicVolume(volume);
+        slickRuntime.SoundStore.get().setSoundVolume(volume);
+    }
     container?.setMusicVolume(volume);
     container?.setSoundVolume(volume);
 }
@@ -171,7 +202,43 @@ function destroyGame(): void {
     container?.destroy();
     container = null;
     game = null;
-    Display.setParent(null);
+    slickRuntime?.Display.setParent(null);
+}
+
+async function configureSlickRuntime(): Promise<void> {
+    const { ResourceLoader } = await getSlickRuntime();
+    ResourceLoader.setCacheBust(CACHE_BUST);
+    ResourceLoader.setRetryOptions(3, 300);
+}
+
+async function getSlickRuntime(): Promise<SlickRuntime> {
+    if (!slickRuntime) {
+        slickRuntime = await import("slick2d-ts");
+    }
+    return slickRuntime;
+}
+
+function setupGlobalErrorHandlers(): void {
+    window.addEventListener("error", (event) => {
+        showStartupError(event.error ?? event.message);
+    });
+    window.addEventListener("unhandledrejection", (event) => {
+        showStartupError(event.reason);
+    });
+}
+
+function showStartupError(error: unknown): void {
+    if (app.childElementCount === 0) {
+        renderMenu(formatError(error));
+    }
+}
+
+function safeReadVolume(): number {
+    try {
+        return readVolume();
+    } catch {
+        return 0.8;
+    }
 }
 
 function readVolume(): number {
@@ -183,11 +250,20 @@ function readVolume(): number {
 }
 
 function writeVolume(value: number): void {
-    localStorage.setItem("ms-pac-man-volume", String(Math.round(value * 100)));
+    try {
+        localStorage.setItem("ms-pac-man-volume", String(Math.round(value * 100)));
+    } catch {
+        // Local storage is optional; audio volume still applies in memory.
+    }
 }
 
 async function registerServiceWorker(): Promise<void> {
     if (!("serviceWorker" in navigator)) {
+        return;
+    }
+    if (import.meta.env.DEV) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((registration) => registration.unregister()));
         return;
     }
     try {
@@ -204,4 +280,11 @@ function escapeHtml(text: string): string {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+function formatError(error: unknown): string {
+    if (error instanceof Error) {
+        return error.message;
+    }
+    return String(error);
 }

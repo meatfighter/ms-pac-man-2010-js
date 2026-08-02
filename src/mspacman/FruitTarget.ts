@@ -1,6 +1,6 @@
 import { FastTrig, GameContainer, Graphics } from "slick2d-ts";
 import { Main } from "./Main";
-import { PlayingMode } from "./PlayingMode";
+import type { PlayingMode } from "./PlayingMode";
 import { Thing } from "./Thing";
 import { toFloat, toInt } from "./JavaMath";
 

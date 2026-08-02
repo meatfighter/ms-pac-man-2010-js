@@ -1,6 +1,8 @@
 import type { GameContainer, Graphics, Image } from "slick2d-ts";
 import type { Main } from "./Main";
-import { PlayingMode } from "./PlayingMode";
+import type { PlayingMode } from "./PlayingMode";
+
+const TYPE_WALL = 3;
 
 export abstract class Thing {
     public x = 0;
@@ -17,19 +19,19 @@ export abstract class Thing {
     }
 
     public canMoveLeft(): boolean {
-        return (this.y & 15) === 0 && this.getType(this.x - 1, this.y) !== PlayingMode.TYPE_WALL;
+        return (this.y & 15) === 0 && this.getType(this.x - 1, this.y) !== TYPE_WALL;
     }
 
     public canMoveRight(): boolean {
-        return (this.y & 15) === 0 && this.getType(this.x + 16, this.y) !== PlayingMode.TYPE_WALL;
+        return (this.y & 15) === 0 && this.getType(this.x + 16, this.y) !== TYPE_WALL;
     }
 
     public canMoveUp(): boolean {
-        return (this.x & 15) === 0 && this.getType(this.x, this.y - 1) !== PlayingMode.TYPE_WALL;
+        return (this.x & 15) === 0 && this.getType(this.x, this.y - 1) !== TYPE_WALL;
     }
 
     public canMoveDown(): boolean {
-        return (this.x & 15) === 0 && this.getType(this.x, this.y + 16) !== PlayingMode.TYPE_WALL;
+        return (this.x & 15) === 0 && this.getType(this.x, this.y + 16) !== TYPE_WALL;
     }
 
     public getMsPacManDistance(): number {

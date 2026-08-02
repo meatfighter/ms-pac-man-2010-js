@@ -1,10 +1,10 @@
-const VERSION = "2026.08.02.1";
+const VERSION = "2026.08.02.2";
 const CACHE_NAME = `ms-pac-man-2010-${VERSION}`;
 const APP_STATIC_RESOURCES = [
     "/",
-    "/index.html?v=2026080201",
-    "/manifest.webmanifest?v=2026080201",
-    "/icon.svg?v=2026080201"
+    "/index.html?v=2026080202",
+    "/manifest.webmanifest?v=2026080202",
+    "/icon.svg?v=2026080202"
 ];
 
 self.addEventListener("install", (event) => {
@@ -28,8 +28,33 @@ self.addEventListener("fetch", (event) => {
     if (request.method !== "GET") {
         return;
     }
+    const requestUrl = new URL(request.url);
+    const networkFirst = request.mode === "navigate"
+        || request.destination === "script"
+        || request.destination === "style"
+        || request.destination === "worker"
+        || request.destination === "manifest"
+        || requestUrl.pathname.startsWith("/src/")
+        || requestUrl.pathname.startsWith("/@vite")
+        || requestUrl.pathname.startsWith("/@fs/");
+
     event.respondWith((async () => {
         const cache = await caches.open(CACHE_NAME);
+        if (networkFirst) {
+            try {
+                const response = await fetch(request);
+                if (response.ok) {
+                    await cache.put(request, response.clone());
+                }
+                return response;
+            } catch {
+                const cached = await cache.match(request);
+                if (cached) {
+                    return cached;
+                }
+                throw new Error(`Unable to fetch ${request.url}`);
+            }
+        }
         const cached = await cache.match(request);
         if (cached) {
             return cached;

@@ -1,9 +1,10 @@
 import type { GameContainer, Graphics, Image } from "slick2d-ts";
 import { INT_MAX, toFloat } from "./JavaMath";
 import { Main } from "./Main";
-import { MsPacMan } from "./MsPacMan";
-import { PlayingMode } from "./PlayingMode";
+import type { PlayingMode } from "./PlayingMode";
 import { Thing } from "./Thing";
+
+const TYPE_WALL = 3;
 
 export abstract class Ghost extends Thing {
     public static readonly FLUTTER_SPEED = 15;
@@ -179,12 +180,12 @@ export abstract class Ghost extends Thing {
         } else {
             switch (this.direction) {
                 case Main.UP:
-                    if (this.getType(this.x, this.y - 9) === PlayingMode.TYPE_WALL) {
+                    if (this.getType(this.x, this.y - 9) === TYPE_WALL) {
                         this.direction = Main.DOWN;
                     }
                     break;
                 case Main.DOWN:
-                    if (this.getType(this.x, this.y + 24) === PlayingMode.TYPE_WALL) {
+                    if (this.getType(this.x, this.y + 24) === TYPE_WALL) {
                         this.direction = Main.UP;
                     }
                     break;

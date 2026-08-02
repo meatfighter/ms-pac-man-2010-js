@@ -38,7 +38,7 @@ import { RobotInput } from "./RobotInput";
 import { ScalableGame2 } from "./ScalableGame2";
 import { SelectWorldMode } from "./SelectWorldMode";
 import { Stage } from "./Stage";
-import { charCode, intDiv, make2D, make3D } from "./JavaMath";
+import { charCode, intDiv, make3D } from "./JavaMath";
 import { PlayingMode } from "./PlayingMode";
 
 function imageGrid<T>(rows: number, columns: number): T[][] {

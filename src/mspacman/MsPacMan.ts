@@ -1,9 +1,13 @@
 import type { GameContainer, Graphics } from "slick2d-ts";
 import type { IInput } from "./IInput";
 import { Main } from "./Main";
-import { PlayingMode } from "./PlayingMode";
+import type { PlayingMode } from "./PlayingMode";
 import { Thing } from "./Thing";
 import { toFloat } from "./JavaMath";
+
+const TYPE_EMPTY = 0;
+const TYPE_PELLOT = 1;
+const TYPE_ENERGIZER = 2;
 
 export class MsPacMan extends Thing {
     public static readonly spritePattern = [0, 1, 2, 1];
@@ -84,11 +88,11 @@ export class MsPacMan extends Thing {
             this.speedRemainder = toFloat(this.speedRemainder - 1);
 
             const type = this.getType(this.x + 8, this.y + 8);
-            if (type === PlayingMode.TYPE_PELLOT || type === PlayingMode.TYPE_ENERGIZER) {
-                this.setType(this.x + 8, this.y + 8, PlayingMode.TYPE_EMPTY);
+            if (type === TYPE_PELLOT || type === TYPE_ENERGIZER) {
+                this.setType(this.x + 8, this.y + 8, TYPE_EMPTY);
                 this.setTile(this.x + 8, this.y + 8, 47);
                 this.playingMode.atePellot();
-                if (type === PlayingMode.TYPE_ENERGIZER) {
+                if (type === TYPE_ENERGIZER) {
                     this.playingMode.ateEnergizer();
                 } else {
                     this.main.playSound(this.main.atePellotSound);
