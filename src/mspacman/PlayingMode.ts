@@ -82,6 +82,7 @@ export class PlayingMode implements IMode {
     public gameOverTimer = 0;
 
     public init(main: Main, gc: GameContainer): void {
+        const mainChanged = this.main !== main;
         this.main = main;
 
         if (main.demoMode) {
@@ -144,7 +145,7 @@ export class PlayingMode implements IMode {
 
         this.homeTree = stage.homeTree;
 
-        if (!this.mspacman) {
+        if (!this.mspacman || mainChanged) {
             this.mspacman = new MsPacMan(this);
             this.ghosts[Main.RED] = new RedGhost(this);
             this.ghosts[Main.PINK] = new PinkGhost(this);
