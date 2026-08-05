@@ -1,10 +1,10 @@
-const VERSION = "2026.08.05.1";
+const VERSION = "2026.08.05.2";
 const CACHE_NAME = `ms-pac-man-2010-${VERSION}`;
 const APP_STATIC_RESOURCES = [
     "/",
-    "/index.html?v=2026080501",
-    "/manifest.webmanifest?v=2026080501",
-    "/icon.svg?v=2026080501"
+    "/index.html?v=2026080502",
+    "/manifest.webmanifest?v=2026080502",
+    "/icon.svg?v=2026080502"
 ];
 
 self.addEventListener("install", (event) => {

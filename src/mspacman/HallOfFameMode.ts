@@ -59,7 +59,7 @@ export class HallOfFameMode implements IMode {
         } else if (this.ticks++ === 91 * 10) {
             this.fadeState = HallOfFameMode.FADE_OUT;
             this.fadeIndex = 0;
-        } else if (this.input.isEnter()) {
+        } else if (this.input.isMenuStartPressed()) {
             this.countDown = 60;
             this.enterPressed = true;
             this.main.demoMode = false;
@@ -116,7 +116,7 @@ export class HallOfFameMode implements IMode {
         }
 
         if (this.pressEnterVisible) {
-            this.main.drawString("PRESS ENTER", 560, Main.WHITE);
+            this.main.drawString("PRESS START", 560, Main.WHITE);
         }
 
         if (this.fadeState !== HallOfFameMode.FADE_NONE) {

@@ -178,13 +178,13 @@ export class Main extends BasicGame {
             }
         }
         if (this.paused) {
-            if (this.input.isPause()) {
+            if (this.isGameplayPauseTogglePressed()) {
                 this.paused = false;
                 gc.setMusicOn(true);
             }
             this.resetNextFrameTime();
             return;
-        } else if (this.input.isPause()) {
+        } else if (this.isGameplayPauseTogglePressed()) {
             this.paused = true;
             gc.setMusicOn(false);
         }
@@ -417,8 +417,8 @@ export class Main extends BasicGame {
     }
 
     private fullScreenToggleCheck(gc: GameContainer): void {
-        const isEscape = this.input.isEscape();
-        if (this.input.isSpace() || isEscape) {
+        const isEscape = this.input.isFullscreenExitPressed();
+        if (this.input.isFullscreenTogglePressed() || isEscape) {
             if (gc.isFullscreen()) {
                 this.showMouseCursor();
                 if (this.appGameContainer) {
@@ -434,6 +434,15 @@ export class Main extends BasicGame {
             }
             this.resetNextFrameTime();
         }
+    }
+
+    private isGameplayPauseTogglePressed(): boolean {
+        if (this.mode !== Main.playingMode || this.demoMode) {
+            return false;
+        }
+        const explicitPause = this.input.isPausePressed();
+        const startPause = this.input.isGameplayStartPressed();
+        return explicitPause || startPause;
     }
 
     private showMouseCursor(): void {

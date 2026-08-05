@@ -4,10 +4,16 @@ export interface IInput {
     isDown(): boolean;
     isLeft(): boolean;
     isRight(): boolean;
-    isEnter(): boolean;
-    isSpace(): boolean;
-    isEscape(): boolean;
-    isPause(): boolean;
+    isUpPressed(): boolean;
+    isDownPressed(): boolean;
+    isLeftPressed(): boolean;
+    isRightPressed(): boolean;
+    isMenuStartPressed(): boolean;
+    isConfirmPressed(): boolean;
+    isGameplayStartPressed(): boolean;
+    isPausePressed(): boolean;
+    isFullscreenTogglePressed(): boolean;
+    isFullscreenExitPressed(): boolean;
     clearKeyPressedRecord(): void;
     update(): boolean;
 }

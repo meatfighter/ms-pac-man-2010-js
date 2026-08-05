@@ -101,7 +101,7 @@ export class SelectWorldMode implements IMode {
                 } else if (this.selection < 3 && this.input.isDown()) {
                     this.selection++;
                     this.beginSelecting(128);
-                } else if (this.input.isEnter()) {
+                } else if (this.input.isConfirmPressed()) {
                     this.main.playSound(this.main.pressedEnterSound);
                     this.countDown = 60;
                 }

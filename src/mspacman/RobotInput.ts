@@ -32,24 +32,49 @@ export class RobotInput implements IInput {
         return this.index < this.data.length ? (this.data[this.index] & 8) !== 0 : false;
     }
 
-    public isEnter(): boolean {
-        return this.input.isKeyPressed(Input.KEY_ENTER);
-    }
-
-    public isSpace(): boolean {
+    public isUpPressed(): boolean {
         return false;
     }
 
-    public isEscape(): boolean {
+    public isDownPressed(): boolean {
         return false;
     }
 
-    public isPause(): boolean {
+    public isLeftPressed(): boolean {
         return false;
+    }
+
+    public isRightPressed(): boolean {
+        return false;
+    }
+
+    public isMenuStartPressed(): boolean {
+        return this.input.isKeyPressed(Input.KEY_ENTER) || this.input.isKeyPressed(Input.KEY_NUMPADENTER);
+    }
+
+    public isConfirmPressed(): boolean {
+        return this.input.isKeyPressed(Input.KEY_ENTER) || this.input.isKeyPressed(Input.KEY_NUMPADENTER);
+    }
+
+    public isGameplayStartPressed(): boolean {
+        return this.isConfirmPressed();
+    }
+
+    public isPausePressed(): boolean {
+        return this.input.isKeyPressed(Input.KEY_P);
+    }
+
+    public isFullscreenTogglePressed(): boolean {
+        return this.input.isKeyPressed(Input.KEY_SPACE);
+    }
+
+    public isFullscreenExitPressed(): boolean {
+        return this.input.isKeyPressed(Input.KEY_ESCAPE);
     }
 
     public clearKeyPressedRecord(): void {
         this.input.clearKeyPressedRecord();
+        this.input.clearControlPressedRecord();
     }
 
     public update(): boolean {

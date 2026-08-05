@@ -331,7 +331,7 @@ export class PlayingMode implements IMode {
 
     public update(gc: GameContainer): void {
         if (this.main.demoMode) {
-            if (this.input.isEnter()) {
+            if (this.main.input.isConfirmPressed()) {
                 this.main.demoMode = false;
                 this.main.playSound(this.main.pressedEnterSound);
                 this.main.setMode(Main.selectWorldMode, gc);

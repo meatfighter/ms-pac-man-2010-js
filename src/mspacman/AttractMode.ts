@@ -96,7 +96,7 @@ export class AttractMode implements IMode {
         } else if (this.ticks++ === 3386) {
             this.fadeState = AttractMode.FADE_OUT;
             this.fadeIndex = 0;
-        } else if (this.input.isEnter()) {
+        } else if (this.input.isMenuStartPressed()) {
             this.main.demoMode = false;
             this.countDown = 60;
             this.enterPressed = true;
@@ -174,7 +174,7 @@ export class AttractMode implements IMode {
         this.renderBars(gc, g);
 
         if (this.pressEnterVisible) {
-            this.main.drawString("PRESS ENTER", 456, Main.WHITE);
+            this.main.drawString("PRESS START", 456, Main.WHITE);
         }
         this.main.drawString("STARRING", 246, Main.WHITE);
         this.main.drawString("@ 2010 MEATFIGHTER.COM", 536, Main.WHITE);

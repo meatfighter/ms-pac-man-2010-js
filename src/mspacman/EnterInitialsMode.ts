@@ -1,4 +1,5 @@
-import { GameContainer, Graphics, Image, Input } from "slick2d-ts";
+import { GameContainer, Graphics, Image } from "slick2d-ts";
+import type { IInput } from "./IInput";
 import type { IMode } from "./IMode";
 import { Main } from "./Main";
 import { replaceChar } from "./JavaMath";
@@ -19,13 +20,13 @@ export class EnterInitialsMode implements IMode {
     private blinkingInitials = " AA";
     private editVisible = false;
     private blinkTimer = 0;
-    private input: Input;
+    private input: IInput;
     private enterPressed = false;
     private newScoreOf = "";
 
     public init(main: Main, gc: GameContainer): void {
         this.main = main;
-        this.input = gc.getInput();
+        this.input = main.input;
         this.fadeIndex = 22;
         this.fadeState = EnterInitialsMode.FADE_IN;
         this.whiteEnergizer = main.tiles[0][49];
@@ -40,7 +41,7 @@ export class EnterInitialsMode implements IMode {
         this.enterPressed = false;
         main.uploadComplete = false;
 
-        this.input.clearControlPressedRecord();
+        this.input.clearKeyPressedRecord();
     }
 
     public update(gc: GameContainer): void {
@@ -71,25 +72,25 @@ export class EnterInitialsMode implements IMode {
             this.redOffset++;
         }
 
-        const enter = this.input.isKeyPressed(Input.KEY_ENTER);
+        const start = this.input.isConfirmPressed();
         if (this.enterPressed) {
             if (this.fadeState === EnterInitialsMode.FADE_NONE && this.main.uploadComplete) {
                 this.fadeState = EnterInitialsMode.FADE_OUT;
                 this.fadeIndex = 0;
             }
-        } else if (this.input.isKeyPressed(Input.KEY_LEFT)) {
+        } else if (this.input.isLeftPressed()) {
             if (this.editingIndex > 0) {
                 this.editingIndex--;
                 this.updateStrings();
                 this.main.playSound(this.main.ateEnergizerSound);
             }
-        } else if (this.input.isKeyPressed(Input.KEY_RIGHT) || (this.editingIndex !== 2 && enter)) {
+        } else if (this.input.isRightPressed() || (this.editingIndex !== 2 && start)) {
             if (this.editingIndex < 2) {
                 this.editingIndex++;
                 this.updateStrings();
                 this.main.playSound(this.main.ateEnergizerSound);
             }
-        } else if (this.input.isKeyPressed(Input.KEY_DOWN)) {
+        } else if (this.input.isDownPressed()) {
             let c = this.initials.charCodeAt(this.editingIndex);
             if (c === 90) {
                 c = 32;
@@ -99,7 +100,7 @@ export class EnterInitialsMode implements IMode {
                 c++;
             }
             this.setChar(String.fromCharCode(c));
-        } else if (this.input.isKeyPressed(Input.KEY_UP)) {
+        } else if (this.input.isUpPressed()) {
             let c = this.initials.charCodeAt(this.editingIndex);
             if (c === 65) {
                 c = 32;
@@ -109,7 +110,7 @@ export class EnterInitialsMode implements IMode {
                 c--;
             }
             this.setChar(String.fromCharCode(c));
-        } else if (enter) {
+        } else if (start) {
             this.enterPressed = true;
             this.main.playSound(this.main.pressedEnterSound);
             this.main.accessScoresDatabaseAsync(true, this.main.worldIndex, this.main.score, this.initials);
@@ -122,8 +123,8 @@ export class EnterInitialsMode implements IMode {
         } else {
             this.main.drawString("WELCOME TO THE HALL OF FAME", 48, Main.YELLOW);
             this.main.drawString(this.newScoreOf, 96, Main.WHITE);
-            this.main.drawString("USE THE ARROW KEYS TO ENTER YOUR INITIALS.", 144, Main.WHITE);
-            this.main.drawString("PRESS ENTER TO SUBMIT.", 176, Main.WHITE);
+            this.main.drawString("USE DIRECTIONS TO ENTER YOUR INITIALS.", 144, Main.WHITE);
+            this.main.drawString("PRESS START TO SUBMIT.", 176, Main.WHITE);
 
             this.main.drawString(this.editVisible ? this.initials : this.blinkingInitials, 304, 268, Main.ORANGE, 4);
         }
