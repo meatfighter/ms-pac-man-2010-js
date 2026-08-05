@@ -189,12 +189,14 @@ async function unlockAudio(): Promise<void> {
 
 function applyVolume(): void {
     writeVolume(volume);
+    const musicVolume = volume;
+    const soundVolume = Math.sqrt(volume);
     if (slickRuntime) {
-        slickRuntime.SoundStore.get().setMusicVolume(volume);
-        slickRuntime.SoundStore.get().setSoundVolume(volume);
+        slickRuntime.SoundStore.get().setMusicVolume(musicVolume);
+        slickRuntime.SoundStore.get().setSoundVolume(soundVolume);
     }
-    container?.setMusicVolume(volume);
-    container?.setSoundVolume(volume);
+    container?.setMusicVolume(musicVolume);
+    container?.setSoundVolume(soundVolume);
 }
 
 function destroyGame(): void {
