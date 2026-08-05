@@ -14,7 +14,9 @@ export class LoadingMode implements IMode {
     public update(gc: GameContainer): void {
         switch (this.loadIndex) {
             case 0:
-                this.main.setMode(Main.attractMode, gc);
+                if (!this.main.handleLoadingComplete(gc)) {
+                    this.main.setMode(Main.attractMode, gc);
+                }
                 break;
             case 1:
                 this.main.actMusic[0] = new Music("music/act_1.ogg");

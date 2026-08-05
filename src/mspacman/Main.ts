@@ -34,6 +34,7 @@ import type { IInput } from "./IInput";
 import type { IMode } from "./IMode";
 import { IntroMode } from "./IntroMode";
 import { LoadingMode } from "./LoadingMode";
+import type { ModeId } from "./persistence/GameStateSnapshot";
 import { RobotInput } from "./RobotInput";
 import { ScalableGame2 } from "./ScalableGame2";
 import { SelectWorldMode } from "./SelectWorldMode";
@@ -105,6 +106,8 @@ export class Main extends BasicGame {
     public robotInputs: RobotInput[] = new Array<RobotInput>(4);
     public demoIndex = 0;
     public demoMode = false;
+    public browserSuspended = false;
+    public loadingCompleteHandler: ((gc: GameContainer) => boolean) | null = null;
 
     public symbols = imageGrid<Image | null>(6, 256);
     public ghostSprites = imageCube<Image>(4, 4, 2);
@@ -149,7 +152,7 @@ export class Main extends BasicGame {
     public speaking = imageGrid<Sound>(2, 10);
 
     public constructor() {
-        super("MS PAC-MAN 2010");
+        super("Ms. Pac-Man 2010");
     }
 
     public init(gc: GameContainer): void {
@@ -167,6 +170,11 @@ export class Main extends BasicGame {
     }
 
     public update(gc: GameContainer, delta: number): void {
+        if (this.browserSuspended) {
+            this.resetNextFrameTime();
+            return;
+        }
+
         if (this.fadeMusicFlag) {
             this.musicVolume -= this.musicVolumeFadeStep;
             if (this.musicVolume <= 0) {
@@ -248,6 +256,60 @@ export class Main extends BasicGame {
         this.resetNextFrameTime();
     }
 
+    public initModeForRestore(mode: IMode, gc: GameContainer): void {
+        this.mode = mode;
+        mode.init(this, gc);
+        this.input.clearKeyPressedRecord();
+        this.resetNextFrameTime();
+    }
+
+    public handleLoadingComplete(gc: GameContainer): boolean {
+        const handler = this.loadingCompleteHandler;
+        this.loadingCompleteHandler = null;
+        return handler !== null ? handler(gc) : false;
+    }
+
+    public getCurrentModeIdForState(): ModeId {
+        return this.getModeIdForState(this.mode);
+    }
+
+    public getModeForStateRestore(id: ModeId): IMode {
+        switch (id) {
+            case "act1":
+                return Main.act1Mode;
+            case "act2":
+                return Main.act2Mode;
+            case "act3":
+                return Main.act3Mode;
+            case "act4":
+                return Main.act4Mode;
+            case "act5":
+                return Main.act5Mode;
+            case "act6":
+                return Main.act6Mode;
+            case "act7":
+                return Main.act7Mode;
+            case "attract":
+                return Main.attractMode;
+            case "ending":
+                return Main.endingMode;
+            case "enterInitials":
+                return Main.enterInitialsMode;
+            case "hallOfFame":
+                return Main.hallOfFameMode;
+            case "intro":
+                return Main.introMode;
+            case "playing":
+                return Main.playingMode;
+            case "selectWorld":
+                return Main.selectWorldMode;
+        }
+    }
+
+    public getPlayingModeForState(): PlayingMode {
+        return Main.playingMode as PlayingMode;
+    }
+
     public drawNumber(value: number, digits: number, x: number, y: number, color: number): void {
         const s = this.symbols[color];
         if (value < 0) {
@@ -310,6 +372,21 @@ export class Main extends BasicGame {
         this.stopAllSoundEffects();
     }
 
+    public setBrowserSuspended(suspended: boolean): void {
+        if (this.browserSuspended === suspended) {
+            return;
+        }
+
+        this.browserSuspended = suspended;
+        if (suspended) {
+            this.stopAllSoundEffects();
+            this.appGameContainer?.setMusicOn(false);
+        } else {
+            this.appGameContainer?.setMusicOn(!this.paused);
+            this.resetNextFrameTime();
+        }
+    }
+
     public drawRotatedScaled(image: Image, x: number, y: number, angle: number, scale: number): void {
         const gl = Renderer.get();
         gl.glPushMatrix();
@@ -370,6 +447,29 @@ export class Main extends BasicGame {
 
     public resetNextFrameTime(): void {
         this.nextFrameTime = Sys.getTime();
+    }
+
+    public isStateSaveReady(): boolean {
+        if (this.mode === undefined || this.mode === Main.loadingMode) {
+            return false;
+        }
+        for (let i = 0; i < this.actMusic.length; i++) {
+            if (!this.actMusic[i]) {
+                return false;
+            }
+        }
+        for (let i = 0; i < this.stageMusic.length; i++) {
+            if (!this.stageMusic[i]) {
+                return false;
+            }
+        }
+        return Boolean(
+            this.trainingMusic
+            && this.introMusic
+            && this.levelSelectMusic
+            && this.highScoreMusic
+            && this.gameOverMusic
+        );
     }
 
     public intersects(ax1: number, ay1: number, ax2: number, ay2: number, bx1: number, by1: number, bx2: number, by2: number): boolean {
@@ -443,6 +543,52 @@ export class Main extends BasicGame {
         const explicitPause = this.input.isPausePressed();
         const startPause = this.input.isGameplayStartPressed();
         return explicitPause || startPause;
+    }
+
+    private getModeIdForState(mode: IMode): ModeId {
+        if (mode === Main.act1Mode) {
+            return "act1";
+        }
+        if (mode === Main.act2Mode) {
+            return "act2";
+        }
+        if (mode === Main.act3Mode) {
+            return "act3";
+        }
+        if (mode === Main.act4Mode) {
+            return "act4";
+        }
+        if (mode === Main.act5Mode) {
+            return "act5";
+        }
+        if (mode === Main.act6Mode) {
+            return "act6";
+        }
+        if (mode === Main.act7Mode) {
+            return "act7";
+        }
+        if (mode === Main.attractMode) {
+            return "attract";
+        }
+        if (mode === Main.endingMode) {
+            return "ending";
+        }
+        if (mode === Main.enterInitialsMode) {
+            return "enterInitials";
+        }
+        if (mode === Main.hallOfFameMode) {
+            return "hallOfFame";
+        }
+        if (mode === Main.introMode) {
+            return "intro";
+        }
+        if (mode === Main.playingMode) {
+            return "playing";
+        }
+        if (mode === Main.selectWorldMode) {
+            return "selectWorld";
+        }
+        throw new Error("Unsupported mode.");
     }
 
     private showMouseCursor(): void {
