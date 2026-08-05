@@ -123,7 +123,7 @@ export class EnterInitialsMode implements IMode {
         } else {
             this.main.drawString("WELCOME TO THE HALL OF FAME", 48, Main.YELLOW);
             this.main.drawString(this.newScoreOf, 96, Main.WHITE);
-            this.main.drawString("USE DIRECTIONS TO ENTER YOUR INITIALS.", 144, Main.WHITE);
+            this.main.drawString("USE ARROWS TO ENTER YOUR INITIALS.", 144, Main.WHITE);
             this.main.drawString("PRESS START TO SUBMIT.", 176, Main.WHITE);
 
             this.main.drawString(this.editVisible ? this.initials : this.blinkingInitials, 304, 268, Main.ORANGE, 4);
