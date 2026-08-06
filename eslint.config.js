@@ -6,6 +6,8 @@ export default tseslint.config(
     {
         ignores: [
             "dist/",
+            "desktop/build/",
+            "desktop/dist/",
             "node_modules/"
         ]
     },
@@ -13,7 +15,7 @@ export default tseslint.config(
     ...tseslint.configs.recommended,
     {
         files: [
-            "src/**/*.ts"
+            "pwa/src/**/*.ts"
         ],
         languageOptions: {
             ecmaVersion: 2022,
@@ -42,7 +44,40 @@ export default tseslint.config(
     },
     {
         files: [
-            "public/sw.js"
+            "pwa/vite.config.ts"
+        ],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: "module",
+            globals: {
+                ...globals.node
+            }
+        },
+        rules: {
+            "@typescript-eslint/no-unused-vars": [
+                "error",
+                {
+                    args: "none",
+                    caughtErrors: "none"
+                }
+            ]
+        }
+    },
+    {
+        files: [
+            "scripts/**/*.mjs"
+        ],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: "module",
+            globals: {
+                ...globals.node
+            }
+        }
+    },
+    {
+        files: [
+            "pwa/public/sw.js"
         ],
         languageOptions: {
             ecmaVersion: 2022,

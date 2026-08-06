@@ -1,0 +1,19 @@
+{
+    "name": "Ms. Pac-Man 2010",
+    "short_name": "Ms. Pac-Man",
+    "description": "Ms. Pac-Man 2010.",
+    "start_url": "./?v=%BUILD_STAMP%",
+    "scope": ".",
+    "display": "standalone",
+    "orientation": "landscape",
+    "background_color": "#0f0f0f",
+    "theme_color": "#0f0f0f",
+    "icons": [
+        {
+            "src": "favicon.png?v=%BUILD_STAMP%",
+            "sizes": "32x32",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ]
+}

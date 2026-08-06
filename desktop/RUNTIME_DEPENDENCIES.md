@@ -1,0 +1,42 @@
+# Desktop Runtime Dependencies
+
+This directory now includes a conservative legacy Slick2D/LWJGL runtime set to improve the chance that the archived Java game can be built and launched on modern machines without upgrading Slick2D to a different rendering/audio stack.
+
+## Java Jars
+
+Copied into `desktop/lib/`:
+
+| Target | Source | Notes |
+| --- | --- | --- |
+| `slick.jar` | `C:\NetBeansProjects\slick\lib\slick.jar` | Slick2D jar paired locally with the LWJGL 2.8.5-era setup. |
+| `lwjgl.jar` | `C:\NetBeansProjects\slick2d\lwjgl-2.8.5\jar\lwjgl.jar` | LWJGL 2.8.5. |
+| `lwjgl_util.jar` | `C:\NetBeansProjects\slick2d\lwjgl-2.8.5\jar\lwjgl_util.jar` | LWJGL utility classes. |
+| `jinput.jar` | `C:\NetBeansProjects\slick2d\lwjgl-2.8.5\jar\jinput.jar` | JInput jar from the same LWJGL 2.8.5 distribution. |
+| `jogg-0.0.7.jar` | `C:\NetBeansProjects\SlickMsPacMan\dist\lib\jogg-0.0.7.jar` | Original Ms. Pac-Man OGG dependency. |
+| `jorbis-0.0.17.jar` | `C:\NetBeansProjects\SlickMsPacMan\dist\lib\jorbis-0.0.17.jar` | Original Ms. Pac-Man OGG dependency. |
+
+## Native Libraries
+
+Copied from `C:\NetBeansProjects\slick2d\lwjgl-2.8.5\native\`.
+
+| Target | Contents |
+| --- | --- |
+| `desktop/natives/windows/` | `lwjgl.dll`, `lwjgl64.dll`, `OpenAL32.dll`, `OpenAL64.dll`, `jinput-dx8.dll`, `jinput-dx8_64.dll`, `jinput-raw.dll`, `jinput-raw_64.dll` |
+| `desktop/natives/linux/` | `liblwjgl.so`, `liblwjgl64.so`, `libopenal.so`, `libopenal64.so`, `libjinput-linux.so`, `libjinput-linux64.so` |
+| `desktop/natives/macosx/` | `liblwjgl.jnilib`, `libjinput-osx.jnilib`, `openal.dylib` |
+
+## Compatibility Notes
+
+The original Ms. Pac-Man distribution included only `natives-win32.jar`, which contained 32-bit Windows native libraries. That is unlikely to run on a normal modern 64-bit JVM.
+
+The copied LWJGL 2.8.5 runtime set includes both 32-bit and 64-bit Windows native libraries, plus Linux 32-bit/64-bit native libraries. macOS support remains best-effort because these are old Intel-era native libraries and may not work on current macOS releases or Apple Silicon without compatibility layers.
+
+If this desktop archive is launched directly, the launcher should set the LWJGL native path explicitly. On Windows, that means launching with a JVM argument like:
+
+```text
+-Dorg.lwjgl.librarypath=desktop\natives\windows
+```
+
+The included run scripts do this automatically for the copied runtime layout.
+
+This dependency copy does not modernize Slick2D itself and does not upgrade the game code. It only vendors a better-matched legacy runtime set for desktop build work.

@@ -4,10 +4,22 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "vite --host 127.0.0.1",
-        "build": "tsc -p tsconfig.json && vite build",
+        "stamp": "node scripts/stamp.mjs",
+        "clean": "node scripts/clean-dist.mjs",
+        "dev": "npm run dev:pwa",
+        "dev:pwa": "vite --config pwa/vite.config.ts --host 127.0.0.1",
+        "build:pwa": "tsc --project pwa/tsconfig.json && vite build --config pwa/vite.config.ts",
+        "build:about": "node scripts/build-about.mjs",
+        "build:desktop": "node scripts/build-desktop.mjs",
+        "assemble": "node scripts/assemble.mjs",
+        "build:web": "npm run stamp && npm run clean && npm run build:pwa && npm run build:about",
+        "build": "npm run stamp && npm run clean && npm run build:pwa && npm run build:about && npm run build:desktop && npm run assemble",
         "lint": "eslint .",
-        "preview": "vite preview --host 127.0.0.1"
+        "preview": "npm run preview:pwa",
+        "preview:pwa": "vite preview --config pwa/vite.config.ts --host 127.0.0.1",
+        "preview:dist": "vite preview --host 127.0.0.1 --outDir dist",
+        "release:desktop": "npm run build:desktop && node scripts/copy-desktop-release.mjs",
+        "run:desktop": "node scripts/run-desktop.mjs"
     },
     "dependencies": {
         "slick2d-ts": "file:../slick2d-ts"
