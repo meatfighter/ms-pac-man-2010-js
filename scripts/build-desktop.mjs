@@ -212,6 +212,7 @@ const releaseArgs = javacVersion !== null && javacVersion >= 9
 run("javac", [
     "-encoding",
     "UTF-8",
+    "-Xlint:-options",
     ...releaseArgs,
     "-cp",
     classpath,

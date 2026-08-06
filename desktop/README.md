@@ -30,6 +30,10 @@ Intentionally not copied:
 
 The project now has a conservative Maven build and a local Node fallback build. The Java source layout remains legacy-style: Java files and resources both live under `src/`, matching the original NetBeans project.
 
+The desktop build intentionally emits Java 8-compatible bytecode to improve the odds of running the legacy Slick2D/LWJGL stack across older and newer Java installations. The build suppresses the expected modern-JDK warning about Java 8 being an obsolete target, but real compilation errors still fail the build.
+
+The original online high-score service is intentionally disabled here, matching the PWA port. `downloadScores()` leaves the default in-memory score tables alone, and submitting initials only updates the local in-memory table for the current run. A future server-backed high-score implementation should replace that placeholder path without restoring the dead legacy URL.
+
 Build from the repository root:
 
 ```text

@@ -30,7 +30,6 @@ import org.lwjgl.*;
 import java.io.*;
 import java.util.*;
 import java.nio.*;
-import java.net.*;
 
 public class Main extends BasicGame {
 
@@ -735,59 +734,36 @@ public class Main extends BasicGame {
       final int world, final int score, final String initials) {
 
     uploadComplete = false;
-    new Thread() {
-      @Override
-      public void run() {
-        accessScoresDatabase(update, world, score, initials);
-        uploadComplete = true;
-      }
-    }.start();
+    accessScoresDatabase(update, world, score, initials);
+    uploadComplete = true;
   }
 
   public void accessScoresDatabase(
       boolean update, int world, int score, String initials) {
 
-    try {
-      String urlStr = "http://meatfighter.com/cgi-bin/mspacman_scores.py";
-      if (update) {
-        initials = initials.replaceAll("\\s", "%20");
-        urlStr += "?world=" + world + "&score=" + score + "&initials="
-            + initials;
+    if (!update || world < 0 || world >= highScores.length) {
+      return;
+    }
+
+    HighScore highScore = new HighScore();
+    highScore.score = score;
+    highScore.initials = initials;
+    while(highScore.initials.length() < 3) {
+      highScore.initials += " ";
+    }
+    if (highScore.initials.length() > 3) {
+      highScore.initials = highScore.initials.substring(0, 3);
+    }
+
+    HighScore[] rows = highScores[world];
+    for(int i = 0; i < rows.length; i++) {
+      if (score > rows[i].score) {
+        for(int j = rows.length - 1; j > i; j--) {
+          rows[j] = rows[j - 1];
+        }
+        rows[i] = highScore;
+        break;
       }
-
-      int worldIdx = 0;
-      int rank = 0;
-
-      URL url = new URL(urlStr);
-      BufferedReader reader = new BufferedReader(
-          new InputStreamReader(url.openStream()));
-      String line = null;
-      while((line = reader.readLine()) != null) {
-        line = line.trim();
-        if (line.length() == 0) {
-          continue;
-        }
-        String[] tokens = line.split(",");
-        int w = Integer.parseInt(tokens[0]);
-        int s = Integer.parseInt(tokens[1]);
-        String i = tokens[2];
-        while(i.length() < 3) {
-          i += " ";
-        }
-        if (w != worldIdx) {
-          worldIdx = w;
-          rank = 0;
-        }
-        if (worldIdx >= 0 && worldIdx < 4 && rank < 5) {
-          HighScore highScore = highScores[worldIdx][rank];
-          highScore.score = s;
-          highScore.initials = i;
-        }
-        rank++;
-      }
-      reader.close();
-
-    } catch(Throwable t) {
     }
   }
 
