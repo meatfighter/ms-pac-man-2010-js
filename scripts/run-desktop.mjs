@@ -11,7 +11,25 @@ const nativeFolder = process.platform === "win32"
     : process.platform === "darwin"
         ? "macosx"
         : "linux";
+const jinputPlugin = process.platform === "win32"
+    ? "net.java.games.input.DirectAndRawInputEnvironmentPlugin"
+    : process.platform === "darwin"
+        ? "net.java.games.input.OSXEnvironmentPlugin"
+        : "net.java.games.input.LinuxEnvironmentPlugin";
 const nativePath = join(targetDir, "natives", nativeFolder);
+
+function javaSupportsArg(arg) {
+    const result = spawnSync("java", [arg, "-version"], {
+        cwd: desktopDir,
+        stdio: "ignore"
+    });
+    return !result.error && result.status === 0;
+}
+
+const javaCompatibilityArgs = [
+    "--enable-native-access=ALL-UNNAMED",
+    "--sun-misc-unsafe-memory-access=allow"
+].filter((arg) => javaSupportsArg(arg));
 
 if (!existsSync(jarPath)) {
     console.error("Missing desktop jar. Run npm run build:desktop first.");
@@ -23,9 +41,12 @@ if (!existsSync(nativePath)) {
 }
 
 const result = spawnSync("java", [
+    ...javaCompatibilityArgs,
     `-Dorg.lwjgl.librarypath=${nativePath}`,
     `-Dnet.java.games.input.librarypath=${nativePath}`,
     `-Djava.library.path=${nativePath}`,
+    "-Djinput.useDefaultPlugin=false",
+    `-Dnet.java.games.input.plugins=${jinputPlugin}`,
     "-jar",
     jarPath
 ], {

@@ -31,12 +31,12 @@ The original Ms. Pac-Man distribution included only `natives-win32.jar`, which c
 
 The copied LWJGL 2.8.5 runtime set includes both 32-bit and 64-bit Windows native libraries, plus Linux 32-bit/64-bit native libraries. macOS support remains best-effort because these are old Intel-era native libraries and may not work on current macOS releases or Apple Silicon without compatibility layers.
 
-If this desktop archive is launched directly, the launcher should set the native library paths explicitly. LWJGL uses `org.lwjgl.librarypath`; JInput supports `net.java.games.input.librarypath`; and `java.library.path` keeps `System.loadLibrary()`-based fallbacks pointed at the bundled native folder. On Windows, that means launching with JVM arguments like:
+If this desktop archive is launched directly, the launcher should set the native library paths explicitly. LWJGL uses `org.lwjgl.librarypath`; JInput supports `net.java.games.input.librarypath`; and `java.library.path` keeps `System.loadLibrary()`-based fallbacks pointed at the bundled native folder. The launcher should also set JInput's plugin explicitly so old JInput releases do not misidentify modern Windows versions. On Windows, that means launching with JVM arguments like:
 
 ```text
--Dorg.lwjgl.librarypath=desktop\natives\windows -Dnet.java.games.input.librarypath=desktop\natives\windows -Djava.library.path=desktop\natives\windows
+-Dorg.lwjgl.librarypath=desktop\natives\windows -Dnet.java.games.input.librarypath=desktop\natives\windows -Djava.library.path=desktop\natives\windows -Djinput.useDefaultPlugin=false -Dnet.java.games.input.plugins=net.java.games.input.DirectAndRawInputEnvironmentPlugin
 ```
 
-The included run scripts do this automatically for the copied runtime layout.
+The included run scripts do this automatically for the copied runtime layout. They also add `--enable-native-access=ALL-UNNAMED` and `--sun-misc-unsafe-memory-access=allow` only when the installed JVM supports those options, which suppresses modern-JDK warnings from legacy LWJGL internals without breaking older Java launches.
 
 This dependency copy does not modernize Slick2D itself and does not upgrade the game code. It only vendors a better-matched legacy runtime set for desktop build work.

@@ -21,4 +21,12 @@ if [ ! -d "$NATIVE_PATH" ]; then
     exit 1
 fi
 
-exec java "-Dorg.lwjgl.librarypath=$NATIVE_PATH" "-Dnet.java.games.input.librarypath=$NATIVE_PATH" "-Djava.library.path=$NATIVE_PATH" -jar "$JAR_PATH"
+JAVA_COMPAT_ARGS=""
+if java --enable-native-access=ALL-UNNAMED -version >/dev/null 2>&1; then
+    JAVA_COMPAT_ARGS="$JAVA_COMPAT_ARGS --enable-native-access=ALL-UNNAMED"
+fi
+if java --sun-misc-unsafe-memory-access=allow -version >/dev/null 2>&1; then
+    JAVA_COMPAT_ARGS="$JAVA_COMPAT_ARGS --sun-misc-unsafe-memory-access=allow"
+fi
+
+exec java $JAVA_COMPAT_ARGS "-Dorg.lwjgl.librarypath=$NATIVE_PATH" "-Dnet.java.games.input.librarypath=$NATIVE_PATH" "-Djava.library.path=$NATIVE_PATH" "-Djinput.useDefaultPlugin=false" "-Dnet.java.games.input.plugins=net.java.games.input.LinuxEnvironmentPlugin" -jar "$JAR_PATH"

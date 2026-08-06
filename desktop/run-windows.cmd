@@ -21,5 +21,11 @@ if not exist "%NATIVE_PATH%" (
     exit /b 1
 )
 
-java "-Dorg.lwjgl.librarypath=%NATIVE_PATH%" "-Dnet.java.games.input.librarypath=%NATIVE_PATH%" "-Djava.library.path=%NATIVE_PATH%" -jar "%JAR_PATH%"
+set "JAVA_COMPAT_ARGS="
+java --enable-native-access=ALL-UNNAMED -version >nul 2>nul
+if not errorlevel 1 set "JAVA_COMPAT_ARGS=%JAVA_COMPAT_ARGS% --enable-native-access=ALL-UNNAMED"
+java --sun-misc-unsafe-memory-access=allow -version >nul 2>nul
+if not errorlevel 1 set "JAVA_COMPAT_ARGS=%JAVA_COMPAT_ARGS% --sun-misc-unsafe-memory-access=allow"
+
+java %JAVA_COMPAT_ARGS% "-Dorg.lwjgl.librarypath=%NATIVE_PATH%" "-Dnet.java.games.input.librarypath=%NATIVE_PATH%" "-Djava.library.path=%NATIVE_PATH%" "-Djinput.useDefaultPlugin=false" "-Dnet.java.games.input.plugins=net.java.games.input.DirectAndRawInputEnvironmentPlugin" -jar "%JAR_PATH%"
 exit /b %ERRORLEVEL%

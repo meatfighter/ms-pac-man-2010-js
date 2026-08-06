@@ -18,5 +18,18 @@ if (-not (Test-Path -LiteralPath $nativePath)) {
     exit 1;
 }
 
-& java "-Dorg.lwjgl.librarypath=$nativePath" "-Dnet.java.games.input.librarypath=$nativePath" "-Djava.library.path=$nativePath" -jar $jarPath;
+$javaCompatArgs = @();
+function Add-JavaArgIfSupported {
+    param([string]$arg);
+
+    & java $arg "-version" *> $null;
+    if ($LASTEXITCODE -eq 0) {
+        $script:javaCompatArgs += $arg;
+    }
+}
+
+Add-JavaArgIfSupported "--enable-native-access=ALL-UNNAMED";
+Add-JavaArgIfSupported "--sun-misc-unsafe-memory-access=allow";
+
+& java @javaCompatArgs "-Dorg.lwjgl.librarypath=$nativePath" "-Dnet.java.games.input.librarypath=$nativePath" "-Djava.library.path=$nativePath" "-Djinput.useDefaultPlugin=false" "-Dnet.java.games.input.plugins=net.java.games.input.DirectAndRawInputEnvironmentPlugin" -jar $jarPath;
 exit $LASTEXITCODE;
