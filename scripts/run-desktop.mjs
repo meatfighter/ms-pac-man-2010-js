@@ -24,6 +24,8 @@ if (!existsSync(nativePath)) {
 
 const result = spawnSync("java", [
     `-Dorg.lwjgl.librarypath=${nativePath}`,
+    `-Dnet.java.games.input.librarypath=${nativePath}`,
+    `-Djava.library.path=${nativePath}`,
     "-jar",
     jarPath
 ], {

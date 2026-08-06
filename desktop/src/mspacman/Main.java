@@ -80,6 +80,7 @@ public class Main extends BasicGame {
   public int score;
   public int lives;
   public boolean paused = false;
+  public boolean fullscreenFallbackActive = false;
   public HighScore[][] highScores = new HighScore[4][5];
   public float musicVolume = 1f;
   public float musicVolumeFadeStep = 1f / 91f;
@@ -193,25 +194,90 @@ public class Main extends BasicGame {
   private void fullScreenToggleCheck(GameContainer gc) throws SlickException {
     boolean isEscape = input.isEscape();
     if (input.isSpace() || isEscape) {
-      if (gc.isFullscreen()) {
-        showMouseCursor();
-        if (appGameContainer == null) {
-          appletGameContainer.getContainer().setFullscreen(false);
-        } else {
-          appGameContainer.setDisplayMode(800, 600, false);
-          scalableGame.containerSizeChanged(gc);
-        }
+      if (gc.isFullscreen() || fullscreenFallbackActive) {
+        restoreWindowedDisplayMode(gc);
       } else if (!isEscape) {
-        hideMouseCursor();
-        if (appGameContainer == null) {
-          appletGameContainer.getContainer().setDisplayMode(true);
-        } else {
-          appGameContainer.setDisplayMode(maxWidth, maxHeight, true);
-          scalableGame.containerSizeChanged(gc);
-        }
+        enterFullScreenDisplayMode(gc);
       }
       resetNextFrameTime();
     }
+  }
+
+  private void restoreWindowedDisplayMode(GameContainer gc) {
+    showMouseCursor();
+    fullscreenFallbackActive = false;
+    try {
+      if (appGameContainer == null) {
+        appletGameContainer.getContainer().setFullscreen(false);
+      } else {
+        appGameContainer.setDisplayMode(800, 600, false);
+        scalableGame.containerSizeChanged(gc);
+      }
+    } catch(Throwable t) {
+      Log.warn("Unable to restore the windowed display mode: "
+          + describe(t));
+    }
+  }
+
+  private void enterFullScreenDisplayMode(GameContainer gc) {
+    hideMouseCursor();
+    if (appGameContainer == null) {
+      try {
+        appletGameContainer.getContainer().setDisplayMode(true);
+      } catch(Throwable t) {
+        showMouseCursor();
+        Log.warn("Unable to enter applet fullscreen display mode: "
+            + describe(t));
+      }
+      return;
+    }
+
+    int width = maxWidth;
+    int height = maxHeight;
+    try {
+      DisplayMode desktopDisplayMode = Display.getDesktopDisplayMode();
+      width = desktopDisplayMode.getWidth();
+      height = desktopDisplayMode.getHeight();
+    } catch(Throwable t) {
+      if (nativeDisplayMode != null) {
+        width = nativeDisplayMode.getWidth();
+        height = nativeDisplayMode.getHeight();
+      }
+    }
+
+    if (width <= 0 || height <= 0) {
+      width = 800;
+      height = 600;
+    }
+
+    try {
+      appGameContainer.setDisplayMode(width, height, true);
+      fullscreenFallbackActive = false;
+      scalableGame.containerSizeChanged(gc);
+    } catch(Throwable fullscreenError) {
+      Log.warn("Exclusive fullscreen was rejected; using a desktop-size "
+          + "window: " + describe(fullscreenError));
+      try {
+        appGameContainer.setDisplayMode(800, 600, false);
+        Display.setLocation(0, 0);
+        appGameContainer.setDisplayMode(width, height, false);
+        fullscreenFallbackActive = true;
+        scalableGame.containerSizeChanged(gc);
+      } catch(Throwable fallbackError) {
+        fullscreenFallbackActive = false;
+        showMouseCursor();
+        Log.warn("Unable to use the desktop-size window fallback: "
+            + describe(fallbackError));
+      }
+    }
+  }
+
+  private String describe(Throwable t) {
+    String message = t.getMessage();
+    if (message == null || message.length() == 0) {
+      return t.getClass().getName();
+    }
+    return message;
   }
 
   public void render(GameContainer gc, Graphics g) throws SlickException {
@@ -786,6 +852,15 @@ public class Main extends BasicGame {
     main.appGameContainer.setShowFPS(false);
     main.appGameContainer.setSoundOn(false);
     main.appGameContainer.setClearEachFrame(true);
+    main.configureWindowIcon();
     main.appGameContainer.start();
+  }
+
+  private void configureWindowIcon() {
+    try {
+      appGameContainer.setIcon("favicon.png");
+    } catch(Throwable t) {
+      Log.warn("Unable to set the desktop window icon: " + describe(t));
+    }
   }
 }

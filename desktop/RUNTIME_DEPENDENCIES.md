@@ -31,10 +31,10 @@ The original Ms. Pac-Man distribution included only `natives-win32.jar`, which c
 
 The copied LWJGL 2.8.5 runtime set includes both 32-bit and 64-bit Windows native libraries, plus Linux 32-bit/64-bit native libraries. macOS support remains best-effort because these are old Intel-era native libraries and may not work on current macOS releases or Apple Silicon without compatibility layers.
 
-If this desktop archive is launched directly, the launcher should set the LWJGL native path explicitly. On Windows, that means launching with a JVM argument like:
+If this desktop archive is launched directly, the launcher should set the native library paths explicitly. LWJGL uses `org.lwjgl.librarypath`; JInput supports `net.java.games.input.librarypath`; and `java.library.path` keeps `System.loadLibrary()`-based fallbacks pointed at the bundled native folder. On Windows, that means launching with JVM arguments like:
 
 ```text
--Dorg.lwjgl.librarypath=desktop\natives\windows
+-Dorg.lwjgl.librarypath=desktop\natives\windows -Dnet.java.games.input.librarypath=desktop\natives\windows -Djava.library.path=desktop\natives\windows
 ```
 
 The included run scripts do this automatically for the copied runtime layout.

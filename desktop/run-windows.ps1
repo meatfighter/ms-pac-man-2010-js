@@ -18,5 +18,5 @@ if (-not (Test-Path -LiteralPath $nativePath)) {
     exit 1;
 }
 
-& java "-Dorg.lwjgl.librarypath=$nativePath" -jar $jarPath;
+& java "-Dorg.lwjgl.librarypath=$nativePath" "-Dnet.java.games.input.librarypath=$nativePath" "-Djava.library.path=$nativePath" -jar $jarPath;
 exit $LASTEXITCODE;

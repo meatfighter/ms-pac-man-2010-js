@@ -21,5 +21,5 @@ if not exist "%NATIVE_PATH%" (
     exit /b 1
 )
 
-java "-Dorg.lwjgl.librarypath=%NATIVE_PATH%" -jar "%JAR_PATH%"
+java "-Dorg.lwjgl.librarypath=%NATIVE_PATH%" "-Dnet.java.games.input.librarypath=%NATIVE_PATH%" "-Djava.library.path=%NATIVE_PATH%" -jar "%JAR_PATH%"
 exit /b %ERRORLEVEL%

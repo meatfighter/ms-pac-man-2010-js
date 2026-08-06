@@ -21,4 +21,4 @@ if [ ! -d "$NATIVE_PATH" ]; then
     exit 1
 fi
 
-exec java "-Dorg.lwjgl.librarypath=$NATIVE_PATH" -jar "$JAR_PATH"
+exec java "-Dorg.lwjgl.librarypath=$NATIVE_PATH" "-Dnet.java.games.input.librarypath=$NATIVE_PATH" "-Djava.library.path=$NATIVE_PATH" -jar "$JAR_PATH"
