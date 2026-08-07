@@ -17,3 +17,10 @@ Useful commands:
 - `npm.cmd run release:desktop` refreshes the committed desktop release zip.
 - `npm.cmd run build` builds the full release bundle.
 - `npm.cmd run run:desktop` launches the built desktop jar with the local native libraries.
+
+High-score server configuration:
+
+- PWA builds use `MSPACMAN_SCORE_API_URL` when set, otherwise `/api/ms-pac-man-2010/scores`.
+- PWA score submission uses build-time `MSPACMAN_HMAC_KEY_HEX`; without it, downloads still run and submissions remain local-only.
+- Desktop Java uses `MSPACMAN_SCORE_API_URL` or `-Dmspacman.scoreApiUrl=...`; otherwise it defaults to `https://meatfighter.com/api/ms-pac-man-2010/scores`.
+- Desktop Java uses `MSPACMAN_HMAC_KEY_HEX` or `-Dmspacman.hmacKeyHex=...` for remote submission; without it, downloads still run and submissions remain local-only.

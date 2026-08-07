@@ -82,6 +82,7 @@ public class Main extends BasicGame {
   public boolean paused = false;
   public boolean fullscreenFallbackActive = false;
   public HighScore[][] highScores = new HighScore[4][5];
+  private HighScoreService highScoreService = new HighScoreService();
   public float musicVolume = 1f;
   public float musicVolumeFadeStep = 1f / 91f;
   public boolean fadeMusic = false;
@@ -793,15 +794,30 @@ public class Main extends BasicGame {
   }
 
   public void downloadScores() {
-    accessScoresDatabase(false, 0, 0, "");
+    highScoreService.downloadScores(highScores);
   }
 
   public void accessScoresDatabaseAsync(final boolean update,
       final int world, final int score, final String initials) {
 
     uploadComplete = false;
-    accessScoresDatabase(update, world, score, initials);
-    uploadComplete = true;
+    final String normalizedInitials = normalizeHighScoreInitials(initials);
+    accessScoresDatabase(update, world, score, normalizedInitials);
+
+    Thread thread = new Thread(new Runnable() {
+      public void run() {
+        try {
+          if (update) {
+            highScoreService.submitScore(
+                highScores, world, score, normalizedInitials);
+          }
+        } finally {
+          uploadComplete = true;
+        }
+      }
+    }, "mspacman-high-score");
+    thread.setDaemon(true);
+    thread.start();
   }
 
   public void accessScoresDatabase(
@@ -813,13 +829,7 @@ public class Main extends BasicGame {
 
     HighScore highScore = new HighScore();
     highScore.score = score;
-    highScore.initials = initials;
-    while(highScore.initials.length() < 3) {
-      highScore.initials += " ";
-    }
-    if (highScore.initials.length() > 3) {
-      highScore.initials = highScore.initials.substring(0, 3);
-    }
+    highScore.initials = normalizeHighScoreInitials(initials);
 
     HighScore[] rows = highScores[world];
     for(int i = 0; i < rows.length; i++) {
@@ -831,6 +841,17 @@ public class Main extends BasicGame {
         break;
       }
     }
+  }
+
+  private String normalizeHighScoreInitials(String initials) {
+    String value = initials;
+    while(value.length() < 3) {
+      value += " ";
+    }
+    if (value.length() > 3) {
+      value = value.substring(0, 3);
+    }
+    return value;
   }
 
   @Override

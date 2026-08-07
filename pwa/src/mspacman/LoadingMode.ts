@@ -5,10 +5,12 @@ import { Main } from "./Main";
 export class LoadingMode implements IMode {
     private main: Main;
     private loadIndex = 0;
+    private scoresRequested = false;
 
     public init(main: Main, gc: GameContainer): void {
         this.main = main;
         this.loadIndex = 14;
+        this.scoresRequested = false;
     }
 
     public update(gc: GameContainer): void {
@@ -55,7 +57,14 @@ export class LoadingMode implements IMode {
                 this.main.levelSelectMusic = new Music("music/level_select.ogg");
                 break;
             case 13:
-                this.main.downloadScores();
+                if (!this.scoresRequested) {
+                    this.scoresRequested = true;
+                    this.main.downloadScores();
+                }
+                if (!this.main.scoresDownloadComplete) {
+                    this.main.resetNextFrameTime();
+                    return;
+                }
                 break;
             case 14:
                 break;

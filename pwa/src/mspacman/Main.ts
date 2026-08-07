@@ -29,6 +29,7 @@ import { EndingMode } from "./EndingMode";
 import { EnterInitialsMode } from "./EnterInitialsMode";
 import { HallOfFameMode } from "./HallOfFameMode";
 import { HighScore } from "./HighScore";
+import { HighScoreService } from "./HighScoreService";
 import { HumanInput } from "./HumanInput";
 import type { IInput } from "./IInput";
 import type { IMode } from "./IMode";
@@ -103,6 +104,7 @@ export class Main extends BasicGame {
     public musicVolumeFadeStep = 1 / 91;
     public fadeMusicFlag = false;
     public uploadComplete = false;
+    public scoresDownloadComplete = true;
     public robotInputs: RobotInput[] = new Array<RobotInput>(4);
     public demoIndex = 0;
     public demoMode = false;
@@ -481,25 +483,38 @@ export class Main extends BasicGame {
     }
 
     public downloadScores(): void {
-        this.accessScoresDatabase(false, 0, 0, "");
+        this.scoresDownloadComplete = false;
+        void HighScoreService.downloadScores(this.highScores)
+            .finally(() => {
+                this.scoresDownloadComplete = true;
+            });
     }
 
     public accessScoresDatabaseAsync(update: boolean, world: number, score: number, initials: string): void {
         this.uploadComplete = false;
         setTimeout(() => {
-            this.accessScoresDatabase(update, world, score, initials);
-            this.uploadComplete = true;
+            const normalizedInitials = this.normalizeHighScoreInitials(initials);
+            this.accessScoresDatabase(update, world, score, normalizedInitials);
+            if (!update) {
+                this.uploadComplete = true;
+                return;
+            }
+
+            void HighScoreService.submitScore(this.highScores, world, score, normalizedInitials)
+                .finally(() => {
+                    this.uploadComplete = true;
+                });
         }, 0);
     }
 
     public accessScoresDatabase(update: boolean, world: number, score: number, initials: string): void {
-        if (!update) {
+        if (!update || world < 0 || world >= this.highScores.length) {
             return;
         }
         const rows = this.highScores[world];
         const candidate = new HighScore();
         candidate.score = score;
-        candidate.initials = initials.padEnd(3, " ").substring(0, 3);
+        candidate.initials = this.normalizeHighScoreInitials(initials);
         rows.push(candidate);
         rows.sort((a, b) => b.score - a.score);
         rows.length = 5;
@@ -543,6 +558,10 @@ export class Main extends BasicGame {
         const explicitPause = this.input.isPausePressed();
         const startPause = this.input.isGameplayStartPressed();
         return explicitPause || startPause;
+    }
+
+    private normalizeHighScoreInitials(initials: string): string {
+        return initials.padEnd(3, " ").substring(0, 3);
     }
 
     private getModeIdForState(mode: IMode): ModeId {

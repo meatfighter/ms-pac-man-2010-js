@@ -48,6 +48,11 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
     const request = event.request;
+    const url = new URL(request.url);
+
+    if (url.pathname.startsWith("/api/ms-pac-man-2010/")) {
+        return;
+    }
 
     if (!canUseCacheApi(request)) {
         return;

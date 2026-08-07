@@ -543,15 +543,12 @@ export class MsPacManGameStateSerializer {
             return;
         }
 
-        if (main.uploadComplete) {
-            this.restoreSubmittedScore(main, {
-                initials,
-                score: main.score,
-                world: main.worldIndex
-            });
-        } else {
-            main.accessScoresDatabaseAsync(true, main.worldIndex, main.score, initials);
-        }
+        this.restoreSubmittedScore(main, {
+            initials,
+            score: main.score,
+            world: main.worldIndex
+        });
+        this.setField(main, "uploadComplete", true);
     }
 
     private captureSubmittedScore(main: Main): SubmittedScoreSnapshot | null {

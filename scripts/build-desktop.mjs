@@ -36,7 +36,8 @@ const runtimeJars = [
     "lwjgl_util.jar",
     "jinput.jar",
     "jogg-0.0.7.jar",
-    "jorbis-0.0.17.jar"
+    "jorbis-0.0.17.jar",
+    "gson-2.11.0.jar"
 ];
 
 function commandExists(command) {

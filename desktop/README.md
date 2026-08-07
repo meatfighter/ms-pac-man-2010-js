@@ -32,7 +32,12 @@ The project now has a conservative Maven build and a local Node fallback build. 
 
 The desktop build intentionally emits Java 8-compatible bytecode to improve the odds of running the legacy Slick2D/LWJGL stack across older and newer Java installations. The build suppresses the expected modern-JDK warning about Java 8 being an obsolete target, but real compilation errors still fail the build.
 
-The original online high-score service is intentionally disabled here, matching the PWA port. `downloadScores()` leaves the default in-memory score tables alone, and submitting initials only updates the local in-memory table for the current run. A future server-backed high-score implementation should replace that placeholder path without restoring the dead legacy URL.
+The original online high-score service is not restored. This build now targets the replacement JSON high-score API. `downloadScores()` performs one bounded best-effort fetch, preserving the local `0 AAA` defaults on any failure. Submitting initials updates the local in-memory table first, then performs one bounded best-effort POST when an HMAC key is configured. Network, HTTP, parsing, and validation failures are silently ignored.
+
+High-score configuration:
+
+- API URL: `MSPACMAN_SCORE_API_URL` or `-Dmspacman.scoreApiUrl=...`; default is `https://meatfighter.com/api/ms-pac-man-2010/scores`.
+- HMAC key: `MSPACMAN_HMAC_KEY_HEX` or `-Dmspacman.hmacKeyHex=...`; without it, remote POST is skipped and local high-score behavior remains.
 
 Build from the repository root:
 

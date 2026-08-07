@@ -14,6 +14,7 @@ Copied into `desktop/lib/`:
 | `jinput.jar` | `C:\NetBeansProjects\slick2d\lwjgl-2.8.5\jar\jinput.jar` | JInput jar from the same LWJGL 2.8.5 distribution. |
 | `jogg-0.0.7.jar` | `C:\NetBeansProjects\SlickMsPacMan\dist\lib\jogg-0.0.7.jar` | Original Ms. Pac-Man OGG dependency. |
 | `jorbis-0.0.17.jar` | `C:\NetBeansProjects\SlickMsPacMan\dist\lib\jorbis-0.0.17.jar` | Original Ms. Pac-Man OGG dependency. |
+| `gson-2.11.0.jar` | Maven Central `com.google.code.gson:gson:2.11.0` | Used only for syntactic JSON parsing in the replacement high-score API client. |
 
 ## Native Libraries
 

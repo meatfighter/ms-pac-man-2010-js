@@ -11,6 +11,8 @@ interface VersionInfo {
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const versionInfo = JSON.parse(readFileSync(new URL("../version.json", import.meta.url), "utf8")) as VersionInfo;
 const encodedBuildStamp = encodeURIComponent(versionInfo.buildStamp);
+const highScoreApiUrl = process.env.MSPACMAN_SCORE_API_URL ?? "/api/ms-pac-man-2010/scores";
+const highScoreHmacKeyHex = process.env.MSPACMAN_HMAC_KEY_HEX ?? "";
 
 function renderVersionPlaceholders(text: string): string {
     return text
@@ -62,7 +64,9 @@ export default defineConfig(({ command }) => ({
     ],
     define: {
         __APP_VERSION__: JSON.stringify(versionInfo.version),
-        __BUILD_STAMP__: JSON.stringify(versionInfo.buildStamp)
+        __BUILD_STAMP__: JSON.stringify(versionInfo.buildStamp),
+        __HIGH_SCORE_API_URL__: JSON.stringify(highScoreApiUrl),
+        __HIGH_SCORE_HMAC_KEY_HEX__: JSON.stringify(highScoreHmacKeyHex)
     },
     build: {
         outDir: "../dist/pwa",
