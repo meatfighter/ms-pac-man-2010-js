@@ -9,6 +9,7 @@ type SlickRuntime = typeof import("slick2d-ts");
 
 type RuntimeContainer = {
     destroy(): void;
+    isFullscreen(): boolean;
     setAlwaysRender(alwaysRender: boolean): void;
     setClearEachFrame(clearEachFrame: boolean): void;
     setDisplayMode(width: number, height: number, fullscreen: boolean): Promise<void> | void;
@@ -22,6 +23,7 @@ type RuntimeContainer = {
 };
 
 const app = document.querySelector<HTMLDivElement>("#app");
+const GAME_CURSOR_HIDE_DELAY_MS = 3000;
 
 if (!app) {
     throw new Error("Missing #app root.");
@@ -30,6 +32,12 @@ if (!app) {
 let slickRuntime: SlickRuntime | null = null;
 let container: RuntimeContainer | null = null;
 let game: MsPacManMain | null = null;
+let activeGameHost: HTMLElement | null = null;
+let resizeObserver: ResizeObserver | null = null;
+let resizeAnimationFrame = 0;
+let cursorGameHost: HTMLElement | null = null;
+let cursorHideTimer = 0;
+let pointerOverGameHost = false;
 let volume = safeReadVolume();
 const gameStateStore = new MsPacManGameStateStore(APP_VERSION);
 
@@ -139,8 +147,7 @@ function renderGameHost(): void {
         </button>
     `;
     document.querySelector<HTMLButtonElement>("#menuButton")?.addEventListener("click", () => {
-        saveCurrentGameState();
-        renderMenu();
+        returnToMenu();
     });
 }
 
@@ -162,6 +169,8 @@ async function mountGame(restoreSavedGame: boolean): Promise<void> {
     container = appContainer;
     mainGame.scalableGame = scalableGame;
     mainGame.appGameContainer = appContainer;
+    mainGame.windowedDisplayModeProvider = getResponsiveWindowedDisplayMode;
+    mainGame.pauseStateChangeHandler = handleGamePauseStateChanged;
     game = mainGame;
     if (restoreSavedGame) {
         mainGame.loadingCompleteHandler = (gc: GameContainer): boolean => {
@@ -176,13 +185,17 @@ async function mountGame(restoreSavedGame: boolean): Promise<void> {
     container.setErrorHandler((error) => {
         renderLoadError(error, restoreSavedGame);
     });
-    await container.setDisplayMode(800, 600, false);
+    activeGameHost = host;
+    const displayMode = getResponsiveWindowedDisplayMode();
+    await container.setDisplayMode(displayMode.width, displayMode.height, false);
     container.setAlwaysRender(true);
     container.setVSync(true);
     container.setSmoothDeltas(false);
     container.setShowFPS(false);
     container.setClearEachFrame(true);
     await container.start();
+    startResponsiveGameSizing(host);
+    startGameCursorAutoHide(host);
     applyVolume();
 }
 
@@ -248,6 +261,8 @@ function volumeIcon(value: number): string {
 }
 
 function destroyGame(): void {
+    stopGameCursorAutoHide();
+    stopResponsiveGameSizing();
     game?.stopAllSounds();
     container?.destroy();
     container = null;
@@ -262,15 +277,186 @@ function saveCurrentGameState(): boolean {
     return gameStateStore.save(game);
 }
 
-function suspendCurrentGame(): void {
-    saveCurrentGameState();
+function returnToMenu(): void {
     game?.setBrowserSuspended(true);
+    saveCurrentGameState();
+    renderMenu();
+}
+
+function suspendCurrentGame(): void {
+    game?.setBrowserSuspended(true);
+    saveCurrentGameState();
 }
 
 function resumeCurrentGame(): void {
     if (document.visibilityState === "visible" && document.hasFocus()) {
         game?.setBrowserSuspended(false);
     }
+}
+
+function startGameCursorAutoHide(host: HTMLElement): void {
+    stopGameCursorAutoHide();
+    cursorGameHost = host;
+    pointerOverGameHost = isElementHovered(host);
+    host.addEventListener("pointerenter", handleGamePointerEnter);
+    host.addEventListener("pointerleave", handleGamePointerLeave);
+    host.addEventListener("pointermove", handleGameMouseInput);
+    host.addEventListener("pointerdown", handleGameMouseInput);
+    host.addEventListener("pointerup", handleGameMouseInput);
+    host.addEventListener("wheel", handleGameMouseInput, { passive: true });
+    showGameCursor();
+    scheduleGameCursorHide();
+}
+
+function stopGameCursorAutoHide(): void {
+    if (cursorGameHost) {
+        cursorGameHost.removeEventListener("pointerenter", handleGamePointerEnter);
+        cursorGameHost.removeEventListener("pointerleave", handleGamePointerLeave);
+        cursorGameHost.removeEventListener("pointermove", handleGameMouseInput);
+        cursorGameHost.removeEventListener("pointerdown", handleGameMouseInput);
+        cursorGameHost.removeEventListener("pointerup", handleGameMouseInput);
+        cursorGameHost.removeEventListener("wheel", handleGameMouseInput);
+        cursorGameHost.classList.remove("cursor-hidden");
+    }
+    clearGameCursorHideTimer();
+    pointerOverGameHost = false;
+    cursorGameHost = null;
+}
+
+function handleGamePointerEnter(): void {
+    pointerOverGameHost = true;
+    handleGameMouseInput();
+}
+
+function handleGamePointerLeave(): void {
+    pointerOverGameHost = false;
+    showGameCursor();
+    clearGameCursorHideTimer();
+}
+
+function handleGameMouseInput(): void {
+    showGameCursor();
+    scheduleGameCursorHide();
+}
+
+function handleGamePauseStateChanged(paused: boolean): void {
+    showGameCursor();
+    if (paused) {
+        clearGameCursorHideTimer();
+    } else {
+        scheduleGameCursorHide();
+    }
+}
+
+function scheduleGameCursorHide(): void {
+    clearGameCursorHideTimer();
+    if (!cursorGameHost || !pointerOverGameHost || game?.paused) {
+        return;
+    }
+    cursorHideTimer = window.setTimeout(() => {
+        cursorHideTimer = 0;
+        hideGameCursorIfIdle();
+    }, GAME_CURSOR_HIDE_DELAY_MS);
+}
+
+function hideGameCursorIfIdle(): void {
+    if (!cursorGameHost || !pointerOverGameHost || game?.paused) {
+        showGameCursor();
+        return;
+    }
+    cursorGameHost.classList.add("cursor-hidden");
+}
+
+function showGameCursor(): void {
+    cursorGameHost?.classList.remove("cursor-hidden");
+}
+
+function clearGameCursorHideTimer(): void {
+    if (cursorHideTimer !== 0) {
+        clearTimeout(cursorHideTimer);
+        cursorHideTimer = 0;
+    }
+}
+
+function isElementHovered(element: HTMLElement): boolean {
+    try {
+        return element.matches(":hover");
+    } catch {
+        return false;
+    }
+}
+
+function startResponsiveGameSizing(host: HTMLElement): void {
+    stopResponsiveGameSizing();
+    activeGameHost = host;
+    if ("ResizeObserver" in window) {
+        resizeObserver = new ResizeObserver(scheduleResponsiveGameResize);
+        resizeObserver.observe(host);
+    }
+    window.addEventListener("resize", scheduleResponsiveGameResize);
+    document.addEventListener("fullscreenchange", scheduleResponsiveGameResize);
+    scheduleResponsiveGameResize();
+}
+
+function stopResponsiveGameSizing(): void {
+    resizeObserver?.disconnect();
+    resizeObserver = null;
+    activeGameHost = null;
+    window.removeEventListener("resize", scheduleResponsiveGameResize);
+    document.removeEventListener("fullscreenchange", scheduleResponsiveGameResize);
+    if (resizeAnimationFrame !== 0) {
+        cancelAnimationFrame(resizeAnimationFrame);
+        resizeAnimationFrame = 0;
+    }
+}
+
+function scheduleResponsiveGameResize(): void {
+    if (resizeAnimationFrame !== 0) {
+        return;
+    }
+    resizeAnimationFrame = requestAnimationFrame(() => {
+        resizeAnimationFrame = 0;
+        applyResponsiveWindowedDisplayMode();
+    });
+}
+
+function applyResponsiveWindowedDisplayMode(): void {
+    if (!container || !activeGameHost || container.isFullscreen() || document.fullscreenElement !== null) {
+        return;
+    }
+
+    const displayMode = getResponsiveWindowedDisplayMode();
+    try {
+        void Promise.resolve(container.setDisplayMode(displayMode.width, displayMode.height, false))
+            .catch(reportResponsiveResizeError);
+    } catch (error) {
+        reportResponsiveResizeError(error);
+    }
+}
+
+function reportResponsiveResizeError(error: unknown): void {
+    console.error(error);
+    renderLoadError(error);
+}
+
+function getResponsiveWindowedDisplayMode(): { width: number; height: number } {
+    const host = activeGameHost ?? document.querySelector<HTMLElement>("#gameHost");
+    const fallbackWidth = window.innerWidth || 800;
+    const fallbackHeight = window.innerHeight || 600;
+    if (!host) {
+        return {
+            width: Math.max(1, Math.trunc(fallbackWidth)),
+            height: Math.max(1, Math.trunc(fallbackHeight))
+        };
+    }
+
+    const rect = host.getBoundingClientRect();
+    const width = host.clientWidth || rect.width || fallbackWidth;
+    const height = host.clientHeight || rect.height || fallbackHeight;
+    return {
+        width: Math.max(1, Math.trunc(width)),
+        height: Math.max(1, Math.trunc(height))
+    };
 }
 
 async function configureSlickRuntime(): Promise<void> {

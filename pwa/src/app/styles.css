@@ -241,6 +241,11 @@ input {
     outline: none;
 }
 
+.game-host.cursor-hidden,
+.game-host.cursor-hidden canvas {
+    cursor: none;
+}
+
 .hamburger {
     position: fixed;
     top: 12px;

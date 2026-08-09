@@ -45,6 +45,8 @@ public class Main extends BasicGame {
   public static final int WHITE = 4;
   public static final int YELLOW = 5;
 
+  private static final long CURSOR_HIDE_DELAY_MS = 3000L;
+
   public static final IMode attractMode = new AttractMode();
   public static final IMode selectWorldMode = new SelectWorldMode();
   public static final IMode introMode = new IntroMode();
@@ -77,6 +79,13 @@ public class Main extends BasicGame {
   public IInput input;
   public Music currentMusic;
   public Cursor nativeCursor;
+  private Cursor hiddenCursor;
+  private boolean mouseCursorHidden = false;
+  private long lastMouseInputTime = System.currentTimeMillis();
+  private int lastMouseX = Integer.MIN_VALUE;
+  private int lastMouseY = Integer.MIN_VALUE;
+  private int lastMouseButtonMask = 0;
+  private boolean lastMouseInsideGameArea = false;
   public int score;
   public int lives;
   public boolean paused = false;
@@ -148,11 +157,13 @@ public class Main extends BasicGame {
     loadDemos(gc);
 
     input = new HumanInput(gc);
+    resetMouseCursorAutoHide();
 
     setMode(loadingMode, gc);     
   }
 
   public void update(GameContainer gc, int delta) throws SlickException {
+    updateMouseCursorAutoHide();
     if (fadeMusic) {
       musicVolume -= musicVolumeFadeStep;
       if (musicVolume <= 0) {
@@ -166,12 +177,15 @@ public class Main extends BasicGame {
     if (paused) {
       if (input.isPause()) {
         paused = false;
+        markMouseInput(System.currentTimeMillis());
         gc.setMusicOn(true);
       }
       resetNextFrameTime();
       return;
     } else if (input.isPause()) {
       paused = true;
+      markMouseInput(System.currentTimeMillis());
+      stopAllSoundEffects();
       gc.setMusicOn(false);
     }
     int count = 0;
@@ -221,7 +235,7 @@ public class Main extends BasicGame {
   }
 
   private void enterFullScreenDisplayMode(GameContainer gc) {
-    hideMouseCursor();
+    markMouseInput(System.currentTimeMillis());
     if (appGameContainer == null) {
       try {
         appletGameContainer.getContainer().setDisplayMode(true);
@@ -330,22 +344,111 @@ public class Main extends BasicGame {
   }
 
   private void showMouseCursor() {
+    if (!mouseCursorHidden) {
+      return;
+    }
     try {
       Mouse.setNativeCursor(nativeCursor);
+      mouseCursorHidden = false;
     } catch (Exception e) {
 			Log.error("Failed to load and apply cursor.", e);
 		}
   }
 
   private void hideMouseCursor() {
+    if (mouseCursorHidden) {
+      return;
+    }
     try {
-			ByteBuffer buffer = BufferUtils.createByteBuffer(32 * 32 * 4);
-			Cursor cursor = CursorLoader.get().getCursor(buffer, 0, 0, 32, 32);
+      if (hiddenCursor == null) {
+        ByteBuffer buffer = BufferUtils.createByteBuffer(32 * 32 * 4);
+        hiddenCursor = CursorLoader.get().getCursor(buffer, 0, 0, 32, 32);
+      }
       nativeCursor = Mouse.getNativeCursor();
-			Mouse.setNativeCursor(cursor);
+			Mouse.setNativeCursor(hiddenCursor);
+      mouseCursorHidden = true;
 		} catch (Exception e) {
 			Log.error("Failed to load and apply cursor.", e);
 		}
+  }
+
+  private void resetMouseCursorAutoHide() {
+    lastMouseInputTime = System.currentTimeMillis();
+    lastMouseX = Integer.MIN_VALUE;
+    lastMouseY = Integer.MIN_VALUE;
+    lastMouseButtonMask = 0;
+    lastMouseInsideGameArea = false;
+    showMouseCursor();
+  }
+
+  private void updateMouseCursorAutoHide() {
+    if (!Mouse.isCreated()) {
+      return;
+    }
+
+    long now = System.currentTimeMillis();
+    if (paused) {
+      markMouseInput(now);
+      return;
+    }
+
+    boolean mouseInsideGameArea = isMouseInsideGameArea();
+    if (!mouseInsideGameArea) {
+      lastMouseInsideGameArea = false;
+      showMouseCursor();
+      return;
+    }
+
+    if (!lastMouseInsideGameArea) {
+      lastMouseInsideGameArea = true;
+      markMouseInput(now);
+      return;
+    }
+
+    if (hasMouseInputChanged()) {
+      markMouseInput(now);
+      return;
+    }
+
+    if (now - lastMouseInputTime >= CURSOR_HIDE_DELAY_MS) {
+      hideMouseCursor();
+    }
+  }
+
+  private void markMouseInput(long now) {
+    lastMouseInputTime = now;
+    showMouseCursor();
+  }
+
+  private boolean isMouseInsideGameArea() {
+    try {
+      return Mouse.isInsideWindow();
+    } catch(Throwable t) {
+      return true;
+    }
+  }
+
+  private boolean hasMouseInputChanged() {
+    int x = Mouse.getX();
+    int y = Mouse.getY();
+    int buttonMask = getMouseButtonMask();
+    boolean changed = x != lastMouseX || y != lastMouseY
+        || buttonMask != lastMouseButtonMask;
+    lastMouseX = x;
+    lastMouseY = y;
+    lastMouseButtonMask = buttonMask;
+    return changed;
+  }
+
+  private int getMouseButtonMask() {
+    int mask = 0;
+    int buttonCount = Math.min(Mouse.getButtonCount(), 31);
+    for(int i = 0; i < buttonCount; i++) {
+      if (Mouse.isButtonDown(i)) {
+        mask |= 1 << i;
+      }
+    }
+    return mask;
   }
 
   private void findNativeDisplayMode() throws SlickException {
@@ -856,6 +959,7 @@ public class Main extends BasicGame {
 
   @Override
   public boolean closeRequested() {
+    showMouseCursor();
     stopAllSounds();
     return super.closeRequested();
   }

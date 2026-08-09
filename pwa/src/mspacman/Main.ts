@@ -51,6 +51,13 @@ function imageCube<T>(a: number, b: number, c: number): T[][][] {
     return Array.from({ length: a }, () => imageGrid<T>(b, c));
 }
 
+export type WindowedDisplayModeProvider = () => {
+    width: number;
+    height: number;
+};
+
+export type PauseStateChangeHandler = (paused: boolean) => void;
+
 export class Main extends BasicGame {
     public static readonly UP = 0;
     public static readonly DOWN = 1;
@@ -110,6 +117,8 @@ export class Main extends BasicGame {
     public demoMode = false;
     public browserSuspended = false;
     public loadingCompleteHandler: ((gc: GameContainer) => boolean) | null = null;
+    public windowedDisplayModeProvider: WindowedDisplayModeProvider | null = null;
+    public pauseStateChangeHandler: PauseStateChangeHandler | null = null;
 
     public symbols = imageGrid<Image | null>(6, 256);
     public ghostSprites = imageCube<Image>(4, 4, 2);
@@ -189,13 +198,14 @@ export class Main extends BasicGame {
         }
         if (this.paused) {
             if (this.isGameplayPauseTogglePressed()) {
-                this.paused = false;
+                this.setPaused(false);
                 gc.setMusicOn(true);
             }
             this.resetNextFrameTime();
             return;
         } else if (this.isGameplayPauseTogglePressed()) {
-            this.paused = true;
+            this.setPaused(true);
+            this.stopAllSoundEffects();
             gc.setMusicOn(false);
         }
         let count = 0;
@@ -537,7 +547,8 @@ export class Main extends BasicGame {
             if (gc.isFullscreen()) {
                 this.showMouseCursor();
                 if (this.appGameContainer) {
-                    void this.appGameContainer.setDisplayMode(800, 600, false);
+                    const displayMode = this.getWindowedDisplayMode();
+                    void this.appGameContainer.setDisplayMode(displayMode.width, displayMode.height, false);
                     this.scalableGame?.containerSizeChanged(gc);
                 }
             } else if (!isEscape) {
@@ -560,8 +571,36 @@ export class Main extends BasicGame {
         return explicitPause || startPause;
     }
 
+    private setPaused(paused: boolean): void {
+        if (this.paused === paused) {
+            return;
+        }
+        this.paused = paused;
+        this.pauseStateChangeHandler?.(paused);
+    }
+
     private normalizeHighScoreInitials(initials: string): string {
         return initials.padEnd(3, " ").substring(0, 3);
+    }
+
+    private getWindowedDisplayMode(): { width: number; height: number } {
+        if (this.windowedDisplayModeProvider !== null) {
+            try {
+                const displayMode = this.windowedDisplayModeProvider();
+                if (Number.isFinite(displayMode.width) && Number.isFinite(displayMode.height)) {
+                    return {
+                        width: Math.max(1, Math.trunc(displayMode.width)),
+                        height: Math.max(1, Math.trunc(displayMode.height))
+                    };
+                }
+            } catch {
+            }
+        }
+
+        return {
+            width: 800,
+            height: 600
+        };
     }
 
     private getModeIdForState(mode: IMode): ModeId {

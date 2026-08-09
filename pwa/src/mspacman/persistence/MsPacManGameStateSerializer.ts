@@ -408,7 +408,6 @@ export class MsPacManGameStateSerializer {
         this.restoreCurrentMode(main, snapshot.mode);
         this.restoreMusic(main, gc, snapshot.music);
         main.setBrowserSuspended(false);
-        gc.setMusicOn(!main.paused);
         main.input.clearKeyPressedRecord();
         main.resetNextFrameTime();
     }
@@ -594,13 +593,15 @@ export class MsPacManGameStateSerializer {
             return null;
         }
 
+        const looped = Boolean(this.getField(music, "looped"));
+
         return {
             id,
-            looped: Boolean(this.getField(music, "looped")),
+            looped,
             paused: Boolean(this.getField(music, "paused")),
             playing: music.playing(),
             playbackRate: this.numberField(music, "playbackRate", 1),
-            position: music.getPosition(),
+            position: this.normalizeMusicPosition(music, music.getPosition(), looped),
             volume: music.getVolume()
         };
     }
@@ -609,30 +610,30 @@ export class MsPacManGameStateSerializer {
         this.stopAudioForMusicRestore(main);
         if (snapshot === null) {
             main.currentMusic = null;
+            gc.setMusicOn(!main.paused);
             return;
         }
 
         const music = this.musicForId(main, snapshot.id);
+        const position = this.normalizeMusicPosition(music, snapshot.position, snapshot.looped);
         main.currentMusic = music;
         music.setVolume(snapshot.volume);
-        music.setPosition(snapshot.position);
+        music.setPosition(position);
         if ((snapshot.playing || snapshot.paused) && !main.demoMode) {
+            gc.setMusicOn(false);
             if (snapshot.looped) {
                 music.loop(snapshot.playbackRate, snapshot.volume);
             } else {
                 music.play(snapshot.playbackRate, snapshot.volume);
             }
-            music.setPosition(snapshot.position);
-            if (snapshot.paused) {
-                music.pause();
-            }
+            this.seekRestoredMusic(main, gc, music, position, snapshot);
         } else {
             music.stop();
-            music.setPosition(snapshot.position);
+            music.setPosition(position);
             main.currentMusic = music;
+            gc.setMusicOn(!main.paused);
         }
         music.setVolume(snapshot.volume);
-        gc.setMusicOn(!main.paused);
     }
 
     private stopAudioForMusicRestore(main: Main): void {
@@ -640,6 +641,43 @@ export class MsPacManGameStateSerializer {
             main.currentMusic.stop();
         }
         main.stopAllSoundEffects();
+    }
+
+    private seekRestoredMusic(main: Main, gc: GameContainer, music: Music, position: number, snapshot: MusicSnapshot): void {
+        void music.ready().then(() => {
+            globalThis.setTimeout(() => {
+                if (main.currentMusic !== music) {
+                    gc.setMusicOn(!main.paused);
+                    return;
+                }
+
+                music.setPosition(this.normalizeMusicPosition(music, position, snapshot.looped));
+                music.setVolume(snapshot.volume);
+                if (snapshot.paused) {
+                    music.pause();
+                }
+                gc.setMusicOn(!main.paused);
+            }, 0);
+        }).catch(() => {
+            if (main.currentMusic === music) {
+                gc.setMusicOn(!main.paused);
+            }
+        });
+    }
+
+    private normalizeMusicPosition(music: Music, position: number, looped: boolean): number {
+        const sanitized = Number.isFinite(position) ? Math.max(0, position) : 0;
+        if (!looped) {
+            return sanitized;
+        }
+
+        const buffer = this.getField(music, "buffer") as { duration?: unknown } | null;
+        const duration = typeof buffer?.duration === "number" ? buffer.duration : 0;
+        if (!Number.isFinite(duration) || duration <= 0) {
+            return sanitized;
+        }
+
+        return sanitized % duration;
     }
 
     private captureRandom(main: Main): RandomSnapshot {
