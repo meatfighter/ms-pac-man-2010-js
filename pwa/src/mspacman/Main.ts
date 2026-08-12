@@ -281,6 +281,16 @@ export class Main extends BasicGame {
         return handler !== null ? handler(gc) : false;
     }
 
+    public isLoadingScreenActive(): boolean {
+        return this.mode === Main.loadingMode;
+    }
+
+    public completeLoadingImmediately(gc: GameContainer): void {
+        if (this.mode === Main.loadingMode) {
+            (Main.loadingMode as LoadingMode).completeImmediately(gc);
+        }
+    }
+
     public getCurrentModeIdForState(): ModeId {
         return this.getModeIdForState(this.mode);
     }

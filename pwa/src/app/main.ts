@@ -14,6 +14,7 @@ type RuntimeContainer = {
     setClearEachFrame(clearEachFrame: boolean): void;
     setDisplayMode(width: number, height: number, fullscreen: boolean): Promise<void> | void;
     setErrorHandler(errorHandler: (error: unknown) => void): void;
+    setLoopSuspended(suspended: boolean): void;
     setMusicVolume(volume: number): void;
     setShowFPS(showFPS: boolean): void;
     setSmoothDeltas(smoothDeltas: boolean): void;
@@ -35,9 +36,12 @@ let game: MsPacManMain | null = null;
 let activeGameHost: HTMLElement | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let resizeAnimationFrame = 0;
+let hamburgerVisibilityAnimationFrame = 0;
 let cursorGameHost: HTMLElement | null = null;
 let cursorHideTimer = 0;
 let pointerOverGameHost = false;
+let runtimeResourcesLoaded = false;
+let runtimeGameLoadingCompleted = false;
 let volume = safeReadVolume();
 const gameStateStore = new MsPacManGameStateStore(APP_VERSION);
 
@@ -97,10 +101,13 @@ async function startGame(restoreSavedGame: boolean): Promise<void> {
     try {
         await configureSlickRuntime();
         await unlockAudio();
-        renderBoot(0);
-        await preloadResources((loaded, total, ref) => {
-            renderBoot(loaded / total);
-        });
+        if (!runtimeResourcesLoaded) {
+            renderBoot(0);
+            await preloadResources((loaded, total) => {
+                renderBoot(loaded / total);
+            });
+            runtimeResourcesLoaded = true;
+        }
         renderGameHost();
         await mountGame(restoreSavedGame);
     } catch (error) {
@@ -127,7 +134,7 @@ function renderLoadError(error: unknown, restoreSavedGame = false): void {
     app.innerHTML = `
         <main class="shell">
             <section class="boot boot-error">
-                <div class="failure-icon" aria-hidden="true">💀</div>
+                <div class="failure-icon" aria-hidden="true">&#x1F480;</div>
                 <div class="boot-title">Unable to start.</div>
                 <p class="error-text">Check your connection and try again.</p>
                 <button id="retryButton" class="retry-button" type="button">Retry</button>
@@ -142,7 +149,7 @@ function renderLoadError(error: unknown, restoreSavedGame = false): void {
 function renderGameHost(): void {
     app.innerHTML = `
         <div class="game-host" id="gameHost"></div>
-        <button class="hamburger" id="menuButton" type="button" aria-label="Return to menu" title="Return to menu">
+        <button class="hamburger" id="menuButton" type="button" aria-label="Return to menu" title="Return to menu" hidden>
             <span></span>
         </button>
     `;
@@ -157,7 +164,8 @@ async function mountGame(restoreSavedGame: boolean): Promise<void> {
         throw new Error("Missing game host.");
     }
 
-    const [{ AppGameContainer, Display }, { Main }, { ScalableGame2 }] = await Promise.all([
+    const skipInternalLoadingScreen = runtimeGameLoadingCompleted;
+    const [{ AppGameContainer, Display, ResourceLoader }, { Main }, { ScalableGame2 }] = await Promise.all([
         getSlickRuntime(),
         import("../mspacman/Main"),
         import("../mspacman/ScalableGame2")
@@ -194,14 +202,20 @@ async function mountGame(restoreSavedGame: boolean): Promise<void> {
     container.setShowFPS(false);
     container.setClearEachFrame(true);
     await container.start();
+    if (skipInternalLoadingScreen) {
+        mainGame.completeLoadingImmediately(appContainer);
+        runtimeGameLoadingCompleted = true;
+        await ResourceLoader.waitForAll();
+    }
     startResponsiveGameSizing(host);
     startGameCursorAutoHide(host);
+    startHamburgerVisibilityMonitor();
     applyVolume();
 }
 
 async function preloadResources(onProgress: (loaded: number, total: number, ref: string) => void): Promise<void> {
     const { ResourceLoader } = await getSlickRuntime();
-    ResourceLoader.clearCache();
+    ResourceLoader.clearFailures();
     ResourceLoader.setCacheBust(CACHE_BUST);
     ResourceLoader.setRetryOptions(3, 300);
     for (let i = 0; i < RESOURCE_REFS.length; i++) {
@@ -261,6 +275,7 @@ function volumeIcon(value: number): string {
 }
 
 function destroyGame(): void {
+    stopHamburgerVisibilityMonitor();
     stopGameCursorAutoHide();
     stopResponsiveGameSizing();
     game?.stopAllSounds();
@@ -278,20 +293,42 @@ function saveCurrentGameState(): boolean {
 }
 
 function returnToMenu(): void {
+    if (game?.isLoadingScreenActive()) {
+        return;
+    }
     game?.setBrowserSuspended(true);
     saveCurrentGameState();
     renderMenu();
 }
 
 function suspendCurrentGame(): void {
+    if (game?.isLoadingScreenActive()) {
+        return;
+    }
     game?.setBrowserSuspended(true);
+    container?.setLoopSuspended(true);
     saveCurrentGameState();
 }
 
 function resumeCurrentGame(): void {
     if (document.visibilityState === "visible" && document.hasFocus()) {
         game?.setBrowserSuspended(false);
+        container?.setLoopSuspended(false);
     }
+}
+
+function syncCurrentGameLifecycleState(): void {
+    if (!game || game.isLoadingScreenActive()) {
+        return;
+    }
+    if (document.visibilityState === "visible" && document.hasFocus()) {
+        game.setBrowserSuspended(false);
+        container?.setLoopSuspended(false);
+        return;
+    }
+    game.setBrowserSuspended(true);
+    container?.setLoopSuspended(true);
+    saveCurrentGameState();
 }
 
 function startGameCursorAutoHide(host: HTMLElement): void {
@@ -386,6 +423,40 @@ function isElementHovered(element: HTMLElement): boolean {
     }
 }
 
+function startHamburgerVisibilityMonitor(): void {
+    stopHamburgerVisibilityMonitor();
+    updateHamburgerVisibility();
+}
+
+function stopHamburgerVisibilityMonitor(): void {
+    if (hamburgerVisibilityAnimationFrame !== 0) {
+        cancelAnimationFrame(hamburgerVisibilityAnimationFrame);
+        hamburgerVisibilityAnimationFrame = 0;
+    }
+}
+
+function updateHamburgerVisibility(): void {
+    const hidden = game === null || game.isLoadingScreenActive();
+    setHamburgerHidden(hidden);
+    if (!hidden) {
+        runtimeGameLoadingCompleted = true;
+        syncCurrentGameLifecycleState();
+    }
+    if (hidden && game !== null) {
+        hamburgerVisibilityAnimationFrame = requestAnimationFrame(() => {
+            hamburgerVisibilityAnimationFrame = 0;
+            updateHamburgerVisibility();
+        });
+    }
+}
+
+function setHamburgerHidden(hidden: boolean): void {
+    const hamburger = document.querySelector<HTMLButtonElement>("#menuButton");
+    if (hamburger) {
+        hamburger.hidden = hidden;
+    }
+}
+
 function startResponsiveGameSizing(host: HTMLElement): void {
     stopResponsiveGameSizing();
     activeGameHost = host;
@@ -461,6 +532,7 @@ function getResponsiveWindowedDisplayMode(): { width: number; height: number } {
 
 async function configureSlickRuntime(): Promise<void> {
     const { ResourceLoader } = await getSlickRuntime();
+    ResourceLoader.clearFailures();
     ResourceLoader.setCacheBust(CACHE_BUST);
     ResourceLoader.setRetryOptions(3, 300);
 }

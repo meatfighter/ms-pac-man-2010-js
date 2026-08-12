@@ -14,6 +14,32 @@ export class LoadingMode implements IMode {
     }
 
     public update(gc: GameContainer): void {
+        if (!this.runStep(gc, true)) {
+            return;
+        }
+        this.loadIndex--;
+        this.main.resetNextFrameTime();
+    }
+
+    public completeImmediately(gc: GameContainer): void {
+        while (this.main.isLoadingScreenActive() && this.loadIndex >= 0) {
+            if (!this.runStep(gc, false)) {
+                return;
+            }
+            this.loadIndex--;
+        }
+        this.main.resetNextFrameTime();
+    }
+
+    public render(gc: GameContainer, g: Graphics): void {
+        g.setColor(Color.white);
+        g.drawRect(328, 276, 144, 48);
+        g.setColor(Color.blue);
+        g.fillRect(329, 277, 143 * (1 - this.loadIndex / 14), 47);
+        this.main.drawString("LOADING", 344, 292, Main.RED);
+    }
+
+    private runStep(gc: GameContainer, waitForScores: boolean): boolean {
         switch (this.loadIndex) {
             case 0:
                 if (!this.main.handleLoadingComplete(gc)) {
@@ -61,23 +87,14 @@ export class LoadingMode implements IMode {
                     this.scoresRequested = true;
                     this.main.downloadScores();
                 }
-                if (!this.main.scoresDownloadComplete) {
+                if (waitForScores && !this.main.scoresDownloadComplete) {
                     this.main.resetNextFrameTime();
-                    return;
+                    return false;
                 }
                 break;
             case 14:
                 break;
         }
-        this.loadIndex--;
-        this.main.resetNextFrameTime();
-    }
-
-    public render(gc: GameContainer, g: Graphics): void {
-        g.setColor(Color.white);
-        g.drawRect(328, 276, 144, 48);
-        g.setColor(Color.blue);
-        g.fillRect(329, 277, 143 * (1 - this.loadIndex / 14), 47);
-        this.main.drawString("LOADING", 344, 292, Main.RED);
+        return true;
     }
 }

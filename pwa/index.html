@@ -8,9 +8,195 @@
         <title>Ms. Pac-Man 2010</title>
         <link rel="manifest" href="%BASE_URL%manifest.webmanifest?v=%BUILD_STAMP%">
         <link rel="icon" href="%BASE_URL%favicon.png?v=%BUILD_STAMP%" type="image/png" sizes="32x32">
+        <style>
+            html,
+            body,
+            #app {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background: #0f0f0f;
+                color: #ffffff;
+                font-family: Arial, Helvetica, sans-serif;
+            }
+
+            body {
+                position: fixed;
+                inset: 0;
+            }
+
+            .static-boot-screen {
+                position: fixed;
+                inset: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #0f0f0f;
+            }
+
+            .static-boot-dots {
+                display: grid;
+                width: 40px;
+                height: 8px;
+                grid-template-columns: repeat(3, 8px);
+                gap: 8px;
+            }
+
+            .static-boot-dot {
+                width: 8px;
+                height: 8px;
+                background: #fd47b9;
+                opacity: 0;
+            }
+
+            .static-boot-dot:nth-child(1) {
+                animation: static-boot-dot-one 1.2s steps(1, end) infinite;
+            }
+
+            .static-boot-dot:nth-child(2) {
+                animation: static-boot-dot-two 1.2s steps(1, end) infinite;
+            }
+
+            .static-boot-dot:nth-child(3) {
+                animation: static-boot-dot-three 1.2s steps(1, end) infinite;
+            }
+
+            .static-load-error-panel {
+                display: none;
+                width: min(420px, calc(100vw - 48px));
+                gap: 16px;
+                justify-items: center;
+                text-align: center;
+            }
+
+            .static-failure-icon {
+                color: #ffffff;
+                font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", "Segoe UI Symbol", Arial, Helvetica, sans-serif;
+                font-size: 52px;
+                line-height: 1;
+            }
+
+            .static-boot-title {
+                color: #ffffff;
+                font-size: 26px;
+                font-weight: 700;
+            }
+
+            .static-boot-error {
+                max-width: 280px;
+                margin: 0;
+                color: #ffffff;
+                font-size: 14px;
+                line-height: 1.45;
+                text-align: center;
+            }
+
+            .static-retry-link {
+                display: inline-flex;
+                min-width: 192px;
+                min-height: 48px;
+                align-items: center;
+                justify-content: center;
+                box-sizing: border-box;
+                padding: 10px 20px;
+                border-radius: 30px;
+                background: #ffea02;
+                color: #050505;
+                cursor: pointer;
+                font-size: 18px;
+                font-weight: 700;
+                text-decoration: none;
+                text-shadow: none;
+            }
+
+            .static-retry-link:active {
+                transform: translateY(2px);
+            }
+
+            .static-boot-failed .static-boot-dots {
+                display: none;
+            }
+
+            .static-boot-failed .static-load-error-panel {
+                display: grid;
+            }
+
+            @keyframes static-boot-dot-one {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+
+                33%,
+                66% {
+                    opacity: 0;
+                }
+            }
+
+            @keyframes static-boot-dot-two {
+                0%,
+                33%,
+                100% {
+                    opacity: 0;
+                }
+
+                34%,
+                66% {
+                    opacity: 1;
+                }
+            }
+
+            @keyframes static-boot-dot-three {
+                0%,
+                66% {
+                    opacity: 0;
+                }
+
+                67%,
+                100% {
+                    opacity: 1;
+                }
+            }
+        </style>
+        <noscript>
+            <style>
+                .static-boot-dots {
+                    display: none;
+                }
+
+                .static-load-error-panel {
+                    display: grid;
+                }
+            </style>
+        </noscript>
         <script type="module" src="/src/app/main.ts"></script>
     </head>
     <body>
-        <div id="app"></div>
+        <div id="app">
+            <main id="staticBootScreen" class="static-boot-screen" role="status" aria-label="Loading">
+                <div class="static-boot-dots" aria-hidden="true">
+                    <span class="static-boot-dot"></span>
+                    <span class="static-boot-dot"></span>
+                    <span class="static-boot-dot"></span>
+                </div>
+                <section class="static-load-error-panel" role="alert" aria-label="Unable to start">
+                    <div class="static-failure-icon" aria-hidden="true">&#x1F480;</div>
+                    <div class="static-boot-title">Unable to start.</div>
+                    <p class="static-boot-error">Check your connection and try again.</p>
+                    <a class="static-retry-link" href="">Retry</a>
+                </section>
+            </main>
+        </div>
+        <script>
+            window.setTimeout(function () {
+                var boot = document.getElementById("staticBootScreen");
+                if (!boot || !boot.isConnected) {
+                    return;
+                }
+                boot.classList.add("static-boot-failed");
+            }, 10000);
+        </script>
     </body>
 </html>

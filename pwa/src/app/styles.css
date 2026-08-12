@@ -262,6 +262,10 @@ input {
     cursor: pointer;
 }
 
+.hamburger[hidden] {
+    display: none;
+}
+
 .hamburger span,
 .hamburger span::before,
 .hamburger span::after {
