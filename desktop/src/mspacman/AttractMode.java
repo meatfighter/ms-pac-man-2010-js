@@ -177,7 +177,7 @@ public class AttractMode implements IMode {
       main.drawString("PRESS ENTER", 456, Main.WHITE);
     }
     main.drawString("STARRING", 246, Main.WHITE);
-    main.drawString("@ 2010 MEATFIGHTER.COM", 536, Main.WHITE);
+    main.drawString("@ 2010, 2026 MEATFIGHTER.COM", 536, Main.WHITE);
     main.drawString("SPACE BAR - TOGGLE FULL-SCREEN MODE", 488, Main.WHITE);
     
     for(int i = 0; i < ghostsVisible; i++) {
