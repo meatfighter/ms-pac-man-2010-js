@@ -7,24 +7,36 @@ import { MsPacManGameStateStore } from "../mspacman/persistence/MsPacManGameStat
 
 type SlickRuntime = typeof import("slick2d-ts");
 
+type RuntimeInput = {
+    clearKeyPressedRecord(): void;
+    pause(): void;
+    resume(): void;
+};
+
 type RuntimeContainer = {
     destroy(): void;
+    getInput(): RuntimeInput;
     isFullscreen(): boolean;
     setAlwaysRender(alwaysRender: boolean): void;
     setClearEachFrame(clearEachFrame: boolean): void;
     setDisplayMode(width: number, height: number, fullscreen: boolean): Promise<void> | void;
     setErrorHandler(errorHandler: (error: unknown) => void): void;
+    setHighDpiEnabled(enabled: boolean): void;
     setLoopSuspended(suspended: boolean): void;
+    setMaxDevicePixelRatio(maxDevicePixelRatio: number): void;
     setMusicVolume(volume: number): void;
     setShowFPS(showFPS: boolean): void;
     setSmoothDeltas(smoothDeltas: boolean): void;
     setSoundVolume(volume: number): void;
     setVSync(vsync: boolean): void;
     start(): Promise<void>;
+    stopSoundEffects(): void;
 };
 
 const app = document.querySelector<HTMLDivElement>("#app");
 const GAME_CURSOR_HIDE_DELAY_MS = 3000;
+const HIGH_DPI_ENABLED = true;
+const MAX_DEVICE_PIXEL_RATIO = 2;
 
 if (!app) {
     throw new Error("Missing #app root.");
@@ -34,12 +46,16 @@ let slickRuntime: SlickRuntime | null = null;
 let container: RuntimeContainer | null = null;
 let game: MsPacManMain | null = null;
 let activeGameHost: HTMLElement | null = null;
+let menuOverlay: HTMLElement | null = null;
 let resizeObserver: ResizeObserver | null = null;
 let resizeAnimationFrame = 0;
 let hamburgerVisibilityAnimationFrame = 0;
 let cursorGameHost: HTMLElement | null = null;
 let cursorHideTimer = 0;
 let pointerOverGameHost = false;
+let liveMenuOpen = false;
+let suspendedByVisibilityLoss = document.visibilityState !== "visible";
+let suspendedByFocusLoss = !document.hasFocus();
 let runtimeResourcesLoaded = false;
 let runtimeGameLoadingCompleted = false;
 let volume = safeReadVolume();
@@ -53,29 +69,41 @@ renderMenu();
 function renderMenu(errorText = ""): void {
     destroyGame();
     const canContinue = gameStateStore.hasValidSave();
-    app.innerHTML = `
-        <main class="shell">
-            <section class="menu" aria-label="Ms. Pac-Man 2010 menu">
-                <div class="menu-actions">
-                    <div class="volume-control">
-                        <span class="volume-icon" id="volumeIcon" aria-hidden="true">${volumeIcon(volume)}</span>
-                        <input id="volumeInput" type="range" min="0" max="100" step="1" value="${Math.round(volume * 100)}" aria-label="Volume">
-                        <span class="volume-value" id="volumeValue">${Math.round(volume * 100)}</span>
-                    </div>
-                    <div class="menu-buttons">
-                        <button id="newGameButton" class="start-button" type="button">New Game</button>
-                        <button id="continueButton" class="start-button" type="button"${canContinue ? "" : " disabled"}>Continue</button>
-                    </div>
-                    ${errorText ? `<p class="error-text">${escapeHtml(errorText)}</p>` : ""}
-                </div>
-            </section>
-        </main>
-    `;
+    renderMenuUi(app, canContinue, errorText, false);
+}
 
-    const volumeInput = document.querySelector<HTMLInputElement>("#volumeInput");
-    const volumeValue = document.querySelector<HTMLElement>("#volumeValue");
-    const newGameButton = document.querySelector<HTMLButtonElement>("#newGameButton");
-    const continueButton = document.querySelector<HTMLButtonElement>("#continueButton");
+function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: string, overlay: boolean): HTMLElement {
+    const menuRoot = document.createElement("main");
+    menuRoot.className = overlay ? "shell menu-overlay" : "shell";
+    if (overlay) {
+        menuRoot.dataset.liveMenu = "true";
+    }
+    menuRoot.innerHTML = `
+        <section class="menu" aria-label="Ms. Pac-Man 2010 menu">
+            <div class="menu-actions">
+                <div class="volume-control">
+                    <span class="volume-icon" id="volumeIcon" aria-hidden="true">${volumeIcon(volume)}</span>
+                    <input id="volumeInput" type="range" min="0" max="100" step="1" value="${Math.round(volume * 100)}" aria-label="Volume">
+                    <span class="volume-value" id="volumeValue">${Math.round(volume * 100)}</span>
+                </div>
+                <div class="menu-buttons">
+                    <button id="newGameButton" class="start-button" type="button">New Game</button>
+                    <button id="continueButton" class="start-button" type="button"${canContinue ? "" : " disabled"}>Continue</button>
+                </div>
+                ${errorText ? `<p class="error-text">${escapeHtml(errorText)}</p>` : ""}
+            </div>
+        </section>
+    `;
+    if (overlay) {
+        parent.appendChild(menuRoot);
+    } else {
+        parent.replaceChildren(menuRoot);
+    }
+
+    const volumeInput = menuRoot.querySelector<HTMLInputElement>("#volumeInput");
+    const volumeValue = menuRoot.querySelector<HTMLElement>("#volumeValue");
+    const newGameButton = menuRoot.querySelector<HTMLButtonElement>("#newGameButton");
+    const continueButton = menuRoot.querySelector<HTMLButtonElement>("#continueButton");
 
     volumeInput?.addEventListener("input", () => {
         volume = Number(volumeInput.value) / 100;
@@ -89,12 +117,19 @@ function renderMenu(errorText = ""): void {
 
     newGameButton?.addEventListener("click", () => {
         gameStateStore.clear();
+        destroyGame();
         void startGame(false);
     });
 
     continueButton?.addEventListener("click", () => {
+        if (hasLiveSuspendedGame()) {
+            resumeLiveGameFromMenu();
+            return;
+        }
         void startGame(true);
     });
+
+    return menuRoot;
 }
 
 async function startGame(restoreSavedGame: boolean): Promise<void> {
@@ -174,6 +209,8 @@ async function mountGame(restoreSavedGame: boolean): Promise<void> {
     const mainGame = new Main();
     const scalableGame = new ScalableGame2(mainGame, 800, 600, true);
     const appContainer = new AppGameContainer(scalableGame);
+    appContainer.setHighDpiEnabled(HIGH_DPI_ENABLED);
+    appContainer.setMaxDevicePixelRatio(MAX_DEVICE_PIXEL_RATIO);
     container = appContainer;
     mainGame.scalableGame = scalableGame;
     mainGame.appGameContainer = appContainer;
@@ -275,6 +312,7 @@ function volumeIcon(value: number): string {
 }
 
 function destroyGame(): void {
+    removeMenuOverlay();
     stopHamburgerVisibilityMonitor();
     stopGameCursorAutoHide();
     stopResponsiveGameSizing();
@@ -292,43 +330,108 @@ function saveCurrentGameState(): boolean {
     return gameStateStore.save(game);
 }
 
+function hasLiveSuspendedGame(): boolean {
+    return liveMenuOpen
+        && menuOverlay !== null
+        && game !== null
+        && container !== null
+        && activeGameHost !== null
+        && !game.isLoadingScreenActive();
+}
+
+function showLiveMenuOverlay(): void {
+    if (!game || !container || !activeGameHost || liveMenuOpen) {
+        return;
+    }
+
+    liveMenuOpen = true;
+    game.setBrowserSuspended(true);
+    container.stopSoundEffects();
+    container.setLoopSuspended(true);
+    container.getInput().pause();
+    game.input.clearKeyPressedRecord();
+    saveCurrentGameState();
+    stopHamburgerVisibilityMonitor();
+    setHamburgerHidden(true);
+    stopGameCursorAutoHide();
+    menuOverlay = renderMenuUi(app, true, "", true);
+}
+
+function resumeLiveGameFromMenu(): void {
+    const currentGame = game;
+    const currentContainer = container;
+    const host = activeGameHost;
+    if (!liveMenuOpen || !menuOverlay || !currentGame || !currentContainer || !host) {
+        destroyGame();
+        void startGame(true);
+        return;
+    }
+
+    removeMenuOverlay();
+    currentContainer.getInput().resume();
+    currentContainer.getInput().clearKeyPressedRecord();
+    currentGame.input.clearKeyPressedRecord();
+    startGameCursorAutoHide(host);
+    startHamburgerVisibilityMonitor();
+    applyVolume();
+    scheduleResponsiveGameResize();
+    focusGameCanvas();
+    syncCurrentGameLifecycleState();
+}
+
+function removeMenuOverlay(): void {
+    menuOverlay?.remove();
+    menuOverlay = null;
+    liveMenuOpen = false;
+}
+
+function focusGameCanvas(): void {
+    const canvas = activeGameHost?.querySelector<HTMLCanvasElement>("canvas");
+    if (!canvas) {
+        return;
+    }
+    canvas.tabIndex = -1;
+    canvas.focus({ preventScroll: true });
+}
+
 function returnToMenu(): void {
     if (game?.isLoadingScreenActive()) {
         return;
     }
+    if (game && container && activeGameHost && game.isStateSaveReady()) {
+        showLiveMenuOverlay();
+        return;
+    }
     game?.setBrowserSuspended(true);
+    container?.stopSoundEffects();
     saveCurrentGameState();
     renderMenu();
 }
 
 function suspendCurrentGame(): void {
-    if (game?.isLoadingScreenActive()) {
+    if (!game || game.isLoadingScreenActive()) {
         return;
     }
-    game?.setBrowserSuspended(true);
+    game.setBrowserSuspended(true);
+    container?.stopSoundEffects();
     container?.setLoopSuspended(true);
     saveCurrentGameState();
 }
 
 function resumeCurrentGame(): void {
-    if (document.visibilityState === "visible" && document.hasFocus()) {
-        game?.setBrowserSuspended(false);
-        container?.setLoopSuspended(false);
-    }
+    syncCurrentGameLifecycleState();
 }
 
 function syncCurrentGameLifecycleState(): void {
     if (!game || game.isLoadingScreenActive()) {
         return;
     }
-    if (document.visibilityState === "visible" && document.hasFocus()) {
+    if (liveMenuOpen || suspendedByVisibilityLoss || suspendedByFocusLoss || document.visibilityState !== "visible" || !document.hasFocus()) {
+        suspendCurrentGame();
+    } else {
         game.setBrowserSuspended(false);
         container?.setLoopSuspended(false);
-        return;
     }
-    game.setBrowserSuspended(true);
-    container?.setLoopSuspended(true);
-    saveCurrentGameState();
 }
 
 function startGameCursorAutoHide(host: HTMLElement): void {
@@ -555,20 +658,25 @@ function setupGlobalErrorHandlers(): void {
 
 function setupPageLifecycleHandlers(): void {
     window.addEventListener("pagehide", () => {
-        suspendCurrentGame();
+        suspendedByVisibilityLoss = true;
+        syncCurrentGameLifecycleState();
+    });
+    window.addEventListener("pageshow", () => {
+        suspendedByVisibilityLoss = document.visibilityState !== "visible";
+        suspendedByFocusLoss = !document.hasFocus();
+        syncCurrentGameLifecycleState();
     });
     window.addEventListener("blur", () => {
-        suspendCurrentGame();
+        suspendedByFocusLoss = true;
+        syncCurrentGameLifecycleState();
     });
     window.addEventListener("focus", () => {
+        suspendedByFocusLoss = false;
         resumeCurrentGame();
     });
     document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-            resumeCurrentGame();
-        } else {
-            suspendCurrentGame();
-        }
+        suspendedByVisibilityLoss = document.visibilityState !== "visible";
+        syncCurrentGameLifecycleState();
     });
 }
 
