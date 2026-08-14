@@ -1,11 +1,24 @@
 import "./styles.css";
 import type { GameContainer } from "slick2d-ts";
+import { SoundStore } from "slick2d-ts/slick/openal/SoundStore";
+import { ResourceLoader } from "slick2d-ts/slick/util/ResourceLoader";
 import { RESOURCE_REFS } from "./resourceManifest";
 import { APP_VERSION, CACHE_BUST } from "./version";
 import type { Main as MsPacManMain } from "../mspacman/Main";
-import { MsPacManGameStateStore } from "../mspacman/persistence/MsPacManGameStateStore";
+import type { MsPacManGameStateStore } from "../mspacman/persistence/MsPacManGameStateStore";
 
 type SlickRuntime = typeof import("slick2d-ts");
+type MainConstructor = typeof import("../mspacman/Main").Main;
+type ScalableGame2Constructor = typeof import("../mspacman/ScalableGame2").ScalableGame2;
+type MsPacManGameStateStoreConstructor =
+    typeof import("../mspacman/persistence/MsPacManGameStateStore").MsPacManGameStateStore;
+
+type PreparedRuntime = {
+    slick: SlickRuntime;
+    Main: MainConstructor;
+    ScalableGame2: ScalableGame2Constructor;
+    MsPacManGameStateStore: MsPacManGameStateStoreConstructor;
+};
 
 type RuntimeInput = {
     clearKeyPressedRecord(): void;
@@ -24,6 +37,7 @@ type RuntimeContainer = {
     setHighDpiEnabled(enabled: boolean): void;
     setLoopSuspended(suspended: boolean): void;
     setMaxDevicePixelRatio(maxDevicePixelRatio: number): void;
+    setPreserveAudioCacheOnDestroy(preserve: boolean): void;
     setMusicVolume(volume: number): void;
     setShowFPS(showFPS: boolean): void;
     setSmoothDeltas(smoothDeltas: boolean): void;
@@ -37,12 +51,15 @@ const app = document.querySelector<HTMLDivElement>("#app");
 const GAME_CURSOR_HIDE_DELAY_MS = 3000;
 const HIGH_DPI_ENABLED = true;
 const MAX_DEVICE_PIXEL_RATIO = 2;
+const RESOURCE_CACHE_RETRY_COUNT = 3;
+const RESOURCE_CACHE_RETRY_DELAY_MS = 300;
+const GAME_STATE_STORAGE_KEY = "ms-pac-man-2010.game-state";
+const GAME_STATE_VERSION = 1;
 
 if (!app) {
     throw new Error("Missing #app root.");
 }
 
-let slickRuntime: SlickRuntime | null = null;
 let container: RuntimeContainer | null = null;
 let game: MsPacManMain | null = null;
 let activeGameHost: HTMLElement | null = null;
@@ -56,10 +73,13 @@ let pointerOverGameHost = false;
 let liveMenuOpen = false;
 let suspendedByVisibilityLoss = document.visibilityState !== "visible";
 let suspendedByFocusLoss = !document.hasFocus();
-let runtimeResourcesLoaded = false;
-let runtimeGameLoadingCompleted = false;
+let preparedRuntime: PreparedRuntime | null = null;
+let preparationPromise: Promise<PreparedRuntime> | null = null;
+let preparationError: unknown = null;
+let preparationProgress = 0;
+let backgroundPreparationScheduled = false;
+let gameStateStore: MsPacManGameStateStore | null = null;
 let volume = safeReadVolume();
-const gameStateStore = new MsPacManGameStateStore(APP_VERSION);
 
 setupGlobalErrorHandlers();
 setupPageLifecycleHandlers();
@@ -68,8 +88,8 @@ renderMenu();
 
 function renderMenu(errorText = ""): void {
     destroyGame();
-    const canContinue = gameStateStore.hasValidSave();
-    renderMenuUi(app, canContinue, errorText, false);
+    renderMenuUi(app, hasPotentialSavedGameState(), errorText, false);
+    scheduleBackgroundPreparation();
 }
 
 function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: string, overlay: boolean): HTMLElement {
@@ -116,7 +136,7 @@ function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: stri
     }
 
     newGameButton?.addEventListener("click", () => {
-        gameStateStore.clear();
+        clearStoredGameState();
         destroyGame();
         void startGame(false);
     });
@@ -133,30 +153,42 @@ function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: stri
 }
 
 async function startGame(restoreSavedGame: boolean): Promise<void> {
+    const audioUnlockPromise = unlockAudio();
+    let runtimePrepared = false;
+    destroyGame();
+    if (preparedRuntime === null) {
+        renderBoot(preparationProgress);
+    }
     try {
-        await configureSlickRuntime();
-        await unlockAudio();
-        if (!runtimeResourcesLoaded) {
-            renderBoot(0);
-            await preloadResources((loaded, total) => {
-                renderBoot(loaded / total);
-            });
-            runtimeResourcesLoaded = true;
-        }
+        const runtime = await ensureRuntimePrepared(preparationError !== null);
+        runtimePrepared = true;
+        await audioUnlockPromise;
         renderGameHost();
-        await mountGame(restoreSavedGame);
+        await mountGame(runtime, restoreSavedGame);
     } catch (error) {
         console.error(error);
+        destroyGame();
+        if (restoreSavedGame && runtimePrepared) {
+            renderMenu("Unable to restore the saved game. Start a new game and try again.");
+            return;
+        }
         renderLoadError(error, restoreSavedGame);
     }
 }
 
 function renderBoot(progress: number): void {
     const percent = Math.max(0, Math.min(100, Math.round(progress * 100)));
+    const existingProgress = app.querySelector<HTMLElement>("[data-boot-progress='true']");
+    if (existingProgress !== null) {
+        existingProgress.setAttribute("aria-valuenow", String(percent));
+        existingProgress.querySelector<HTMLElement>(".progress-bar")?.style.setProperty("--progress", `${percent}%`);
+        return;
+    }
+
     app.innerHTML = `
         <main class="shell">
             <section class="boot" aria-live="polite">
-                <div class="progress-shell" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}">
+                <div class="progress-shell" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" data-boot-progress="true">
                     <div class="progress-bar" style="--progress: ${percent}%"></div>
                 </div>
             </section>
@@ -193,22 +225,17 @@ function renderGameHost(): void {
     });
 }
 
-async function mountGame(restoreSavedGame: boolean): Promise<void> {
+async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean): Promise<void> {
     const host = document.querySelector<HTMLDivElement>("#gameHost");
     if (!host) {
         throw new Error("Missing game host.");
     }
 
-    const skipInternalLoadingScreen = runtimeGameLoadingCompleted;
-    const [{ AppGameContainer, Display, ResourceLoader }, { Main }, { ScalableGame2 }] = await Promise.all([
-        getSlickRuntime(),
-        import("../mspacman/Main"),
-        import("../mspacman/ScalableGame2")
-    ]);
-
-    const mainGame = new Main();
-    const scalableGame = new ScalableGame2(mainGame, 800, 600, true);
-    const appContainer = new AppGameContainer(scalableGame);
+    const mainGame = new runtime.Main();
+    const scalableGame = new runtime.ScalableGame2(mainGame, 800, 600, true);
+    const appContainer = new runtime.slick.AppGameContainer(scalableGame);
+    appContainer.setPreserveAudioCacheOnDestroy(true);
+    appContainer.setLoopSuspended(true);
     appContainer.setHighDpiEnabled(HIGH_DPI_ENABLED);
     appContainer.setMaxDevicePixelRatio(MAX_DEVICE_PIXEL_RATIO);
     container = appContainer;
@@ -219,14 +246,14 @@ async function mountGame(restoreSavedGame: boolean): Promise<void> {
     game = mainGame;
     if (restoreSavedGame) {
         mainGame.loadingCompleteHandler = (gc: GameContainer): boolean => {
-            if (!gameStateStore.restore(mainGame, gc)) {
+            if (!getGameStateStore(runtime).restore(mainGame, gc)) {
                 throw new Error("Saved game could not be restored.");
             }
             return true;
         };
     }
 
-    Display.setParent(host);
+    runtime.slick.Display.setParent(host);
     container.setErrorHandler((error) => {
         renderLoadError(error, restoreSavedGame);
     });
@@ -239,47 +266,138 @@ async function mountGame(restoreSavedGame: boolean): Promise<void> {
     container.setShowFPS(false);
     container.setClearEachFrame(true);
     await container.start();
-    if (skipInternalLoadingScreen) {
-        mainGame.completeLoadingImmediately(appContainer);
-        runtimeGameLoadingCompleted = true;
-        await ResourceLoader.waitForAll();
-    }
+    mainGame.completeLoadingImmediately(appContainer);
+    await ResourceLoader.waitForAll();
     startResponsiveGameSizing(host);
     startGameCursorAutoHide(host);
     startHamburgerVisibilityMonitor();
     applyVolume();
-}
-
-async function preloadResources(onProgress: (loaded: number, total: number, ref: string) => void): Promise<void> {
-    const { ResourceLoader } = await getSlickRuntime();
-    ResourceLoader.clearFailures();
-    ResourceLoader.setCacheBust(CACHE_BUST);
-    ResourceLoader.setRetryOptions(3, 300);
-    for (let i = 0; i < RESOURCE_REFS.length; i++) {
-        const ref = RESOURCE_REFS[i];
-        await ResourceLoader.loadResource(ref);
-        onProgress(i + 1, RESOURCE_REFS.length, ref);
-    }
+    focusGameCanvas();
+    syncCurrentGameLifecycleState();
 }
 
 async function unlockAudio(): Promise<void> {
-    const { SoundStore } = await getSlickRuntime();
-    const context = SoundStore.get().getAudioContext();
-    if (context && context.state !== "running") {
-        await context.resume();
-    }
+    await SoundStore.get().unlock();
 }
 
 function applyVolume(): void {
     writeVolume(volume);
     const musicVolume = volume;
     const soundVolume = Math.sqrt(volume);
-    if (slickRuntime) {
-        slickRuntime.SoundStore.get().setMusicVolume(musicVolume);
-        slickRuntime.SoundStore.get().setSoundVolume(soundVolume);
-    }
+    SoundStore.get().setMusicVolume(musicVolume);
+    SoundStore.get().setSoundVolume(soundVolume);
     container?.setMusicVolume(musicVolume);
     container?.setSoundVolume(soundVolume);
+}
+
+async function ensureRuntimePrepared(forceRetry = false): Promise<PreparedRuntime> {
+    if (preparedRuntime !== null) {
+        return preparedRuntime;
+    }
+    if (preparationPromise !== null) {
+        return preparationPromise;
+    }
+    if (forceRetry) {
+        preparationError = null;
+        preparationProgress = 0;
+        refreshVisibleBootProgress();
+    } else if (preparationError !== null) {
+        throw preparationError;
+    }
+
+    ResourceLoader.clearFailures();
+    ResourceLoader.setCacheBust(CACHE_BUST);
+    ResourceLoader.setRetryOptions(RESOURCE_CACHE_RETRY_COUNT, RESOURCE_CACHE_RETRY_DELAY_MS);
+    preparationPromise = prepareRuntime()
+        .then(runtime => {
+            preparedRuntime = runtime;
+            preparationError = null;
+            preparationProgress = 1;
+            refreshVisibleBootProgress();
+            return runtime;
+        })
+        .catch(error => {
+            preparationError = error;
+            throw error;
+        })
+        .finally(() => {
+            preparationPromise = null;
+        });
+    return preparationPromise;
+}
+
+async function prepareRuntime(): Promise<PreparedRuntime> {
+    const [
+        slick,
+        mainModule,
+        scalableGameModule,
+        gameStateStoreModule
+    ] = await Promise.all([
+        import("slick2d-ts"),
+        import("../mspacman/Main"),
+        import("../mspacman/ScalableGame2"),
+        import("../mspacman/persistence/MsPacManGameStateStore"),
+        preloadPreparedResources(Array.from(new Set(RESOURCE_REFS)))
+    ]);
+
+    return {
+        slick,
+        Main: mainModule.Main,
+        ScalableGame2: scalableGameModule.ScalableGame2,
+        MsPacManGameStateStore: gameStateStoreModule.MsPacManGameStateStore
+    };
+}
+
+async function preloadPreparedResources(resourceRefs: readonly string[]): Promise<void> {
+    const audioRefs = resourceRefs.filter(isAudioResourceRef);
+    const nonAudioRefs = resourceRefs.filter(ref => !isAudioResourceRef(ref));
+    const total = audioRefs.length + nonAudioRefs.length;
+    let audioLoaded = 0;
+    let nonAudioLoaded = 0;
+    const updateProgress = () => {
+        preparationProgress = total === 0 ? 1 : (audioLoaded + nonAudioLoaded) / total;
+        refreshVisibleBootProgress();
+    };
+
+    updateProgress();
+    await Promise.all([
+        ResourceLoader.preloadResources(nonAudioRefs, progress => {
+            nonAudioLoaded = progress.loaded;
+            updateProgress();
+        }),
+        SoundStore.get().preloadAudioBuffers(audioRefs, progress => {
+            audioLoaded = progress.loaded;
+            updateProgress();
+        })
+    ]);
+    preparationProgress = 1;
+    refreshVisibleBootProgress();
+}
+
+function scheduleBackgroundPreparation(): void {
+    if (backgroundPreparationScheduled || preparedRuntime !== null
+            || preparationPromise !== null || preparationError !== null) {
+        return;
+    }
+    backgroundPreparationScheduled = true;
+    requestAnimationFrame(() => {
+        window.setTimeout(() => {
+            backgroundPreparationScheduled = false;
+            void ensureRuntimePrepared().catch(error => {
+                console.warn("MS Pac-Man background preparation failed.", error);
+            });
+        }, 0);
+    });
+}
+
+function refreshVisibleBootProgress(): void {
+    if (app.querySelector("[data-boot-progress='true']") !== null) {
+        renderBoot(preparationProgress);
+    }
+}
+
+function isAudioResourceRef(ref: string): boolean {
+    return ref.toLowerCase().endsWith(".ogg");
 }
 
 function updateVolumeUi(volumeInput: HTMLInputElement, volumeValue: HTMLElement | null): void {
@@ -317,17 +435,69 @@ function destroyGame(): void {
     stopGameCursorAutoHide();
     stopResponsiveGameSizing();
     game?.stopAllSounds();
-    container?.destroy();
-    container = null;
+    if (container !== null) {
+        container.destroy();
+        container = null;
+    } else {
+        SoundStore.get().stopAllPlayback();
+    }
     game = null;
-    slickRuntime?.Display.setParent(null);
+    activeGameHost = null;
+    preparedRuntime?.slick.Display.setParent(null);
 }
 
 function saveCurrentGameState(): boolean {
     if (!game || !game.isStateSaveReady()) {
         return false;
     }
-    return gameStateStore.save(game);
+    const store = getLoadedGameStateStore();
+    if (store === null) {
+        return false;
+    }
+    return store.save(game);
+}
+
+function getGameStateStore(runtime: PreparedRuntime): MsPacManGameStateStore {
+    if (gameStateStore === null) {
+        gameStateStore = new runtime.MsPacManGameStateStore(APP_VERSION);
+    }
+    return gameStateStore;
+}
+
+function getLoadedGameStateStore(): MsPacManGameStateStore | null {
+    if (gameStateStore !== null) {
+        return gameStateStore;
+    }
+    if (preparedRuntime === null) {
+        return null;
+    }
+    return getGameStateStore(preparedRuntime);
+}
+
+function hasPotentialSavedGameState(): boolean {
+    try {
+        const text = localStorage.getItem(GAME_STATE_STORAGE_KEY);
+        if (text === null) {
+            return false;
+        }
+        const snapshot = JSON.parse(text) as { version?: unknown };
+        if (snapshot.version !== GAME_STATE_VERSION) {
+            clearStoredGameState();
+            return false;
+        }
+        return true;
+    } catch {
+        clearStoredGameState();
+        return false;
+    }
+}
+
+function clearStoredGameState(): void {
+    try {
+        localStorage.removeItem(GAME_STATE_STORAGE_KEY);
+    } catch {
+    }
+    gameStateStore?.clear();
 }
 
 function hasLiveSuspendedGame(): boolean {
@@ -542,7 +712,6 @@ function updateHamburgerVisibility(): void {
     const hidden = game === null || game.isLoadingScreenActive();
     setHamburgerHidden(hidden);
     if (!hidden) {
-        runtimeGameLoadingCompleted = true;
         syncCurrentGameLifecycleState();
     }
     if (hidden && game !== null) {
@@ -631,20 +800,6 @@ function getResponsiveWindowedDisplayMode(): { width: number; height: number } {
         width: Math.max(1, Math.trunc(width)),
         height: Math.max(1, Math.trunc(height))
     };
-}
-
-async function configureSlickRuntime(): Promise<void> {
-    const { ResourceLoader } = await getSlickRuntime();
-    ResourceLoader.clearFailures();
-    ResourceLoader.setCacheBust(CACHE_BUST);
-    ResourceLoader.setRetryOptions(3, 300);
-}
-
-async function getSlickRuntime(): Promise<SlickRuntime> {
-    if (!slickRuntime) {
-        slickRuntime = await import("slick2d-ts");
-    }
-    return slickRuntime;
 }
 
 function setupGlobalErrorHandlers(): void {
