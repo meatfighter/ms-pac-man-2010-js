@@ -20,13 +20,46 @@ function renderVersionPlaceholders(text: string): string {
         .replaceAll("%BUILD_STAMP%", encodedBuildStamp);
 }
 
+function appendBuildStampQuery(url: string): string {
+    if (/[?&]v=/.test(url)) {
+        return url;
+    }
+    return `${url}${url.includes("?") ? "&" : "?"}v=${encodedBuildStamp}`;
+}
+
+function versionBuiltAssetReferences(html: string): string {
+    return html.replace(/\b(src|href)="([^"]*\/assets\/[^"]+\.(?:js|css)(?:\?[^"]*)?)"/g,
+        (_match, attribute: string, url: string) => `${attribute}="${appendBuildStampQuery(url)}"`);
+}
+
+function placeAppModuleScriptAfterStaticBootHook(html: string): string {
+    const scriptMatch = html.match(/[ \t]*<script\b(?=[^>]*\btype="module")(?=[^>]*\bsrc="[^"]+")[^>]*><\/script>\r?\n?/);
+    if (!scriptMatch) {
+        return html;
+    }
+
+    const scriptTag = scriptMatch[0].trim()
+        .replace(/\s+id="[^"]*"/, "")
+        .replace("<script", '<script id="app-module-script"');
+    const withoutScript = html.replace(scriptMatch[0], "");
+    return withoutScript.replace(/\r?\n[ \t]*<\/body>/, `\n        ${scriptTag}\n    </body>`);
+}
+
+function renderVersionedHtml(html: string): string {
+    return versionBuiltAssetReferences(renderVersionPlaceholders(html));
+}
+
+function renderBuiltIndexHtml(html: string): string {
+    return placeAppModuleScriptAfterStaticBootHook(renderVersionedHtml(html));
+}
+
 function versionedHtmlPlugin(): PluginOption {
     return {
         name: "versioned-html",
         transformIndexHtml: {
             order: "post",
             handler(html: string): string {
-                return renderVersionPlaceholders(html);
+                return renderVersionedHtml(html);
             }
         }
     };
@@ -46,11 +79,14 @@ function versionedStaticAssetsPlugin(): PluginOption {
         },
         closeBundle(): void {
             const manifestPath = join(rootDir, "..", "dist", "pwa", "manifest.webmanifest");
-            if (!existsSync(manifestPath)) {
-                return;
+            if (existsSync(manifestPath)) {
+                writeFileSync(manifestPath, renderVersionPlaceholders(readFileSync(manifestPath, "utf8")));
             }
 
-            writeFileSync(manifestPath, renderVersionPlaceholders(readFileSync(manifestPath, "utf8")));
+            const indexPath = join(rootDir, "..", "dist", "pwa", "index.html");
+            if (existsSync(indexPath)) {
+                writeFileSync(indexPath, renderBuiltIndexHtml(readFileSync(indexPath, "utf8")));
+            }
         }
     };
 }

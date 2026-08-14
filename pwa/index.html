@@ -147,7 +147,6 @@
                 }
             </style>
         </noscript>
-        <script type="module" src="/src/app/main.ts"></script>
     </head>
     <body>
         <div id="app">
@@ -166,13 +165,27 @@
             </main>
         </div>
         <script>
-            window.setTimeout(function () {
+            (function () {
                 var boot = document.getElementById("staticBootScreen");
-                if (!boot || !boot.isConnected) {
+                if (!boot) {
                     return;
                 }
-                boot.classList.add("static-boot-failed");
-            }, 10000);
+
+                function showStaticBootFailure() {
+                    if (!boot.isConnected) {
+                        return;
+                    }
+                    boot.classList.add("static-boot-failed");
+                }
+
+                window.addEventListener("error", function (event) {
+                    var target = event.target;
+                    if (target && target.id === "app-module-script") {
+                        showStaticBootFailure();
+                    }
+                }, true);
+            })();
         </script>
+        <script id="app-module-script" type="module" src="/src/app/main.ts?v=%BUILD_STAMP%"></script>
     </body>
 </html>
