@@ -69,7 +69,7 @@ public class Main extends BasicGame {
   public int maxHeight = 0;
   public int maxColorDepth = 0;
   public DisplayMode nativeDisplayMode;
-  public AppGameContainer appGameContainer;
+  public MsPacManAppGameContainer appGameContainer;
   public AppletGameContainer2 appletGameContainer;
   public ScalableGame2 scalableGame;
   public long nextFrameTime;
@@ -209,7 +209,7 @@ public class Main extends BasicGame {
   private void fullScreenToggleCheck(GameContainer gc) throws SlickException {
     boolean isEscape = input.isFullscreenExitPressed();
     if (input.isFullscreenTogglePressed() || isEscape) {
-      if (gc.isFullscreen() || fullscreenFallbackActive) {
+      if (isFullscreenDisplayActive(gc)) {
         restoreWindowedDisplayMode(gc);
       } else if (!isEscape) {
         enterFullScreenDisplayMode(gc);
@@ -223,6 +223,10 @@ public class Main extends BasicGame {
       return false;
     }
     return input.isPausePressed() || input.isGameplayStartPressed();
+  }
+
+  private boolean isFullscreenDisplayActive(GameContainer gc) {
+    return gc.isFullscreen() || fullscreenFallbackActive;
   }
 
   private void restoreWindowedDisplayMode(GameContainer gc) {
@@ -254,43 +258,37 @@ public class Main extends BasicGame {
       return;
     }
 
-    int width = maxWidth;
-    int height = maxHeight;
     try {
-      DisplayMode desktopDisplayMode = Display.getDesktopDisplayMode();
-      width = desktopDisplayMode.getWidth();
-      height = desktopDisplayMode.getHeight();
-    } catch(Throwable t) {
-      if (nativeDisplayMode != null) {
-        width = nativeDisplayMode.getWidth();
-        height = nativeDisplayMode.getHeight();
+      long startTime = System.currentTimeMillis();
+      appGameContainer.setNativeFullscreenDisplayMode(nativeDisplayMode);
+      long elapsedTime = System.currentTimeMillis() - startTime;
+      if (elapsedTime > 1000L) {
+        Log.warn("Native fullscreen display mode took " + elapsedTime
+            + " ms to apply.");
       }
-    }
-
-    if (width <= 0 || height <= 0) {
-      width = 800;
-      height = 600;
-    }
-
-    try {
-      appGameContainer.setDisplayMode(width, height, true);
       fullscreenFallbackActive = false;
       scalableGame.containerSizeChanged(gc);
     } catch(Throwable fullscreenError) {
-      Log.warn("Exclusive fullscreen was rejected; using a desktop-size "
-          + "window: " + describe(fullscreenError));
-      try {
-        appGameContainer.setDisplayMode(800, 600, false);
-        Display.setLocation(0, 0);
-        appGameContainer.setDisplayMode(width, height, false);
-        fullscreenFallbackActive = true;
-        scalableGame.containerSizeChanged(gc);
-      } catch(Throwable fallbackError) {
-        fullscreenFallbackActive = false;
-        showMouseCursor();
-        Log.warn("Unable to use the desktop-size window fallback: "
-            + describe(fallbackError));
-      }
+      Log.warn("Unable to enter native fullscreen display mode; using a "
+          + "desktop-size window: " + describe(fullscreenError));
+      enterFullscreenWindowFallback(gc);
+    }
+  }
+
+  private void enterFullscreenWindowFallback(GameContainer gc) {
+    int width = maxWidth > 0 ? maxWidth : 800;
+    int height = maxHeight > 0 ? maxHeight : 600;
+    try {
+      appGameContainer.setDisplayMode(800, 600, false);
+      Display.setLocation(0, 0);
+      appGameContainer.setDisplayMode(width, height, false);
+      fullscreenFallbackActive = true;
+      scalableGame.containerSizeChanged(gc);
+    } catch(Throwable fallbackError) {
+      fullscreenFallbackActive = false;
+      showMouseCursor();
+      Log.warn("Unable to use the desktop-size window fallback: "
+          + describe(fallbackError));
     }
   }
 
@@ -459,22 +457,62 @@ public class Main extends BasicGame {
   }
 
   private void findNativeDisplayMode() throws SlickException {
+    maxWidth = 800;
+    maxHeight = 600;
+    maxColorDepth = 0;
+    nativeDisplayMode = null;
+
+    try {
+      DisplayMode displayMode = Display.getDesktopDisplayMode();
+      if (isUsableDisplayMode(displayMode)) {
+        setNativeDisplayMode(displayMode);
+        return;
+      }
+    } catch(Throwable t) {
+      Log.warn("Unable to read the desktop display mode: " + describe(t));
+    }
+
+    DisplayMode bestDisplayMode = null;
     try {
       for(DisplayMode displayMode : Display.getAvailableDisplayModes()) {
-        if ((displayMode.getWidth() > maxWidth
-                  || displayMode.getHeight() > maxHeight)
-              || (displayMode.getWidth() == maxWidth
-                  && displayMode.getHeight() == maxHeight
-                  && displayMode.getBitsPerPixel() > maxColorDepth)) {
-          maxWidth = displayMode.getWidth();
-          maxHeight = displayMode.getHeight();
-          maxColorDepth = displayMode.getBitsPerPixel();
-          nativeDisplayMode = displayMode;
+        if (isUsableDisplayMode(displayMode)
+            && isBetterDisplayMode(displayMode, bestDisplayMode)) {
+          bestDisplayMode = displayMode;
         }
       }
     } catch(Throwable t) {
       throw new SlickException("Error finding native monitor resolution.", t);
     }
+
+    if (bestDisplayMode != null) {
+      setNativeDisplayMode(bestDisplayMode);
+    }
+  }
+
+  private boolean isUsableDisplayMode(DisplayMode displayMode) {
+    return displayMode != null
+        && displayMode.getWidth() > 0
+        && displayMode.getHeight() > 0;
+  }
+
+  private boolean isBetterDisplayMode(
+      DisplayMode displayMode, DisplayMode bestDisplayMode) {
+    if (bestDisplayMode == null) {
+      return true;
+    }
+
+    int area = displayMode.getWidth() * displayMode.getHeight();
+    int bestArea = bestDisplayMode.getWidth() * bestDisplayMode.getHeight();
+    return area > bestArea
+        || (area == bestArea
+        && displayMode.getBitsPerPixel() > bestDisplayMode.getBitsPerPixel());
+  }
+
+  private void setNativeDisplayMode(DisplayMode displayMode) {
+    nativeDisplayMode = displayMode;
+    maxWidth = displayMode.getWidth();
+    maxHeight = displayMode.getHeight();
+    maxColorDepth = displayMode.getBitsPerPixel();
   }
 
   private void loadStages() throws SlickException {
@@ -978,7 +1016,7 @@ public class Main extends BasicGame {
 
     Main main = new Main();
     main.scalableGame = new ScalableGame2(main, 800, 600, true);
-    main.appGameContainer = new AppGameContainer(main.scalableGame);
+    main.appGameContainer = new MsPacManAppGameContainer(main.scalableGame);
     main.appGameContainer.setDisplayMode(800, 600, false);
     main.appGameContainer.setAlwaysRender(true);
     main.appGameContainer.setVSync(true);
