@@ -106,7 +106,12 @@ export class PlayingMode implements IMode {
         this.pelletsRemaining = this.pelletCount = stage.pelletCount;
         this.pelletCountFraction = toFloat(1 / this.pelletCount);
 
-        this.regionCounts = new Array<number>(stage.regionCount).fill(0);
+        if (!this.regionCounts || this.regionCounts.length !== stage.regionCount) {
+            this.regionCounts = new Array<number>(stage.regionCount);
+        }
+        for (let i = 0; i < stage.regionCount; i++) {
+            this.regionCounts[i] = 0;
+        }
         this.leftExitMaps = stage.leftExitMaps;
         this.rightExitMaps = stage.rightExitMaps;
 
@@ -115,27 +120,31 @@ export class PlayingMode implements IMode {
         this.regionMap = stage.regionMap;
         let energizerLocationsIndex = 0;
         for (let i = 0; i < 31; i++) {
-            this.tileMap[i] = stage.tileMap[i].slice(0, 28);
+            const stageTileMapRow = stage.tileMap[i];
+            const tileMapRow = this.tileMap[i];
+            const typeMapRow = this.typeMap[i];
+            const regionMapRow = this.regionMap[i];
             for (let j = 0; j < 28; j++) {
-                const tile = this.tileMap[i][j];
+                const tile = stageTileMapRow[j];
+                tileMapRow[j] = tile;
                 switch (tile) {
                     case 47:
-                        this.typeMap[i][j] = PlayingMode.TYPE_EMPTY;
-                        if ((i === 0 || i === 31 || j === 0 || j === 27) && this.regionMap[i][j] > 0) {
+                        typeMapRow[j] = PlayingMode.TYPE_EMPTY;
+                        if ((i === 0 || i === 31 || j === 0 || j === 27) && regionMapRow[j] > 0) {
                             fruitTargetEntriesList.push([j, i]);
                         }
                         break;
                     case 48:
-                        this.typeMap[i][j] = PlayingMode.TYPE_PELLOT;
+                        typeMapRow[j] = PlayingMode.TYPE_PELLOT;
                         break;
                     case 49:
-                        this.typeMap[i][j] = PlayingMode.TYPE_ENERGIZER;
+                        typeMapRow[j] = PlayingMode.TYPE_ENERGIZER;
                         this.energizerLocations[energizerLocationsIndex][0] = j;
                         this.energizerLocations[energizerLocationsIndex][1] = i;
                         energizerLocationsIndex++;
                         break;
                     default:
-                        this.typeMap[i][j] = PlayingMode.TYPE_WALL;
+                        typeMapRow[j] = PlayingMode.TYPE_WALL;
                         break;
                 }
             }
@@ -303,7 +312,8 @@ export class PlayingMode implements IMode {
     }
 
     public getRegionCount(x: number, y: number): number {
-        const [ty, tx] = this.tileCoords(x, y);
+        const ty = this.tileY(y);
+        const tx = this.tileX(x);
         const r = this.regionMap[ty][tx];
         if (r > 0) {
             return this.regionCounts[r];
@@ -312,7 +322,8 @@ export class PlayingMode implements IMode {
     }
 
     public incrementRegionCount(ghost: Ghost): void {
-        const [ty, tx] = this.tileCoords(ghost.x, ghost.y);
+        const ty = this.tileY(ghost.y);
+        const tx = this.tileX(ghost.x);
         const r = this.regionMap[ty][tx];
         if (r > 0) {
             this.regionCounts[r]++;
@@ -320,7 +331,8 @@ export class PlayingMode implements IMode {
     }
 
     public decrementRegionCount(ghost: Ghost): void {
-        const [ty, tx] = this.tileCoords(ghost.x, ghost.y);
+        const ty = this.tileY(ghost.y);
+        const tx = this.tileX(ghost.x);
         const r = this.regionMap[ty][tx];
         if (r > 0) {
             if (this.regionCounts[r] > 0) {
@@ -662,19 +674,23 @@ export class PlayingMode implements IMode {
         }
     }
 
-    private tileCoords(x: number, y: number): [number, number] {
+    private tileX(x: number): number {
         let tx = x >> 4;
-        let ty = y >> 4;
         if (tx < 0) {
             tx += 28;
         } else if (tx >= 28) {
             tx -= 28;
         }
+        return tx;
+    }
+
+    private tileY(y: number): number {
+        let ty = y >> 4;
         if (ty < 0) {
             ty += 31;
         } else if (ty >= 31) {
             ty -= 31;
         }
-        return [ty, tx];
+        return ty;
     }
 }

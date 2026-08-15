@@ -42,12 +42,23 @@ import { Stage } from "./Stage";
 import { charCode, intDiv, make3D } from "./JavaMath";
 import { PlayingMode } from "./PlayingMode";
 
+const DEMO_LENGTHS = [4390, 4381, 7539, 3676];
+const GHOST_SPRITE_NAMES = ["red", "pink", "cyan", "orange"];
+
 function imageGrid<T>(rows: number, columns: number): T[][] {
-    return Array.from({ length: rows }, () => new Array<T>(columns));
+    const result = new Array<T[]>(rows);
+    for (let i = 0; i < rows; i++) {
+        result[i] = new Array<T>(columns);
+    }
+    return result;
 }
 
 function imageCube<T>(a: number, b: number, c: number): T[][][] {
-    return Array.from({ length: a }, () => imageGrid<T>(b, c));
+    const result = new Array<T[][]>(a);
+    for (let i = 0; i < a; i++) {
+        result[i] = imageGrid<T>(b, c);
+    }
+    return result;
 }
 
 export type WindowedDisplayModeProvider = () => {
@@ -104,7 +115,7 @@ export class Main extends BasicGame {
     public score = 0;
     public lives = 0;
     public paused = false;
-    public highScores: HighScore[][] = Array.from({ length: 4 }, () => Array.from({ length: 5 }, () => new HighScore()));
+    public highScores = imageGrid<HighScore>(4, 5);
     public musicVolume = 1;
     public musicVolumeFadeStep = 1 / 91;
     public fadeMusicFlag = false;
@@ -124,7 +135,7 @@ export class Main extends BasicGame {
     public mspacmanSprites = imageGrid<Image>(4, 3);
     public pacmanSprites = imageGrid<Image>(4, 3);
     public tiles = imageGrid<Image>(8, 50);
-    public stages: Stage[][] = Array.from({ length: 4 }, () => new Array<Stage>(8));
+    public stages = imageGrid<Stage>(4, 8);
     public blueGhostSprites = new Array<Image>(4);
     public ghostPointsSprites = new Array<Image>(4);
     public eyeBallsSprites = new Array<Image>(4);
@@ -713,14 +724,13 @@ export class Main extends BasicGame {
     }
 
     private loadDemo(gc: GameContainer, a: number): void {
-        const lengths = [4390, 4381, 7539, 3676];
         const fileName = `demos/demo_${a}_${a}.dat`;
         const bytes = ResourceLoader.getResourceAsStream(fileName);
         if (!bytes) {
             throw new Error(`Missing demo resource: ${fileName}`);
         }
         const reader = new BinaryReader(bytes);
-        const data = new Uint8Array(lengths[a]);
+        const data = new Uint8Array(DEMO_LENGTHS[a]);
         reader.readFully(data);
         this.robotInputs[a] = new RobotInput(data, gc);
     }
@@ -870,9 +880,8 @@ export class Main extends BasicGame {
     }
 
     private loadGhostSprites(pack1: PackedSpriteSheet): void {
-        const names = ["red", "pink", "cyan", "orange"];
-        for (let ghost = 0; ghost < names.length; ghost++) {
-            const name = names[ghost];
+        for (let ghost = 0; ghost < GHOST_SPRITE_NAMES.length; ghost++) {
+            const name = GHOST_SPRITE_NAMES[ghost];
             this.ghostSprites[ghost][Main.UP][0] = pack1.getSprite(`${name}_ghost_up_1`);
             this.ghostSprites[ghost][Main.UP][1] = pack1.getSprite(`${name}_ghost_up_2`);
             this.ghostSprites[ghost][Main.DOWN][0] = pack1.getSprite(`${name}_ghost_down_1`);

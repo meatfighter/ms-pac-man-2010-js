@@ -462,5 +462,6 @@ public abstract class Ghost extends Thing {
     exitingHome = false;
     enteringHome = false;
     speed = 1f + 0.3f * main.stageIndex / 7;
+    speedRemainder = 0f;
   }
 }

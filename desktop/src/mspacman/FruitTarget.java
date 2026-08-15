@@ -28,6 +28,7 @@ public class FruitTarget extends Thing {
     fruitIndex = 0;
     yOffset = 0;
     yOffsetAngle = 0;
+    speedRemainder = 0f;
     goingAroundHome = false;
     clockwise = false;
     aroundHomeIndex = 0;

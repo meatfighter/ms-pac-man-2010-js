@@ -43,6 +43,7 @@ public class MsPacMan extends Thing {
     y = 16 * 23;
 
     speed = 1.25f + 0.5f * main.stageIndex / 7;
+    speedRemainder = 0f;
     direction = Main.LEFT;
 
     spriteIndex = 0;

@@ -39,6 +39,8 @@ public class Act2Mode implements IMode {
     topClapperIndex = 0;
     fadeIndex = 22;
     fadeState = FADE_IN;
+    chompSpriteIndex = 0;
+    chompSpriteIndexIncrementor = 0;
   }
 
   public void update(GameContainer gc) throws SlickException {

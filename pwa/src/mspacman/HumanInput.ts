@@ -212,13 +212,18 @@ export class HumanInput implements IInput {
     }
 
     private isAnyKeyDown(keys: readonly number[]): boolean {
-        return keys.some((key) => this.input.isKeyDown(key));
+        for (let i = 0; i < keys.length; i++) {
+            if (this.input.isKeyDown(keys[i])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private isAnyKeyPressed(keys: readonly number[]): boolean {
         let pressed = false;
-        for (const key of keys) {
-            pressed = this.input.isKeyPressed(key) || pressed;
+        for (let i = 0; i < keys.length; i++) {
+            pressed = this.input.isKeyPressed(keys[i]) || pressed;
         }
         return pressed;
     }
@@ -287,17 +292,20 @@ export class HumanInput implements IInput {
     }
 
     private isAnyAxisLessThan(axes: readonly number[], threshold: number): boolean {
-        return this.isAnyAxisMatching(axes, (value) => value < threshold);
+        for (let controller = 0; controller < HumanInput.CONTROLLER_INDEX_LIMIT; controller++) {
+            for (let i = 0; i < axes.length; i++) {
+                if (this.readExtraAxisValue(controller, axes[i]) < threshold) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private isAnyAxisGreaterThan(axes: readonly number[], threshold: number): boolean {
-        return this.isAnyAxisMatching(axes, (value) => value > threshold);
-    }
-
-    private isAnyAxisMatching(axes: readonly number[], predicate: (value: number) => boolean): boolean {
         for (let controller = 0; controller < HumanInput.CONTROLLER_INDEX_LIMIT; controller++) {
-            for (const axis of axes) {
-                if (predicate(this.readExtraAxisValue(controller, axis))) {
+            for (let i = 0; i < axes.length; i++) {
+                if (this.readExtraAxisValue(controller, axes[i]) > threshold) {
                     return true;
                 }
             }

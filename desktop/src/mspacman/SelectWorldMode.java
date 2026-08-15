@@ -50,6 +50,7 @@ public class SelectWorldMode implements IMode {
     selectAngle = 0;
     selectMag = 0;
     selectIndex = 0;
+    countDown = 0;
 
     input.clearKeyPressedRecord();
 

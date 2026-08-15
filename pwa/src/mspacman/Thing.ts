@@ -41,27 +41,32 @@ export abstract class Thing {
     }
 
     public getHomeDirection(x: number, y: number): number {
-        const [ty, tx] = this.tileCoords(x, y);
+        const ty = this.tileY(y);
+        const tx = this.tileX(x);
         return this.playingMode.homeTree[ty][tx];
     }
 
     public getTile(x: number, y: number): number {
-        const [ty, tx] = this.tileCoords(x, y);
+        const ty = this.tileY(y);
+        const tx = this.tileX(x);
         return this.playingMode.tileMap[ty][tx];
     }
 
     public setTile(x: number, y: number, tile: number): void {
-        const [ty, tx] = this.tileCoords(x, y);
+        const ty = this.tileY(y);
+        const tx = this.tileX(x);
         this.playingMode.tileMap[ty][tx] = tile;
     }
 
     public getType(x: number, y: number): number {
-        const [ty, tx] = this.tileCoords(x, y);
+        const ty = this.tileY(y);
+        const tx = this.tileX(x);
         return this.playingMode.typeMap[ty][tx];
     }
 
     public setType(x: number, y: number, type: number): void {
-        const [ty, tx] = this.tileCoords(x, y);
+        const ty = this.tileY(y);
+        const tx = this.tileX(x);
         this.playingMode.typeMap[ty][tx] = type;
     }
 
@@ -73,19 +78,23 @@ export abstract class Thing {
 
     public abstract render(gc: GameContainer, g: Graphics): void;
 
-    private tileCoords(x: number, y: number): [number, number] {
+    private tileX(x: number): number {
         let tx = x >> 4;
-        let ty = y >> 4;
         if (tx < 0) {
             tx += 28;
         } else if (tx >= 28) {
             tx -= 28;
         }
+        return tx;
+    }
+
+    private tileY(y: number): number {
+        let ty = y >> 4;
         if (ty < 0) {
             ty += 31;
         } else if (ty >= 31) {
             ty -= 31;
         }
-        return [ty, tx];
+        return ty;
     }
 }

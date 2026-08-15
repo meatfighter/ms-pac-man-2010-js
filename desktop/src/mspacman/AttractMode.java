@@ -60,6 +60,8 @@ public class AttractMode implements IMode {
     enterPressed = false;
     ticks = 0;
     countDown = 0;
+    dotsOffset = 0f;
+    redOffset = 0;
 
     main.lives = 5;
     main.score = 0;

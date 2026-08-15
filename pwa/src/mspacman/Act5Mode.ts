@@ -89,8 +89,8 @@ export class Act5Mode implements IMode {
             this.stringTimer = 0;
             const s = Act5Mode.dialog[this.dialogIndex];
             if (this.stringIndex < s.length) {
-                const c = s.charAt(this.stringIndex);
-                if (c !== " " && c !== "\n") {
+                const c = s.charCodeAt(this.stringIndex);
+                if (c !== 32 && c !== 10) {
                     this.main.speaking[this.tone][this.main.random.nextInt(10)].play();
                     if (this.dialogIndex === 1) {
                         this.mspacmanIndex = 1;
@@ -118,12 +118,12 @@ export class Act5Mode implements IMode {
         const symbols: Array<Image | null> = this.main.symbols[Main.WHITE];
 
         for (let i = 0; i < this.stringIndex; i++, x += 16) {
-            const c = s.charAt(i);
-            if (c === "\n") {
+            const c = s.charCodeAt(i);
+            if (c === 10) {
                 x = X;
                 y += 16;
-            } else if (c !== " ") {
-                symbols[s.charCodeAt(i)]?.draw(x, y);
+            } else if (c !== 32) {
+                symbols[c]?.draw(x, y);
             }
         }
     }

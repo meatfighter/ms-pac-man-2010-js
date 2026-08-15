@@ -301,7 +301,7 @@ export class EndingMode implements IMode {
         for (let i = 0, y = 0; i < EndingMode.credits.length; i++, y += 28) {
             const s = EndingMode.credits[i];
             if (s.length > 0) {
-                this.main.drawString(s, 32, y + toInt(this.creditsY), s.charAt(0) === " " ? Main.WHITE : Main.YELLOW);
+                this.main.drawString(s, 32, y + toInt(this.creditsY), s.charCodeAt(0) === 32 ? Main.WHITE : Main.YELLOW);
             }
         }
     }
@@ -351,13 +351,13 @@ export class EndingMode implements IMode {
         let symbols: Array<Image | null> = this.main.symbols[color];
 
         for (let i = 0; i < this.stringIndex; i++, x += 16) {
-            const c = s.charAt(i);
-            if (c === "\n") {
+            const c = s.charCodeAt(i);
+            if (c === 10) {
                 symbols = this.main.symbols[Main.WHITE];
                 x = X - 16;
                 y += 16;
-            } else if (c !== " ") {
-                symbols[s.charCodeAt(i)]?.draw(x, y);
+            } else if (c !== 32) {
+                symbols[c]?.draw(x, y);
             }
         }
     }

@@ -13,11 +13,23 @@ export function toFloat(value: number): number {
 }
 
 export function make2D(rows: number, columns: number, value = 0): number[][] {
-    return Array.from({ length: rows }, () => Array.from({ length: columns }, () => value));
+    const result = new Array<number[]>(rows);
+    for (let i = 0; i < rows; i++) {
+        const row = new Array<number>(columns);
+        for (let j = 0; j < columns; j++) {
+            row[j] = value;
+        }
+        result[i] = row;
+    }
+    return result;
 }
 
 export function make3D(depth: number, rows: number, columns: number, value = 0): number[][][] {
-    return Array.from({ length: depth }, () => make2D(rows, columns, value));
+    const result = new Array<number[][]>(depth);
+    for (let i = 0; i < depth; i++) {
+        result[i] = make2D(rows, columns, value);
+    }
+    return result;
 }
 
 export function charCode(text: string, index: number): number {

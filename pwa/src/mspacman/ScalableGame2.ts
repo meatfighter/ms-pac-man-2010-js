@@ -8,6 +8,12 @@ export class ScalableGame2 implements Game {
     private maintainAspect: boolean;
     private targetWidth = 0;
     private targetHeight = 0;
+    private xoffset = 0;
+    private yoffset = 0;
+    private xscale = 1;
+    private yscale = 1;
+    private containerWidth = 0;
+    private containerHeight = 0;
 
     public constructor(held: Game, normalWidth: number, normalHeight: number, maintainAspect = false) {
         this.held = held;
@@ -27,21 +33,15 @@ export class ScalableGame2 implements Game {
     }
 
     public render(container: GameContainer, g: Graphics): void {
-        let yoffset = 0;
-        let xoffset = 0;
-
-        if (this.targetHeight < container.getHeight()) {
-            yoffset = toInt((container.getHeight() - this.targetHeight) / 2);
-        }
-        if (this.targetWidth < container.getWidth()) {
-            xoffset = toInt((container.getWidth() - this.targetWidth) / 2);
+        if (container.getWidth() !== this.containerWidth || container.getHeight() !== this.containerHeight) {
+            this.containerSizeChanged(container);
         }
 
         const gl = Renderer.get();
         SlickCallable.enterSafeBlock();
-        g.setClip(xoffset, yoffset, this.targetWidth, this.targetHeight);
-        gl.glTranslatef(xoffset, yoffset, 0);
-        gl.glScalef(this.targetWidth / this.normalWidth, this.targetHeight / this.normalHeight, 0);
+        g.setClip(this.xoffset, this.yoffset, this.targetWidth, this.targetHeight);
+        gl.glTranslatef(this.xoffset, this.yoffset, 0);
+        gl.glScalef(this.xscale, this.yscale, 0);
         gl.glPushMatrix();
         this.held.render(container, g);
         gl.glPopMatrix();
@@ -68,8 +68,10 @@ export class ScalableGame2 implements Game {
     }
 
     private recalculateTarget(container: GameContainer): void {
-        this.targetWidth = container.getWidth();
-        this.targetHeight = container.getHeight();
+        this.containerWidth = container.getWidth();
+        this.containerHeight = container.getHeight();
+        this.targetWidth = this.containerWidth;
+        this.targetHeight = this.containerHeight;
         if (this.maintainAspect) {
             const normalIsWide = this.normalWidth / this.normalHeight > 1.6 ? true : false;
             const containerIsWide = this.targetWidth / this.targetHeight > 1.6 ? true : false;
@@ -92,20 +94,20 @@ export class ScalableGame2 implements Game {
                 this.targetHeight = toInt(this.normalHeight * scale);
             }
         }
+        this.xoffset = 0;
+        this.yoffset = 0;
+        if (this.targetHeight < this.containerHeight) {
+            this.yoffset = toInt((this.containerHeight - this.targetHeight) / 2);
+        }
+        if (this.targetWidth < this.containerWidth) {
+            this.xoffset = toInt((this.containerWidth - this.targetWidth) / 2);
+        }
+        this.xscale = this.targetWidth / this.normalWidth;
+        this.yscale = this.targetHeight / this.normalHeight;
     }
 
     private applyInputTransform(container: GameContainer): void {
         container.getInput().setScale(this.normalWidth / this.targetWidth, this.normalHeight / this.targetHeight);
-
-        let yoffset = 0;
-        let xoffset = 0;
-
-        if (this.targetHeight < container.getHeight()) {
-            yoffset = toInt((container.getHeight() - this.targetHeight) / 2);
-        }
-        if (this.targetWidth < container.getWidth()) {
-            xoffset = toInt((container.getWidth() - this.targetWidth) / 2);
-        }
-        container.getInput().setOffset(-xoffset / (this.targetWidth / this.normalWidth), -yoffset / (this.targetHeight / this.normalHeight));
+        container.getInput().setOffset(-this.xoffset / this.xscale, -this.yoffset / this.yscale);
     }
 }

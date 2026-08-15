@@ -177,6 +177,7 @@ public class EndingMode implements IMode {
     float angle = 0f;
     for(int i = 0; i < fruitData.length; i++, angle += 2.1f) {
       fruitData[i][0] = -16f - 16f * (float)FastTrig.sin(angle);
+      fruitData[i][1] = 0f;
     }
 
     initText();

@@ -31,6 +31,7 @@ public class EnterInitialsMode implements IMode {
     whiteEnergizer = main.tiles[0][49];
     dotsOffset = 0;
     redOffset = 0;
+    editingIndex = 0;
     initials = "AAA";
     blinkingInitials = " AA";
     editVisible = true;
