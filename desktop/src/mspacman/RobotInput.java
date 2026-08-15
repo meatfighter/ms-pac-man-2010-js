@@ -34,24 +34,51 @@ public class RobotInput implements IInput {
     return index < data.length ? (data[index] & 8) != 0 : false;
   }
 
-  public boolean isEnter() {
-    return input.isKeyPressed(Input.KEY_ENTER);
-  }
-
-  public boolean isSpace() {
+  public boolean isUpPressed() {
     return false;
   }
 
-  public boolean isEscape() {
+  public boolean isDownPressed() {
     return false;
   }
 
-  public boolean isPause() {
+  public boolean isLeftPressed() {
     return false;
+  }
+
+  public boolean isRightPressed() {
+    return false;
+  }
+
+  public boolean isMenuStartPressed() {
+    return input.isKeyPressed(Input.KEY_ENTER)
+        || input.isKeyPressed(Input.KEY_NUMPADENTER);
+  }
+
+  public boolean isConfirmPressed() {
+    return input.isKeyPressed(Input.KEY_ENTER)
+        || input.isKeyPressed(Input.KEY_NUMPADENTER);
+  }
+
+  public boolean isGameplayStartPressed() {
+    return isConfirmPressed();
+  }
+
+  public boolean isPausePressed() {
+    return input.isKeyPressed(Input.KEY_P);
+  }
+
+  public boolean isFullscreenTogglePressed() {
+    return input.isKeyPressed(Input.KEY_SPACE);
+  }
+
+  public boolean isFullscreenExitPressed() {
+    return input.isKeyPressed(Input.KEY_ESCAPE);
   }
 
   public void clearKeyPressedRecord() {
     input.clearKeyPressedRecord();
+    input.clearControlPressedRecord();
   }
 
   public boolean update() {

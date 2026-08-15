@@ -19,13 +19,13 @@ public class EnterInitialsMode implements IMode {
   private String blinkingInitials;
   private boolean editVisible;
   private int blinkTimer;
-  private Input input;
+  private IInput input;
   private boolean enterPressed;
   private String newScoreOf;
 
   public void init(Main main, GameContainer gc) throws SlickException {
     this.main = main;
-    input = gc.getInput();
+    input = main.input;
     fadeIndex = 22;
     fadeState = FADE_IN;
     whiteEnergizer = main.tiles[0][49];
@@ -39,7 +39,7 @@ public class EnterInitialsMode implements IMode {
     enterPressed = false;
     main.uploadComplete = false;
 
-    input.clearControlPressedRecord();
+    input.clearKeyPressedRecord();
   }
 
   public void update(GameContainer gc) throws SlickException {
@@ -70,26 +70,25 @@ public class EnterInitialsMode implements IMode {
       redOffset++;
     }
 
-    boolean enter = input.isKeyPressed(Input.KEY_ENTER);
+    boolean start = input.isConfirmPressed();
     if (enterPressed) {
       if (fadeState == FADE_NONE && main.uploadComplete) {
         fadeState = FADE_OUT;
         fadeIndex = 0;
       }
-    } else if (input.isKeyPressed(Input.KEY_LEFT)) {
+    } else if (input.isLeftPressed()) {
       if (editingIndex > 0) {
         editingIndex--;
         updateStrings();
         main.playSound(main.ateEnergizerSound);
       }
-    } else if (input.isKeyPressed(Input.KEY_RIGHT)
-        || (editingIndex != 2 && enter)) {
+    } else if (input.isRightPressed() || (editingIndex != 2 && start)) {
       if (editingIndex < 2) {
         editingIndex++;
         updateStrings();
         main.playSound(main.ateEnergizerSound);
       }
-    } else if (input.isKeyPressed(Input.KEY_DOWN)) {
+    } else if (input.isDownPressed()) {
       char c = initials.charAt(editingIndex);
       if (c == 'Z') {
         c = ' ';
@@ -99,7 +98,7 @@ public class EnterInitialsMode implements IMode {
         c++;
       }
       setChar(c);
-    } else if (input.isKeyPressed(Input.KEY_UP)) {
+    } else if (input.isUpPressed()) {
       char c = initials.charAt(editingIndex);
       if (c == 'A') {
         c = ' ';
@@ -109,7 +108,7 @@ public class EnterInitialsMode implements IMode {
         c--;
       }
       setChar(c);
-    } else if (enter) {
+    } else if (start) {
       enterPressed = true;
       main.playSound(main.pressedEnterSound);
       main.accessScoresDatabaseAsync(true, main.worldIndex, main.score,
@@ -153,9 +152,8 @@ public class EnterInitialsMode implements IMode {
     } else {
       main.drawString("WELCOME TO THE HALL OF FAME", 48, Main.YELLOW);
       main.drawString(newScoreOf, 96, Main.WHITE);
-      main.drawString("USE THE ARROW KEYS TO ENTER YOUR INITIALS.",
-          144, Main.WHITE);
-      main.drawString("PRESS ENTER TO SUBMIT.", 176, Main.WHITE);
+      main.drawString("USE ARROWS TO ENTER YOUR INITIALS.", 144, Main.WHITE);
+      main.drawString("PRESS START TO SUBMIT.", 176, Main.WHITE);
 
       main.drawString(editVisible ? initials : blinkingInitials,
           304, 268, Main.ORANGE, 4);

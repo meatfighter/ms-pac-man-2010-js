@@ -95,7 +95,7 @@ public class AttractMode implements IMode {
     } else if (ticks++ == 3386) {
       fadeState = FADE_OUT;
       fadeIndex = 0;
-    } else if (input.isEnter()) {
+    } else if (input.isMenuStartPressed()) {
       main.demoMode = false;
       countDown = 60;
       enterPressed = true;
@@ -174,7 +174,7 @@ public class AttractMode implements IMode {
     renderBars(gc, g);
 
     if (pressEnterVisible) {
-      main.drawString("PRESS ENTER", 456, Main.WHITE);
+      main.drawString("PRESS START", 456, Main.WHITE);
     }
     main.drawString("STARRING", 246, Main.WHITE);
     main.drawString("@ 2010, 2026 MEATFIGHTER.COM", 536, Main.WHITE);

@@ -110,7 +110,7 @@ public class SelectWorldMode implements IMode {
           selectAngle = 0;
           selectMag = 128f;
           selectIndex = 0;
-        } else if (input.isEnter()) {
+        } else if (input.isConfirmPressed()) {
           main.playSound(main.pressedEnterSound);
           countDown = 60;
         }

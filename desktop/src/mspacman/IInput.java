@@ -6,10 +6,16 @@ public interface IInput {
   public boolean isDown();
   public boolean isLeft();
   public boolean isRight();
-  public boolean isEnter();
-  public boolean isSpace();
-  public boolean isEscape();
-  public boolean isPause();
+  public boolean isUpPressed();
+  public boolean isDownPressed();
+  public boolean isLeftPressed();
+  public boolean isRightPressed();
+  public boolean isMenuStartPressed();
+  public boolean isConfirmPressed();
+  public boolean isGameplayStartPressed();
+  public boolean isPausePressed();
+  public boolean isFullscreenTogglePressed();
+  public boolean isFullscreenExitPressed();
   public void clearKeyPressedRecord();
   public boolean update();
 }

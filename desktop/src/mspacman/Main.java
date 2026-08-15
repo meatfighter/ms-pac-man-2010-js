@@ -175,14 +175,14 @@ public class Main extends BasicGame {
       }
     }
     if (paused) {
-      if (input.isPause()) {
+      if (isGameplayPauseTogglePressed()) {
         paused = false;
         markMouseInput(System.currentTimeMillis());
         gc.setMusicOn(true);
       }
       resetNextFrameTime();
       return;
-    } else if (input.isPause()) {
+    } else if (isGameplayPauseTogglePressed()) {
       paused = true;
       markMouseInput(System.currentTimeMillis());
       stopAllSoundEffects();
@@ -207,8 +207,8 @@ public class Main extends BasicGame {
   }
 
   private void fullScreenToggleCheck(GameContainer gc) throws SlickException {
-    boolean isEscape = input.isEscape();
-    if (input.isSpace() || isEscape) {
+    boolean isEscape = input.isFullscreenExitPressed();
+    if (input.isFullscreenTogglePressed() || isEscape) {
       if (gc.isFullscreen() || fullscreenFallbackActive) {
         restoreWindowedDisplayMode(gc);
       } else if (!isEscape) {
@@ -216,6 +216,13 @@ public class Main extends BasicGame {
       }
       resetNextFrameTime();
     }
+  }
+
+  private boolean isGameplayPauseTogglePressed() {
+    if (mode != Main.playingMode || demoMode) {
+      return false;
+    }
+    return input.isPausePressed() || input.isGameplayStartPressed();
   }
 
   private void restoreWindowedDisplayMode(GameContainer gc) {
@@ -966,6 +973,8 @@ public class Main extends BasicGame {
 
   public static void main(String[] args) throws SlickException {
     java.awt.Toolkit.getDefaultToolkit();
+    HumanInput.installJInputPollFailureFilter();
+    Input.disableControllers();
 
     Main main = new Main();
     main.scalableGame = new ScalableGame2(main, 800, 600, true);

@@ -284,13 +284,8 @@ public class AppletGameContainer2 extends Applet {
       initSystem();
       enterOrtho();
 
-      try {
-        getInput().initControllers();
-      } catch (SlickException e) {
-        Log.info("Controllers not available");
-      } catch (Throwable e) {
-        Log.info("Controllers not available");
-      }
+      HumanInput.installJInputPollFailureFilter();
+      Input.disableControllers();
 
       game.init(this);
       getDelta();

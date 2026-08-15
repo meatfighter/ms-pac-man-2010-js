@@ -381,7 +381,7 @@ public class PlayingMode implements IMode {
   public void update(GameContainer gc) throws SlickException {
 
     if (main.demoMode) {
-      if (input.isEnter()) {
+      if (main.input.isConfirmPressed()) {
         main.demoMode = false;
         main.playSound(main.pressedEnterSound);
         main.setMode(Main.selectWorldMode, gc);

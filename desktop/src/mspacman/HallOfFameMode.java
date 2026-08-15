@@ -59,7 +59,7 @@ public class HallOfFameMode implements IMode {
     } else if (ticks++ == 91 * 10) {
       fadeState = FADE_OUT;
       fadeIndex = 0;
-    } else if (input.isEnter()) {
+    } else if (input.isMenuStartPressed()) {
       countDown = 60;
       enterPressed = true;
       main.demoMode = false;
@@ -142,7 +142,7 @@ public class HallOfFameMode implements IMode {
     }
 
     if (pressEnterVisible) {
-      main.drawString("PRESS ENTER", 560, Main.WHITE);
+      main.drawString("PRESS START", 560, Main.WHITE);
     }
 
     if (fadeState != FADE_NONE) {
