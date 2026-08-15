@@ -266,6 +266,12 @@ input {
     cursor: pointer;
 }
 
+.hamburger:hover,
+.hamburger:focus-visible {
+    background: #3f3f3f;
+    border-color: rgba(255, 255, 255, 0.76);
+}
+
 .hamburger[hidden] {
     display: none;
 }

@@ -216,7 +216,7 @@ function renderLoadError(error: unknown, restoreSavedGame = false): void {
 function renderGameHost(): void {
     app.innerHTML = `
         <div class="game-host" id="gameHost"></div>
-        <button class="hamburger" id="menuButton" type="button" aria-label="Return to menu" title="Return to menu" hidden>
+        <button class="hamburger" id="menuButton" type="button" aria-label="Return to menu" hidden>
             <span></span>
         </button>
     `;
