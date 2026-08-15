@@ -34,7 +34,6 @@ import { HumanInput } from "./HumanInput";
 import type { IInput } from "./IInput";
 import type { IMode } from "./IMode";
 import { IntroMode } from "./IntroMode";
-import { LoadingMode } from "./LoadingMode";
 import type { ModeId } from "./persistence/GameStateSnapshot";
 import { RobotInput } from "./RobotInput";
 import { ScalableGame2 } from "./ScalableGame2";
@@ -84,7 +83,6 @@ export class Main extends BasicGame {
     public static readonly act7Mode: IMode = new Act7Mode();
     public static readonly endingMode: IMode = new EndingMode();
     public static readonly hallOfFameMode: IMode = new HallOfFameMode();
-    public static readonly loadingMode: IMode = new LoadingMode();
     public static readonly enterInitialsMode: IMode = new EnterInitialsMode();
 
     public fades: Color[] = new Array<Color>(23);
@@ -116,6 +114,7 @@ export class Main extends BasicGame {
     public demoIndex = 0;
     public demoMode = false;
     public browserSuspended = false;
+    private startupLoadingComplete = false;
     public loadingCompleteHandler: ((gc: GameContainer) => boolean) | null = null;
     public windowedDisplayModeProvider: WindowedDisplayModeProvider | null = null;
     public pauseStateChangeHandler: PauseStateChangeHandler | null = null;
@@ -167,6 +166,7 @@ export class Main extends BasicGame {
     }
 
     public init(gc: GameContainer): void {
+        this.startupLoadingComplete = false;
         this.findNativeDisplayMode();
         this.initializeHighScores();
         this.initializeFadeColors();
@@ -177,7 +177,7 @@ export class Main extends BasicGame {
 
         this.input = new HumanInput(gc);
 
-        this.setMode(Main.loadingMode, gc);
+        this.completeStartupLoading(gc);
     }
 
     public update(gc: GameContainer, delta: number): void {
@@ -275,20 +275,8 @@ export class Main extends BasicGame {
         this.resetNextFrameTime();
     }
 
-    public handleLoadingComplete(gc: GameContainer): boolean {
-        const handler = this.loadingCompleteHandler;
-        this.loadingCompleteHandler = null;
-        return handler !== null ? handler(gc) : false;
-    }
-
     public isLoadingScreenActive(): boolean {
-        return this.mode === Main.loadingMode;
-    }
-
-    public completeLoadingImmediately(gc: GameContainer): void {
-        if (this.mode === Main.loadingMode) {
-            (Main.loadingMode as LoadingMode).completeImmediately(gc);
-        }
+        return !this.startupLoadingComplete;
     }
 
     public getCurrentModeIdForState(): ModeId {
@@ -472,7 +460,7 @@ export class Main extends BasicGame {
     }
 
     public isStateSaveReady(): boolean {
-        if (this.mode === undefined || this.mode === Main.loadingMode) {
+        if (!this.startupLoadingComplete || this.mode === undefined) {
             return false;
         }
         for (let i = 0; i < this.actMusic.length; i++) {
@@ -548,6 +536,32 @@ export class Main extends BasicGame {
     private initializeFadeColors(): void {
         for (let i = 0; i < this.fades.length; i++) {
             this.fades[i] = new Color(0, 0, 0, intDiv(255 * i, this.fades.length - 1));
+        }
+    }
+
+    private completeStartupLoading(gc: GameContainer): void {
+        this.downloadScores();
+        this.levelSelectMusic = new Music("music/level_select.ogg");
+        this.gameOverMusic = new Music("music/game_over.ogg");
+        this.highScoreMusic = new Music("music/high_score.ogg");
+        this.introMusic = new Music("music/intro.ogg");
+        this.trainingMusic = new Music("music/training.ogg");
+        this.stageMusic[3] = new Music("music/stage_4.ogg");
+        this.stageMusic[2] = new Music("music/stage_3.ogg");
+        this.stageMusic[1] = new Music("music/stage_2.ogg");
+        this.stageMusic[0] = new Music("music/stage_1.ogg");
+        this.actMusic[2] = new Music("music/act_3.ogg");
+        this.actMusic[1] = new Music("music/act_2.ogg");
+        this.actMusic[0] = new Music("music/act_1.ogg");
+
+        const handler = this.loadingCompleteHandler;
+        this.loadingCompleteHandler = null;
+        const loadingHandled = handler !== null && handler(gc);
+        this.startupLoadingComplete = true;
+        if (!loadingHandled) {
+            this.setMode(Main.attractMode, gc);
+        } else {
+            this.resetNextFrameTime();
         }
     }
 

@@ -238,12 +238,10 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean): P
     appContainer.setLoopSuspended(true);
     appContainer.setHighDpiEnabled(HIGH_DPI_ENABLED);
     appContainer.setMaxDevicePixelRatio(MAX_DEVICE_PIXEL_RATIO);
-    container = appContainer;
     mainGame.scalableGame = scalableGame;
     mainGame.appGameContainer = appContainer;
     mainGame.windowedDisplayModeProvider = getResponsiveWindowedDisplayMode;
     mainGame.pauseStateChangeHandler = handleGamePauseStateChanged;
-    game = mainGame;
     if (restoreSavedGame) {
         mainGame.loadingCompleteHandler = (gc: GameContainer): boolean => {
             if (!getGameStateStore(runtime).restore(mainGame, gc)) {
@@ -254,20 +252,23 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean): P
     }
 
     runtime.slick.Display.setParent(host);
-    container.setErrorHandler((error) => {
-        renderLoadError(error, restoreSavedGame);
-    });
     activeGameHost = host;
     const displayMode = getResponsiveWindowedDisplayMode();
-    await container.setDisplayMode(displayMode.width, displayMode.height, false);
-    container.setAlwaysRender(true);
-    container.setVSync(true);
-    container.setSmoothDeltas(false);
-    container.setShowFPS(false);
-    container.setClearEachFrame(true);
-    await container.start();
-    mainGame.completeLoadingImmediately(appContainer);
+    await appContainer.setDisplayMode(displayMode.width, displayMode.height, false);
+    appContainer.setAlwaysRender(true);
+    appContainer.setVSync(true);
+    appContainer.setSmoothDeltas(false);
+    appContainer.setShowFPS(false);
+    appContainer.setClearEachFrame(true);
+    await appContainer.start();
+    container = appContainer;
+    game = mainGame;
     await ResourceLoader.waitForAll();
+    appContainer.setErrorHandler((error) => {
+        console.error(error);
+        destroyGame();
+        renderLoadError(error, restoreSavedGame);
+    });
     startResponsiveGameSizing(host);
     startGameCursorAutoHide(host);
     startHamburgerVisibilityMonitor();
