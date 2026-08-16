@@ -24,3 +24,7 @@ High-score server configuration:
 - PWA score submission uses build-time `MSPACMAN_HMAC_KEY_HEX`; without it, downloads still run and submissions remain local-only.
 - Desktop Java uses `MSPACMAN_SCORE_API_URL` or `-Dmspacman.scoreApiUrl=...`; otherwise it defaults to `https://meatfighter.com/api/ms-pac-man-2010/scores`.
 - Desktop Java uses `MSPACMAN_HMAC_KEY_HEX` or `-Dmspacman.hmacKeyHex=...` for remote submission; without it, downloads still run and submissions remain local-only.
+
+## License
+
+Project code is licensed under GPL-3.0-or-later unless a file says otherwise. Third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
