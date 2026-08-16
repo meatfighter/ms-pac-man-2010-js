@@ -1,38 +1,26 @@
-# Ms. Pac-Man 2010 Legacy Java Source
+# Ms. Pac-Man 2010 Legacy Java Desktop
 
-This directory is an archival copy of the Java project from `C:\NetBeansProjects\SlickMsPacMan`.
+This directory contains the maintained legacy Java desktop build for Ms. Pac-Man 2010. The source and resources keep the original flat `src/` layout, while the build is now Maven-based and no longer includes legacy IDE project metadata.
 
-Copied into this repository:
+Included desktop materials:
 
-- `src/`
-- `test/`
-- `build.xml`
-- `manifest.mf`
-- `nbproject/build-impl.xml`
-- `nbproject/genfiles.properties`
-- `nbproject/project.properties`
-- `nbproject/project.xml`
+- `src/` Java sources and runtime resources.
+- `test/` desktop test/support material.
+- `pom.xml` and `assembly.xml` for the Maven build.
+- `lib/` vendored legacy Java dependencies.
+- `natives/` bundled LWJGL/JInput native libraries.
+- platform launch scripts that set the required native library paths.
 
-Also included:
+Generated build outputs are intentionally ignored:
 
-- `pom.xml`
-- `assembly.xml`
-- `lib/`
-- `natives/`
-- native-path launch scripts
-
-Intentionally not copied:
-
-- generated `build/`
-- generated `dist/`
-- machine-local `nbproject/private/`
+- `build/`
+- `dist/`
+- `target/`
 - crash logs
-
-The project now has a conservative Maven build and a local Node fallback build. The Java source layout remains legacy-style: Java files and resources both live under `src/`, matching the original NetBeans project.
 
 The desktop build intentionally emits Java 8-compatible bytecode to improve the odds of running the legacy Slick2D/LWJGL stack across older and newer Java installations. The build suppresses the expected modern-JDK warning about Java 8 being an obsolete target, but real compilation errors still fail the build.
 
-The original online high-score service is not restored. This build now targets the replacement JSON high-score API. `downloadScores()` performs one bounded best-effort fetch, preserving the local `0 AAA` defaults on any failure. Submitting initials updates the local in-memory table first, then performs one bounded best-effort POST when an HMAC key is configured. Network, HTTP, parsing, and validation failures are silently ignored.
+The original online high-score service is not restored. This build targets the replacement JSON high-score API. `downloadScores()` performs one bounded best-effort fetch, preserving the local `0 AAA` defaults on any failure. Submitting initials updates the local in-memory table first, then performs one bounded best-effort POST when an HMAC key is configured. Network, HTTP, parsing, and validation failures are silently ignored.
 
 High-score configuration:
 
@@ -57,4 +45,4 @@ Launch after building:
 npm.cmd run run:desktop
 ```
 
-See `RUNTIME_DEPENDENCIES.md` for the vendored legacy Slick2D/LWJGL jars and native libraries copied in to improve future desktop compatibility.
+See `RUNTIME_DEPENDENCIES.md` for the bundled legacy Slick2D/LWJGL runtime notes.

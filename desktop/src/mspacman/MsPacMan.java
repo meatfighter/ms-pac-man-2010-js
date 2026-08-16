@@ -1,7 +1,6 @@
 package mspacman;
 
 import org.newdawn.slick.*;
-import java.io.*;
 
 public class MsPacMan extends Thing {
 
@@ -19,20 +18,8 @@ public class MsPacMan extends Thing {
   public boolean speedBoost;
   public int speedBoostTimer;
 
-  //public BufferedOutputStream out; // RECORD
-
   public MsPacMan(PlayingMode playingMode) {
     super(playingMode);
-
-    /*
-    // RECORD
-    try {
-      out = new BufferedOutputStream(new FileOutputStream(
-          "C:/NetBeansProjects/SlickMsPacMan/src/demos/demo_3_3.dat"));
-    } catch(Throwable t) {
-      t.printStackTrace();
-    }
-    */
   }
 
   public void reset() {
@@ -120,28 +107,6 @@ public class MsPacMan extends Thing {
       boolean isLeft = input.isLeft();
       boolean isRight = input.isRight();
       input.update();
-
-      /*
-      // RECORD
-      try {
-        int value = 0;
-        if (isUp) {
-          value |= 1;
-        }
-        if (isDown) {
-          value |= 2;
-        }
-        if (isLeft) {
-          value |= 4;
-        }
-        if (isRight) {
-          value |= 8;
-        }
-        out.write(value);
-      } catch(Throwable t) {
-        t.printStackTrace();
-      }
-      */
 
       int targetDirection = direction;
       if (isUp) {

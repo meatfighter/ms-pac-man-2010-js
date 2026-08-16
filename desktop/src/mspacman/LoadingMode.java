@@ -16,11 +16,6 @@ public class LoadingMode implements IMode {
     switch(loadIndex) {
       case 0:
         main.setMode(Main.attractMode, gc);
-        /*
-        main.worldIndex = 3;
-        main.stageIndex = 3;
-        main.setMode(Main.playingMode, gc); // RECORD
-        */
         break;
       case 1:
         main.actMusic[0] = new Music("music/act_1.ogg");

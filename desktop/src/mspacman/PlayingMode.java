@@ -206,16 +206,6 @@ public class PlayingMode implements IMode {
 
   public void playerKilled() {
 
-    /*
-    // RECORD
-    try {
-      mspacman.out.flush();
-      System.exit(0);
-    } catch(Throwable t) {
-      t.printStackTrace();
-    }
-    */
-
     playerKilled = true;
     musicFadeOutTimer = 0;
     playerSpiraling = false;
