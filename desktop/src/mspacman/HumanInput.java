@@ -18,6 +18,7 @@ public class HumanInput implements IInput {
   private static final float AXIS_THRESHOLD = 0.5f;
   private static final float AXIS_RECENTER_THRESHOLD = 0.05f;
   private static final long CONTROLLER_POLL_INTERVAL_NANOS = 1000000L;
+  private static final long CONTROLLER_REFRESH_INTERVAL_NANOS = 3000000000L;
   private static final Object POLL_LOG_FILTER_LOCK = new Object();
   private static final int STANDARD_DPAD_UP = 12;
   private static final int STANDARD_DPAD_DOWN = 13;
@@ -137,6 +138,8 @@ public class HumanInput implements IInput {
   private boolean controllersCreateAttempted = false;
   private boolean controllersUnavailable = false;
   private long lastControllerPollNanos = Long.MIN_VALUE;
+  private long lastControllerRefreshNanos = Long.MIN_VALUE;
+  private boolean controllerRefreshInProgress = false;
 
   public HumanInput(GameContainer gc) {
     installJInputPollFailureFilter();
@@ -996,10 +999,11 @@ public class HumanInput implements IInput {
 
   private boolean computeGameController(int controllerIndex) {
     Controller controller = getLwjglController(controllerIndex);
-    if (controller == null) {
-      return false;
-    }
-    if (isIgnoredController(controller)) {
+    return isUsableGameController(controller);
+  }
+
+  private boolean isUsableGameController(Controller controller) {
+    if (controller == null || isIgnoredController(controller)) {
       return false;
     }
     try {
@@ -1047,12 +1051,26 @@ public class HumanInput implements IInput {
 
   private Controller getLwjglController(int controllerIndex) {
     try {
+      refreshControllersIfNeeded();
       if (isControllerInputUnavailable()) {
         return null;
       }
       ensureControllersCreated();
       pollControllers();
       if (!Controllers.isCreated()
+          || controllerIndex >= Controllers.getControllerCount()) {
+        return null;
+      }
+      return Controllers.getController(controllerIndex);
+    } catch(RuntimeException e) {
+      return null;
+    }
+  }
+
+  private Controller getLwjglControllerWithoutPolling(int controllerIndex) {
+    try {
+      if (!Controllers.isCreated()
+          || controllerIndex < 0
           || controllerIndex >= Controllers.getControllerCount()) {
         return null;
       }
@@ -1103,6 +1121,7 @@ public class HumanInput implements IInput {
 
   private int getControllerCount() {
     try {
+      refreshControllersIfNeeded();
       if (isControllerInputUnavailable()) {
         return 0;
       }
@@ -1123,6 +1142,112 @@ public class HumanInput implements IInput {
 
   private boolean isControllerInputUnavailable() {
     return controllersUnavailable || globalPollFailureDetected;
+  }
+
+  private boolean refreshControllersIfNeeded() {
+    if (controllerRefreshInProgress || hasUsableControllerWithoutPolling()) {
+      return false;
+    }
+
+    long now = System.nanoTime();
+    if (!controllersCreateAttempted && !Controllers.isCreated()) {
+      lastControllerRefreshNanos = now;
+      return false;
+    }
+    if (lastControllerRefreshNanos != Long.MIN_VALUE
+        && now - lastControllerRefreshNanos
+        < CONTROLLER_REFRESH_INTERVAL_NANOS) {
+      return false;
+    }
+
+    lastControllerRefreshNanos = now;
+    controllerRefreshInProgress = true;
+    try {
+      resetControllerDiscoveryCaches();
+      ensureControllersCreated();
+      pollControllers();
+      if (hasUsableControllerWithoutPolling()) {
+        syncControllerState();
+        return true;
+      }
+    } catch(Throwable t) {
+      controllersUnavailable = true;
+    } finally {
+      controllerRefreshInProgress = false;
+    }
+    return false;
+  }
+
+  private boolean hasUsableControllerWithoutPolling() {
+    try {
+      if (isControllerInputUnavailable() || !Controllers.isCreated()) {
+        return false;
+      }
+      int controllerCount = Math.min(Controllers.getControllerCount(),
+          CONTROLLER_INDEX_LIMIT);
+      for(int controller = 0; controller < controllerCount; controller++) {
+        if (isUsableGameController(
+            getLwjglControllerWithoutPolling(controller))) {
+          return true;
+        }
+      }
+    } catch(RuntimeException e) {
+      return false;
+    }
+    return false;
+  }
+
+  private void resetControllerDiscoveryCaches() throws Exception {
+    resetLwjglControllerCaches();
+    resetJInputControllerEnvironment();
+    resetLocalControllerCaches();
+  }
+
+  private static void resetLwjglControllerCaches() throws Exception {
+    setStaticField(Controllers.class, "controllers", new ArrayList());
+    setStaticField(Controllers.class, "events", new ArrayList());
+    setStaticField(Controllers.class, "event", null);
+    setStaticField(Controllers.class, "controllerCount", Integer.valueOf(0));
+    setStaticField(Controllers.class, "created", Boolean.FALSE);
+  }
+
+  private static void resetJInputControllerEnvironment() throws Exception {
+    Class<?> environmentClass =
+        Class.forName("net.java.games.input.DefaultControllerEnvironment");
+    Constructor<?> constructor = environmentClass.getDeclaredConstructor();
+    constructor.setAccessible(true);
+    Object environment = constructor.newInstance();
+    setStaticField(net.java.games.input.ControllerEnvironment.class,
+        "defaultEnvironment", environment);
+  }
+
+  private static void setStaticField(Class<?> clazz, String name, Object value)
+      throws Exception {
+    Field field = getAccessibleField(clazz, name);
+    field.set(null, value);
+  }
+
+  private void resetLocalControllerCaches() {
+    resetJInputReflectionCache();
+    globalPollFailureDetected = false;
+    controllersCreateAttempted = false;
+    controllersUnavailable = false;
+    lastControllerPollNanos = Long.MIN_VALUE;
+    Arrays.fill(controllerCandidateKnown, false);
+    Arrays.fill(controllerCandidate, false);
+  }
+
+  private static void resetJInputReflectionCache() {
+    synchronized(HumanInput.class) {
+      jinputReflectionInitialized = false;
+      jinputAxesField = null;
+      jinputButtonsField = null;
+      jinputPovField = null;
+      jinputXAxisField = null;
+      jinputYAxisField = null;
+      jinputRXAxisField = null;
+      jinputRYAxisField = null;
+    }
   }
 
   private void ensureControllersCreated() {
