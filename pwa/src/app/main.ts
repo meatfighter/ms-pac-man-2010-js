@@ -6,6 +6,7 @@ import { RESOURCE_REFS } from "./resourceManifest";
 import { APP_VERSION, CACHE_BUST } from "./version";
 import type { Main as MsPacManMain } from "../mspacman/Main";
 import type { MsPacManGameStateStore } from "../mspacman/persistence/MsPacManGameStateStore";
+import { isValidMsPacManGameStateSnapshot } from "../mspacman/persistence/MsPacManGameStateSerializer";
 
 type SlickRuntime = typeof import("slick2d-ts");
 type MainConstructor = typeof import("../mspacman/Main").Main;
@@ -53,7 +54,6 @@ const MAX_DEVICE_PIXEL_RATIO = 2;
 const RESOURCE_CACHE_RETRY_COUNT = 3;
 const RESOURCE_CACHE_RETRY_DELAY_MS = 300;
 const GAME_STATE_STORAGE_KEY = "ms-pac-man-2010.game-state";
-const GAME_STATE_VERSION = 1;
 
 if (!app) {
     throw new Error("Missing #app root.");
@@ -168,7 +168,7 @@ async function startGame(restoreSavedGame: boolean): Promise<void> {
         console.error(error);
         destroyGame();
         if (restoreSavedGame && runtimePrepared) {
-            renderMenu("Unable to restore the saved game. Start a new game and try again.");
+            renderMenu();
             return;
         }
         renderLoadError(error, restoreSavedGame);
@@ -475,8 +475,8 @@ function hasPotentialSavedGameState(): boolean {
         if (text === null) {
             return false;
         }
-        const snapshot = JSON.parse(text) as { version?: unknown };
-        if (snapshot.version !== GAME_STATE_VERSION) {
+        const snapshot = JSON.parse(text) as unknown;
+        if (!isValidMsPacManGameStateSnapshot(snapshot)) {
             clearStoredGameState();
             return false;
         }

@@ -1,6 +1,6 @@
 import type { GameContainer } from "slick2d-ts";
 import type { Main } from "../Main";
-import { GAME_STATE_VERSION, type MsPacManGameStateSnapshot } from "./GameStateSnapshot";
+import type { MsPacManGameStateSnapshot } from "./GameStateSnapshot";
 import { MsPacManGameStateSerializer } from "./MsPacManGameStateSerializer";
 
 export class MsPacManGameStateStore {
@@ -62,12 +62,7 @@ export class MsPacManGameStateStore {
             return null;
         }
 
-        const snapshot = JSON.parse(text) as MsPacManGameStateSnapshot;
-        if (snapshot.version !== GAME_STATE_VERSION) {
-            this.clear();
-            return null;
-        }
-
+        const snapshot = JSON.parse(text) as unknown;
         if (!this.serializer.isSupportedSnapshot(snapshot)) {
             this.clear();
             return null;

@@ -353,6 +353,337 @@ const MUSIC_IDS: MusicId[] = [
     "training"
 ];
 
+const SNAPSHOT_KEYS = ["version", "appVersion", "savedAt", "mainFields", "mode", "music", "random", "robotInputs", "submittedScore"] as const;
+const MODE_SNAPSHOT_KEYS = ["id", "fields"] as const;
+const PLAYING_MODE_SNAPSHOT_KEYS = ["id", "fields", "eatenGhostIndex", "fruitTarget", "ghosts", "inputRobotIndex", "mspacman"] as const;
+const THING_SNAPSHOT_KEYS = ["fields"] as const;
+const FRUIT_TARGET_SNAPSHOT_KEYS = ["fields", "exitPath"] as const;
+const MUSIC_SNAPSHOT_KEYS = ["id", "looped", "paused", "playing", "playbackRate", "position", "volume"] as const;
+const RANDOM_SNAPSHOT_KEYS = ["seed0", "seed1", "seed2"] as const;
+const ROBOT_INPUT_SNAPSHOT_KEYS = ["index"] as const;
+const SUBMITTED_SCORE_SNAPSHOT_KEYS = ["initials", "score", "world"] as const;
+
+const BOOLEAN_FIELD_NAMES = new Set<string>([
+    "paused",
+    "fadeMusicFlag",
+    "uploadComplete",
+    "demoMode",
+    "pellotDampensSpeed",
+    "corneringEnhancesSpeed",
+    "speedBoost",
+    "blue",
+    "eyeBalls",
+    "inHome",
+    "exitingHome",
+    "enteringHome",
+    "goingAroundHome",
+    "clockwise",
+    "exiting",
+    "eaten",
+    "chaseMode",
+    "ghostsBlue",
+    "showGhostPoints",
+    "energizersVisible",
+    "finished",
+    "finishedWhite",
+    "fruitTargetPresent",
+    "redEnergizerPresent",
+    "greenEnergizerPresent",
+    "playerKilledFlag",
+    "playerSpiraling",
+    "gameOver",
+    "bumped",
+    "showHeart",
+    "stringDone",
+    "pressEnterVisible",
+    "ghostsVisible",
+    "enterPressed",
+    "juniorReturning",
+    "juniorFruits",
+    "editVisible",
+    "selecting"
+]);
+
+const STRING_FIELD_NAMES = new Set<string>(["stageMessage", "initials", "blinkingInitials", "newScoreOf"]);
+const NUMBER_ARRAY_FIELD_NAMES = new Set<string>(["regionCounts"]);
+
+const INTEGER_FIELD_RANGES = new Map<string, readonly [number, number]>([
+    ["worldIndex", [0, 3]],
+    ["stageIndex", [0, 7]],
+    ["demoIndex", [0, 3]],
+    ["direction", [0, 3]],
+    ["ghostIndex", [0, 3]],
+    ["fruitIndex", [0, 6]],
+    ["ghostPointsIndex", [-1, 3]],
+    ["editingIndex", [0, 2]],
+    ["selection", [0, 3]]
+]);
+
+const MATRIX_FIELD_VALIDATORS: Record<string, (value: unknown) => boolean> = {
+    tileMap: (value) => isValidNumberMatrix(value, 31, 28, (entry) => isIntegerInRange(entry, 0, 49)),
+    typeMap: (value) => isValidNumberMatrix(value, 31, 28, (entry) => isIntegerInRange(entry, 0, 3)),
+    energizerLocations: (value) => isValidEnergizerLocations(value),
+    fruitData: (value) => isValidNumberMatrix(value, 7, 2, isFiniteNumber)
+};
+
+export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPacManGameStateSnapshot {
+    const snapshot = asRecord(value);
+    if (!snapshot || !hasExactKeys(snapshot, SNAPSHOT_KEYS)) {
+        return false;
+    }
+    if (snapshot.version !== GAME_STATE_VERSION || typeof snapshot.appVersion !== "string" || typeof snapshot.savedAt !== "string") {
+        return false;
+    }
+    if (!isValidFieldBag(snapshot.mainFields, MAIN_FIELDS) || !isValidModeSnapshot(snapshot.mode)) {
+        return false;
+    }
+    if (snapshot.music !== null && !isValidMusicSnapshot(snapshot.music)) {
+        return false;
+    }
+    if (!isValidRandomSnapshot(snapshot.random) || !isValidRobotInputs(snapshot.robotInputs)) {
+        return false;
+    }
+    return snapshot.submittedScore === null || isValidSubmittedScoreSnapshot(snapshot.submittedScore);
+}
+
+function isValidModeSnapshot(value: unknown): value is CurrentModeSnapshot {
+    const snapshot = asRecord(value);
+    if (!snapshot || !isModeId(snapshot.id)) {
+        return false;
+    }
+    if (snapshot.id === "playing") {
+        return (
+            hasExactKeys(snapshot, PLAYING_MODE_SNAPSHOT_KEYS) &&
+            isValidFieldBag(snapshot.fields, PLAYING_MODE_FIELDS) &&
+            isNullableIntegerInRange(snapshot.eatenGhostIndex, 0, 3) &&
+            isNullableIntegerInRange(snapshot.inputRobotIndex, 0, 3) &&
+            isValidThingSnapshot(snapshot.mspacman, MSPACMAN_FIELDS) &&
+            isValidGhostSnapshots(snapshot.ghosts) &&
+            isValidFruitTargetSnapshot(snapshot.fruitTarget)
+        );
+    }
+
+    const fields = MODE_FIELDS[snapshot.id];
+    return fields !== undefined && hasExactKeys(snapshot, MODE_SNAPSHOT_KEYS) && isValidFieldBag(snapshot.fields, fields);
+}
+
+function isValidThingSnapshot(value: unknown, fields: readonly string[]): boolean {
+    const snapshot = asRecord(value);
+    return snapshot !== null && hasExactKeys(snapshot, THING_SNAPSHOT_KEYS) && isValidFieldBag(snapshot.fields, fields);
+}
+
+function isValidGhostSnapshots(value: unknown): boolean {
+    if (!Array.isArray(value) || value.length !== 4) {
+        return false;
+    }
+    for (let i = 0; i < value.length; i++) {
+        if (!isValidThingSnapshot(value[i], GHOST_FIELDS)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function isValidFruitTargetSnapshot(value: unknown): value is FruitTargetSnapshot {
+    const snapshot = asRecord(value);
+    return (
+        snapshot !== null &&
+        hasExactKeys(snapshot, FRUIT_TARGET_SNAPSHOT_KEYS) &&
+        isValidFieldBag(snapshot.fields, FRUIT_TARGET_FIELDS) &&
+        (snapshot.exitPath === null || isValidNumberMatrix(snapshot.exitPath, 31, 28, (entry) => isIntegerInRange(entry, 0, 3)))
+    );
+}
+
+function isValidMusicSnapshot(value: unknown): value is MusicSnapshot {
+    const snapshot = asRecord(value);
+    return (
+        snapshot !== null &&
+        hasExactKeys(snapshot, MUSIC_SNAPSHOT_KEYS) &&
+        isMusicId(snapshot.id) &&
+        typeof snapshot.looped === "boolean" &&
+        typeof snapshot.paused === "boolean" &&
+        typeof snapshot.playing === "boolean" &&
+        isPositiveFiniteNumber(snapshot.playbackRate) &&
+        isNonNegativeFiniteNumber(snapshot.position) &&
+        isFiniteNumberInRange(snapshot.volume, 0, 1)
+    );
+}
+
+function isValidRandomSnapshot(value: unknown): value is RandomSnapshot {
+    const snapshot = asRecord(value);
+    return (
+        snapshot !== null &&
+        hasExactKeys(snapshot, RANDOM_SNAPSHOT_KEYS) &&
+        isIntegerInRange(snapshot.seed0, 0, 65535) &&
+        isIntegerInRange(snapshot.seed1, 0, 65535) &&
+        isIntegerInRange(snapshot.seed2, 0, 65535)
+    );
+}
+
+function isValidRobotInputs(value: unknown): value is RobotInputSnapshot[] {
+    if (!Array.isArray(value) || value.length !== 4) {
+        return false;
+    }
+    for (let i = 0; i < value.length; i++) {
+        const snapshot = asRecord(value[i]);
+        if (snapshot === null || !hasExactKeys(snapshot, ROBOT_INPUT_SNAPSHOT_KEYS) || !isIntegerInRange(snapshot.index, 0, 100000)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function isValidSubmittedScoreSnapshot(value: unknown): value is SubmittedScoreSnapshot {
+    const snapshot = asRecord(value);
+    return (
+        snapshot !== null &&
+        hasExactKeys(snapshot, SUBMITTED_SCORE_SNAPSHOT_KEYS) &&
+        typeof snapshot.initials === "string" &&
+        snapshot.initials.length === 3 &&
+        isIntegerInRange(snapshot.score, 0, 2147483647) &&
+        isIntegerInRange(snapshot.world, 0, 3)
+    );
+}
+
+function isValidFieldBag(value: unknown, fields: readonly string[]): value is JsonRecord {
+    const record = asRecord(value);
+    if (record === null || !hasExactKeys(record, fields)) {
+        return false;
+    }
+    for (const field of fields) {
+        if (!isValidFieldValue(field, record[field])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function isValidFieldValue(field: string, value: unknown): boolean {
+    const matrixValidator = MATRIX_FIELD_VALIDATORS[field];
+    if (matrixValidator !== undefined) {
+        return matrixValidator(value);
+    }
+    if (NUMBER_ARRAY_FIELD_NAMES.has(field)) {
+        return isValidNumberArray(value);
+    }
+    if (BOOLEAN_FIELD_NAMES.has(field)) {
+        return typeof value === "boolean";
+    }
+    if (STRING_FIELD_NAMES.has(field)) {
+        return typeof value === "string";
+    }
+
+    const integerRange = INTEGER_FIELD_RANGES.get(field);
+    if (integerRange !== undefined) {
+        return isIntegerInRange(value, integerRange[0], integerRange[1]);
+    }
+    return isFiniteNumber(value);
+}
+
+function isValidNumberArray(value: unknown): boolean {
+    if (!Array.isArray(value) || value.length === 0 || value.length > 31 * 28) {
+        return false;
+    }
+    for (let i = 0; i < value.length; i++) {
+        if (!isNonNegativeInteger(value[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function isValidNumberMatrix(value: unknown, rows: number, columns: number, entryValidator: (value: unknown) => boolean): boolean {
+    if (!Array.isArray(value) || value.length !== rows) {
+        return false;
+    }
+    for (let row = 0; row < rows; row++) {
+        const entries = value[row];
+        if (!Array.isArray(entries) || entries.length !== columns) {
+            return false;
+        }
+        for (let column = 0; column < columns; column++) {
+            if (!entryValidator(entries[column])) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+function isValidEnergizerLocations(value: unknown): boolean {
+    if (!Array.isArray(value) || value.length !== 4) {
+        return false;
+    }
+    for (let row = 0; row < value.length; row++) {
+        const entries = value[row];
+        if (!Array.isArray(entries) || entries.length !== 2) {
+            return false;
+        }
+        if (!isIntegerInRange(entries[0], 0, 27) || !isIntegerInRange(entries[1], 0, 30)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        return null;
+    }
+    return value as Record<string, unknown>;
+}
+
+function hasExactKeys(record: Record<string, unknown>, keys: readonly string[]): boolean {
+    const ownKeys = Object.keys(record);
+    if (ownKeys.length !== keys.length) {
+        return false;
+    }
+
+    const expectedKeys = new Set<string>(keys);
+    for (const key of ownKeys) {
+        if (!expectedKeys.has(key)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function isModeId(value: unknown): value is ModeId {
+    return typeof value === "string" && (MODE_IDS as readonly string[]).includes(value);
+}
+
+function isMusicId(value: unknown): value is MusicId {
+    return typeof value === "string" && (MUSIC_IDS as readonly string[]).includes(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+    return typeof value === "number" && Number.isFinite(value);
+}
+
+function isNonNegativeFiniteNumber(value: unknown): boolean {
+    return isFiniteNumber(value) && value >= 0;
+}
+
+function isPositiveFiniteNumber(value: unknown): boolean {
+    return isFiniteNumber(value) && value > 0;
+}
+
+function isFiniteNumberInRange(value: unknown, min: number, max: number): boolean {
+    return isFiniteNumber(value) && value >= min && value <= max;
+}
+
+function isNonNegativeInteger(value: unknown): boolean {
+    return isIntegerInRange(value, 0, Number.MAX_SAFE_INTEGER);
+}
+
+function isIntegerInRange(value: unknown, min: number, max: number): boolean {
+    return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
+}
+
+function isNullableIntegerInRange(value: unknown, min: number, max: number): boolean {
+    return value === null || isIntegerInRange(value, min, max);
+}
+
 export class MsPacManGameStateSerializer {
     public createSnapshot(main: Main, appVersion: string): MsPacManGameStateSnapshot {
         if (!main.isStateSaveReady()) {
@@ -379,13 +710,13 @@ export class MsPacManGameStateSerializer {
 
         const mode = main.getModeForStateRestore(snapshot.mode.id);
         main.stopAllSounds();
-        this.restoreFields(main, snapshot.mainFields);
+        this.restoreFields(main, snapshot.mainFields, MAIN_FIELDS);
         if (snapshot.mode.id === "playing") {
             this.setField(main, "demoMode", false);
         }
 
         main.initModeForRestore(mode, gc);
-        this.restoreFields(main, snapshot.mainFields);
+        this.restoreFields(main, snapshot.mainFields, MAIN_FIELDS);
         this.restoreRandom(main, snapshot.random);
         this.restoreRobotInputs(main, snapshot.robotInputs);
         this.restoreSubmittedScore(main, snapshot.submittedScore ?? null);
@@ -396,17 +727,8 @@ export class MsPacManGameStateSerializer {
         main.resetNextFrameTime();
     }
 
-    public isSupportedSnapshot(snapshot: MsPacManGameStateSnapshot): boolean {
-        if (!snapshot || snapshot.version !== GAME_STATE_VERSION) {
-            return false;
-        }
-        if (!snapshot.mode || !MODE_IDS.includes(snapshot.mode.id)) {
-            return false;
-        }
-        if (snapshot.music !== null && !MUSIC_IDS.includes(snapshot.music.id)) {
-            return false;
-        }
-        return true;
+    public isSupportedSnapshot(snapshot: unknown): snapshot is MsPacManGameStateSnapshot {
+        return isValidMsPacManGameStateSnapshot(snapshot);
     }
 
     private captureCurrentMode(main: Main): CurrentModeSnapshot {
@@ -427,7 +749,11 @@ export class MsPacManGameStateSerializer {
             return;
         }
 
-        this.restoreFields(main.getModeForStateRestore(snapshot.id), snapshot.fields);
+        const fields = MODE_FIELDS[snapshot.id];
+        if (fields === undefined) {
+            throw new Error(`Unsupported mode for restore: ${snapshot.id}`);
+        }
+        this.restoreFields(main.getModeForStateRestore(snapshot.id), snapshot.fields, fields);
         if (snapshot.id === "enterInitials") {
             this.restoreSubmittedInitials(main, snapshot);
         }
@@ -452,8 +778,8 @@ export class MsPacManGameStateSerializer {
     private restorePlayingMode(main: Main, snapshot: PlayingModeSnapshot): void {
         const mode = main.getPlayingModeForState();
         this.rebindPlayingMode(mode, main, snapshot.inputRobotIndex);
-        this.restoreFields(mode, snapshot.fields);
-        this.restoreFields(mode.mspacman, snapshot.mspacman.fields);
+        this.restoreFields(mode, snapshot.fields, PLAYING_MODE_FIELDS);
+        this.restoreFields(mode.mspacman, snapshot.mspacman.fields, MSPACMAN_FIELDS);
         this.rebindThing(mode.mspacman, mode);
         this.setField(mode.mspacman, "input", this.getField(mode, "input"));
 
@@ -463,7 +789,7 @@ export class MsPacManGameStateSerializer {
             if (!ghost || !ghostSnapshot) {
                 continue;
             }
-            this.restoreFields(ghost, ghostSnapshot.fields);
+            this.restoreFields(ghost, ghostSnapshot.fields, GHOST_FIELDS);
             this.rebindThing(ghost, mode);
             this.setField(ghost, "sprites", main.ghostSprites[ghost.ghostIndex]);
         }
@@ -482,7 +808,7 @@ export class MsPacManGameStateSerializer {
     }
 
     private restoreFruitTarget(mode: PlayingMode, snapshot: FruitTargetSnapshot): void {
-        this.restoreFields(mode.fruitTarget, snapshot.fields);
+        this.restoreFields(mode.fruitTarget, snapshot.fields, FRUIT_TARGET_FIELDS);
         this.rebindThing(mode.fruitTarget, mode);
         this.setField(mode.fruitTarget, "exitPath", snapshot.exitPath === null ? undefined : this.cloneJson(snapshot.exitPath as unknown as JsonValue));
     }
@@ -705,9 +1031,10 @@ export class MsPacManGameStateSerializer {
         return snapshot;
     }
 
-    private restoreFields(target: object, fields: JsonRecord): void {
+    private restoreFields(target: object, fields: JsonRecord, expectedFields: readonly string[]): void {
         const bag = target as FieldBag;
-        for (const [field, value] of Object.entries(fields)) {
+        for (const field of expectedFields) {
+            const value = fields[field];
             bag[field] = this.cloneJson(value);
         }
     }
