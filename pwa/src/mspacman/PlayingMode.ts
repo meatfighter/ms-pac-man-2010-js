@@ -86,7 +86,7 @@ export class PlayingMode implements IMode {
         this.main = main;
 
         if (main.demoMode) {
-            main.random.setSeed(0xCAFEBABE);
+            main.random.setSeed(0xcafebabe);
             this.input = main.robotInputs[main.demoIndex];
             this.input.reset();
             main.stageIndex = main.demoIndex;
@@ -194,9 +194,9 @@ export class PlayingMode implements IMode {
         this.playerSpiraling = false;
         this.spiralTimer = 0;
         this.readyTimer = 91;
-        this.fruitOdds = toFloat(0.5 - 0.25 * this.main.stageIndex / 7);
+        this.fruitOdds = toFloat(0.5 - (0.25 * this.main.stageIndex) / 7);
         this.redPelletOdds = toFloat(this.fruitOdds / 2);
-        this.exitDelayTarget = toInt(91 * toFloat(3 - 2.75 * this.main.stageIndex / 7));
+        this.exitDelayTarget = toInt(91 * toFloat(3 - (2.75 * this.main.stageIndex) / 7));
         this.fadeIndex = 0;
         this.fadeState = PlayingMode.FADE_IN;
         this.fadeReason = PlayingMode.FADE_REASON_KILLED;
@@ -289,7 +289,7 @@ export class PlayingMode implements IMode {
         this.main.playSound(this.main.ateEnergizerSound);
         this.main.playSound(this.main.blueGhostsSound);
         this.ghostsBlue = true;
-        this.ghostsBlueTimer = toInt(91 * (2 + (4 * (1.0 - this.main.stageIndex / 7.0))));
+        this.ghostsBlueTimer = toInt(91 * (2 + 4 * (1.0 - this.main.stageIndex / 7.0)));
         if (this.ghostsBlueTimer < 5) {
             this.ghostsBlueTimer = 5;
         }
@@ -458,10 +458,12 @@ export class PlayingMode implements IMode {
                 this.eatenGhost = null;
             }
         } else if (this.ghostsBlue) {
-            if (this.ghostsBlueTimer <= 22
-                || (this.ghostsBlueTimer >= 45 && this.ghostsBlueTimer <= 67)
-                || (this.ghostsBlueTimer >= 91 && this.ghostsBlueTimer <= 113)
-                || (this.ghostsBlueTimer >= 135 && this.ghostsBlueTimer <= 157)) {
+            if (
+                this.ghostsBlueTimer <= 22 ||
+                (this.ghostsBlueTimer >= 45 && this.ghostsBlueTimer <= 67) ||
+                (this.ghostsBlueTimer >= 91 && this.ghostsBlueTimer <= 113) ||
+                (this.ghostsBlueTimer >= 135 && this.ghostsBlueTimer <= 157)
+            ) {
                 this.ghostsBlueOffset = 2;
             } else {
                 this.ghostsBlueOffset = 0;

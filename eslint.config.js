@@ -4,19 +4,12 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
     {
-        ignores: [
-            "dist/",
-            "desktop/build/",
-            "desktop/dist/",
-            "node_modules/"
-        ]
+        ignores: ["dist/", "desktop/build/", "desktop/dist/", "node_modules/"]
     },
     js.configs.recommended,
     ...tseslint.configs.recommended,
     {
-        files: [
-            "pwa/src/**/*.ts"
-        ],
+        files: ["pwa/src/**/*.ts"],
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: "module",
@@ -39,13 +32,12 @@ export default tseslint.config(
                 {
                     allowEmptyCatch: true
                 }
-            ]
+            ],
+            "lines-between-class-members": ["error", "always", { exceptAfterSingleLine: true }]
         }
     },
     {
-        files: [
-            "pwa/vite.config.ts"
-        ],
+        files: ["pwa/vite.config.ts"],
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: "module",
@@ -64,9 +56,7 @@ export default tseslint.config(
         }
     },
     {
-        files: [
-            "scripts/**/*.mjs"
-        ],
+        files: ["scripts/**/*.mjs"],
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: "module",
@@ -76,9 +66,7 @@ export default tseslint.config(
         }
     },
     {
-        files: [
-            "pwa/public/sw.js"
-        ],
+        files: ["pwa/public/sw.js"],
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: "script",

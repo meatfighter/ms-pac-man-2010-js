@@ -7,7 +7,7 @@ import { Main } from "./Main";
 export class SelectWorldMode implements IMode {
     public static readonly RED_INTERVAL = 5;
     public static readonly LIGHTS = SelectWorldMode.RED_INTERVAL * 10;
-    public static readonly ANGLE_INC = 2.0 * Math.PI / SelectWorldMode.LIGHTS;
+    public static readonly ANGLE_INC = (2.0 * Math.PI) / SelectWorldMode.LIGHTS;
     public static readonly SELECTION_STEPS = 22;
     public static readonly SELECT_INC = Math.PI / (2 * SelectWorldMode.SELECTION_STEPS);
 

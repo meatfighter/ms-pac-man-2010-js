@@ -8,34 +8,10 @@ export type JsonRecord = {
 };
 
 export type ModeId =
-    | "act1"
-    | "act2"
-    | "act3"
-    | "act4"
-    | "act5"
-    | "act6"
-    | "act7"
-    | "attract"
-    | "ending"
-    | "enterInitials"
-    | "hallOfFame"
-    | "intro"
-    | "playing"
-    | "selectWorld";
+    "act1" | "act2" | "act3" | "act4" | "act5" | "act6" | "act7" | "attract" | "ending" | "enterInitials" | "hallOfFame" | "intro" | "playing" | "selectWorld";
 
 export type MusicId =
-    | "act:0"
-    | "act:1"
-    | "act:2"
-    | "gameOver"
-    | "highScore"
-    | "intro"
-    | "levelSelect"
-    | "stage:0"
-    | "stage:1"
-    | "stage:2"
-    | "stage:3"
-    | "training";
+    "act:0" | "act:1" | "act:2" | "gameOver" | "highScore" | "intro" | "levelSelect" | "stage:0" | "stage:1" | "stage:2" | "stage:3" | "training";
 
 export interface RandomSnapshot {
     seed0: number;

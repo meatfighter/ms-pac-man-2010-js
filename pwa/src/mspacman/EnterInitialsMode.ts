@@ -131,7 +131,7 @@ export class EnterInitialsMode implements IMode {
 
         let y = this.dotsOffset;
         for (let i = 0; i < 20; i++, y += 32) {
-            if (((i + this.redOffset) % 10) === 0) {
+            if ((i + this.redOffset) % 10 === 0) {
                 this.main.redEnergizerSprite.draw(16, y);
                 this.main.redEnergizerSprite.draw(800 - 16 - 16, y);
             } else {

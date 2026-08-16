@@ -236,7 +236,7 @@ export class AttractMode implements IMode {
         let x = this.dotsOffset;
         const y = 600 - this.barsY;
         for (let i = 0; i < 26; i++, x += 32) {
-            if (((i + this.redOffset) % 10) === 0) {
+            if ((i + this.redOffset) % 10 === 0) {
                 this.main.redEnergizerSprite.draw(x, this.barsY);
                 this.main.redEnergizerSprite.draw(x, y);
             } else {

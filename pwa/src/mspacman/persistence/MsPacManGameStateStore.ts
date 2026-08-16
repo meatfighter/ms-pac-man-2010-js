@@ -1,9 +1,6 @@
 import type { GameContainer } from "slick2d-ts";
 import type { Main } from "../Main";
-import {
-    GAME_STATE_VERSION,
-    type MsPacManGameStateSnapshot
-} from "./GameStateSnapshot";
+import { GAME_STATE_VERSION, type MsPacManGameStateSnapshot } from "./GameStateSnapshot";
 import { MsPacManGameStateSerializer } from "./MsPacManGameStateSerializer";
 
 export class MsPacManGameStateStore {
@@ -11,8 +8,7 @@ export class MsPacManGameStateStore {
 
     private readonly serializer = new MsPacManGameStateSerializer();
 
-    public constructor(private readonly appVersion: string) {
-    }
+    public constructor(private readonly appVersion: string) {}
 
     public save(main: Main): boolean {
         if (!main.isStateSaveReady()) {
@@ -57,8 +53,7 @@ export class MsPacManGameStateStore {
     public clear(): void {
         try {
             localStorage.removeItem(MsPacManGameStateStore.STORAGE_KEY);
-        } catch {
-        }
+        } catch {}
     }
 
     private readSnapshot(): MsPacManGameStateSnapshot | null {

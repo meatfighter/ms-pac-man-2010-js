@@ -442,7 +442,7 @@ export class EndingMode implements IMode {
 
         let x = this.dotsOffset;
         for (let i = 0; i < 26; i++, x += 32) {
-            if (((i + this.redOffset) % 10) === 0) {
+            if ((i + this.redOffset) % 10 === 0) {
                 this.main.redEnergizerSprite.draw(x, 172);
                 this.main.redEnergizerSprite.draw(x, 412);
             } else {

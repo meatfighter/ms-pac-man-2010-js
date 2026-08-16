@@ -34,13 +34,7 @@ const MAIN_FIELDS = [
     "demoMode"
 ] as const;
 
-const THING_FIELDS = [
-    "x",
-    "y",
-    "speed",
-    "speedRemainder",
-    "direction"
-] as const;
+const THING_FIELDS = ["x", "y", "speed", "speedRemainder", "direction"] as const;
 
 const MSPACMAN_FIELDS = [
     ...THING_FIELDS,
@@ -298,17 +292,7 @@ const MODE_FIELDS: Partial<Record<ModeId, readonly string[]>> = {
         "enterPressed",
         "newScoreOf"
     ],
-    hallOfFame: [
-        "pressEnterDelay",
-        "pressEnterVisible",
-        "dotsOffset",
-        "redOffset",
-        "enterPressed",
-        "fadeIndex",
-        "fadeState",
-        "ticks",
-        "countDown"
-    ],
+    hallOfFame: ["pressEnterDelay", "pressEnterVisible", "dotsOffset", "redOffset", "enterPressed", "fadeIndex", "fadeState", "ticks", "countDown"],
     intro: [
         "dotsOffset",
         "redOffset",
@@ -485,7 +469,7 @@ export class MsPacManGameStateSerializer {
         }
 
         this.restoreFruitTarget(mode, snapshot.fruitTarget);
-        mode.eatenGhost = snapshot.eatenGhostIndex === null ? null : mode.ghosts[snapshot.eatenGhostIndex] ?? null;
+        mode.eatenGhost = snapshot.eatenGhostIndex === null ? null : (mode.ghosts[snapshot.eatenGhostIndex] ?? null);
         this.rebindPlayingMode(mode, main, snapshot.inputRobotIndex);
     }
 
@@ -493,18 +477,14 @@ export class MsPacManGameStateSerializer {
         const exitPath = this.getField(fruitTarget, "exitPath");
         return {
             fields: this.captureFields(fruitTarget, FRUIT_TARGET_FIELDS),
-            exitPath: Array.isArray(exitPath) ? this.cloneJson(exitPath as JsonValue) as number[][] : null
+            exitPath: Array.isArray(exitPath) ? (this.cloneJson(exitPath as JsonValue) as number[][]) : null
         };
     }
 
     private restoreFruitTarget(mode: PlayingMode, snapshot: FruitTargetSnapshot): void {
         this.restoreFields(mode.fruitTarget, snapshot.fields);
         this.rebindThing(mode.fruitTarget, mode);
-        this.setField(
-            mode.fruitTarget,
-            "exitPath",
-            snapshot.exitPath === null ? undefined : this.cloneJson(snapshot.exitPath as unknown as JsonValue)
-        );
+        this.setField(mode.fruitTarget, "exitPath", snapshot.exitPath === null ? undefined : this.cloneJson(snapshot.exitPath as unknown as JsonValue));
     }
 
     private capturePlayingRobotInputIndex(mode: PlayingMode): number | null {
@@ -644,25 +624,28 @@ export class MsPacManGameStateSerializer {
     }
 
     private seekRestoredMusic(main: Main, gc: GameContainer, music: Music, position: number, snapshot: MusicSnapshot): void {
-        void music.ready().then(() => {
-            globalThis.setTimeout(() => {
-                if (main.currentMusic !== music) {
-                    gc.setMusicOn(!main.paused);
-                    return;
-                }
+        void music
+            .ready()
+            .then(() => {
+                globalThis.setTimeout(() => {
+                    if (main.currentMusic !== music) {
+                        gc.setMusicOn(!main.paused);
+                        return;
+                    }
 
-                music.setPosition(this.normalizeMusicPosition(music, position, snapshot.looped));
-                music.setVolume(snapshot.volume);
-                if (snapshot.paused) {
-                    music.pause();
+                    music.setPosition(this.normalizeMusicPosition(music, position, snapshot.looped));
+                    music.setVolume(snapshot.volume);
+                    if (snapshot.paused) {
+                        music.pause();
+                    }
+                    gc.setMusicOn(!main.paused);
+                }, 0);
+            })
+            .catch(() => {
+                if (main.currentMusic === music) {
+                    gc.setMusicOn(!main.paused);
                 }
-                gc.setMusicOn(!main.paused);
-            }, 0);
-        }).catch(() => {
-            if (main.currentMusic === music) {
-                gc.setMusicOn(!main.paused);
-            }
-        });
+            });
     }
 
     private normalizeMusicPosition(music: Music, position: number, looped: boolean): number {

@@ -34,7 +34,7 @@ export class MsPacMan extends Thing {
         this.x = 16 * 13 + 8;
         this.y = 16 * 23;
 
-        this.speed = toFloat(1.25 + 0.5 * this.main.stageIndex / 7);
+        this.speed = toFloat(1.25 + (0.5 * this.main.stageIndex) / 7);
         this.speedRemainder = 0;
         this.direction = Main.LEFT;
 

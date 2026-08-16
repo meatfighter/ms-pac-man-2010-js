@@ -373,7 +373,7 @@ export abstract class Ghost extends Thing {
         this.inHome = false;
         this.exitingHome = false;
         this.enteringHome = false;
-        this.speed = toFloat(1 + 0.3 * this.main.stageIndex / 7);
+        this.speed = toFloat(1 + (0.3 * this.main.stageIndex) / 7);
         this.speedRemainder = 0;
     }
 

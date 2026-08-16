@@ -14,6 +14,8 @@
         "assemble": "node scripts/assemble.mjs",
         "build:web": "npm run stamp && npm run clean && npm run build:pwa && npm run build:about",
         "build": "npm run stamp && npm run clean && npm run build:pwa && npm run build:about && npm run build:desktop && npm run assemble",
+        "format": "prettier . --write",
+        "format:check": "prettier . --check",
         "lint": "eslint .",
         "preview": "npm run preview:pwa",
         "preview:pwa": "vite preview --config pwa/vite.config.ts --host 127.0.0.1",
@@ -28,6 +30,7 @@
         "@eslint/js": "^10.0.1",
         "eslint": "^10.8.0",
         "globals": "^17.9.0",
+        "prettier": "^3.9.6",
         "typescript": "^5.9.0",
         "typescript-eslint": "^8.65.0",
         "vite": "^7.0.0"

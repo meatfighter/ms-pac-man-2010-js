@@ -6,25 +6,25 @@ This directory now includes a conservative legacy Slick2D/LWJGL runtime set to i
 
 Copied into `desktop/lib/`:
 
-| Target | Provenance | Notes |
-| --- | --- | --- |
-| `slick.jar` | Legacy Slick2D runtime | Slick2D jar paired with the LWJGL 2.8.5-era setup used by this desktop build. |
-| `lwjgl.jar` | LWJGL 2.8.5 runtime | Core LWJGL 2 classes. |
-| `lwjgl_util.jar` | LWJGL 2.8.5 runtime | LWJGL utility classes. |
-| `jinput.jar` | LWJGL 2.8.5 runtime | JInput jar from the same LWJGL-era runtime set. |
-| `jogg-0.0.7.jar` | JOrbis/JCraft OGG runtime | OGG support dependency used by Slick2D audio playback. |
-| `jorbis-0.0.17.jar` | JOrbis/JCraft OGG runtime | OGG support dependency used by Slick2D audio playback. |
-| `gson-2.11.0.jar` | Maven Central `com.google.code.gson:gson:2.11.0` | Used only for syntactic JSON parsing in the replacement high-score API client. |
+| Target              | Provenance                                       | Notes                                                                          |
+| ------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `slick.jar`         | Legacy Slick2D runtime                           | Slick2D jar paired with the LWJGL 2.8.5-era setup used by this desktop build.  |
+| `lwjgl.jar`         | LWJGL 2.8.5 runtime                              | Core LWJGL 2 classes.                                                          |
+| `lwjgl_util.jar`    | LWJGL 2.8.5 runtime                              | LWJGL utility classes.                                                         |
+| `jinput.jar`        | LWJGL 2.8.5 runtime                              | JInput jar from the same LWJGL-era runtime set.                                |
+| `jogg-0.0.7.jar`    | JOrbis/JCraft OGG runtime                        | OGG support dependency used by Slick2D audio playback.                         |
+| `jorbis-0.0.17.jar` | JOrbis/JCraft OGG runtime                        | OGG support dependency used by Slick2D audio playback.                         |
+| `gson-2.11.0.jar`   | Maven Central `com.google.code.gson:gson:2.11.0` | Used only for syntactic JSON parsing in the replacement high-score API client. |
 
 ## Native Libraries
 
 Bundled from the LWJGL 2.8.5 native runtime set.
 
-| Target | Contents |
-| --- | --- |
+| Target                     | Contents                                                                                                                                 |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `desktop/natives/windows/` | `lwjgl.dll`, `lwjgl64.dll`, `OpenAL32.dll`, `OpenAL64.dll`, `jinput-dx8.dll`, `jinput-dx8_64.dll`, `jinput-raw.dll`, `jinput-raw_64.dll` |
-| `desktop/natives/linux/` | `liblwjgl.so`, `liblwjgl64.so`, `libopenal.so`, `libopenal64.so`, `libjinput-linux.so`, `libjinput-linux64.so` |
-| `desktop/natives/macosx/` | `liblwjgl.jnilib`, `libjinput-osx.jnilib`, `openal.dylib` |
+| `desktop/natives/linux/`   | `liblwjgl.so`, `liblwjgl64.so`, `libopenal.so`, `libopenal64.so`, `libjinput-linux.so`, `libjinput-linux64.so`                           |
+| `desktop/natives/macosx/`  | `liblwjgl.jnilib`, `libjinput-osx.jnilib`, `openal.dylib`                                                                                |
 
 ## Compatibility Notes
 

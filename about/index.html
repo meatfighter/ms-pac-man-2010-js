@@ -1,44 +1,56 @@
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#080808">
-    <meta name="description" content="Ms. Pac-Man 2010 preserved as legacy Java source and ported to a TypeScript browser PWA.">
-    <link rel="stylesheet" href="./styles.css?v=__BUILD_STAMP_ENCODED__">
-    <link rel="icon" href="./assets/favicon.png?v=__BUILD_STAMP_ENCODED__" type="image/png" sizes="32x32">
-    <title>Ms. Pac-Man 2010</title>
-</head>
-<body>
-    <main>
-        <section class="hero" aria-labelledby="title">
-            <div class="sprite-field" aria-hidden="true"></div>
-            <div class="hero-content">
-                <p class="eyebrow">Java original, TypeScript PWA port</p>
-                <h1 id="title">Ms. Pac-Man 2010</h1>
-                <p class="summary">A desktop browser port of the Slick2D Java game, structured to preserve class, method, file, graphics, audio, and gameplay behavior as closely as the web platform allows.</p>
-                <div class="actions" aria-label="Project actions">
-                    <a class="primary-action" href="./__PWA_URL__">Play PWA</a>
-                    <a class="secondary-action" href="./__DESKTOP_ZIP__" download>Download Java Desktop</a>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#080808" />
+        <meta name="description" content="Ms. Pac-Man 2010 preserved as legacy Java source and ported to a TypeScript browser PWA." />
+        <link rel="stylesheet" href="./styles.css?v=__BUILD_STAMP_ENCODED__" />
+        <link rel="icon" href="./assets/favicon.png?v=__BUILD_STAMP_ENCODED__" type="image/png" sizes="32x32" />
+        <title>Ms. Pac-Man 2010</title>
+    </head>
+    <body>
+        <main>
+            <section class="hero" aria-labelledby="title">
+                <div class="sprite-field" aria-hidden="true"></div>
+                <div class="hero-content">
+                    <p class="eyebrow">Java original, TypeScript PWA port</p>
+                    <h1 id="title">Ms. Pac-Man 2010</h1>
+                    <p class="summary">
+                        A desktop browser port of the Slick2D Java game, structured to preserve class, method, file, graphics, audio, and gameplay behavior as
+                        closely as the web platform allows.
+                    </p>
+                    <div class="actions" aria-label="Project actions">
+                        <a class="primary-action" href="./__PWA_URL__">Play PWA</a>
+                        <a class="secondary-action" href="./__DESKTOP_ZIP__" download>Download Java Desktop</a>
+                    </div>
+                    <p class="version">Version __APP_VERSION__</p>
                 </div>
-                <p class="version">Version __APP_VERSION__</p>
-            </div>
-        </section>
+            </section>
 
-        <section class="details" aria-label="Project details">
-            <div>
-                <h2>Browser PWA</h2>
-                <p>The playable web app lives under the pwa directory and is built as a single-page desktop browser PWA with a menu shell, saved-state restore, gamepad input, web audio, and offline caching.</p>
-            </div>
-            <div>
-                <h2>Legacy Source</h2>
-                <p>The desktop directory keeps the Java-era project material available for parity checks and archival review while we decide separately whether to make that copy buildable from this repository.</p>
-            </div>
-            <div>
-                <h2>Release Bundle</h2>
-                <p>The build scripts stamp the version metadata, rebuild the PWA under dist/pwa, render this about page at dist/index.html, and add query-string timestamps to release-facing URLs.</p>
-            </div>
-        </section>
-    </main>
-</body>
+            <section class="details" aria-label="Project details">
+                <div>
+                    <h2>Browser PWA</h2>
+                    <p>
+                        The playable web app lives under the pwa directory and is built as a single-page desktop browser PWA with a menu shell, saved-state
+                        restore, gamepad input, web audio, and offline caching.
+                    </p>
+                </div>
+                <div>
+                    <h2>Legacy Source</h2>
+                    <p>
+                        The desktop directory keeps the Java-era project material available for parity checks and archival review while we decide separately
+                        whether to make that copy buildable from this repository.
+                    </p>
+                </div>
+                <div>
+                    <h2>Release Bundle</h2>
+                    <p>
+                        The build scripts stamp the version metadata, rebuild the PWA under dist/pwa, render this about page at dist/index.html, and add
+                        query-string timestamps to release-facing URLs.
+                    </p>
+                </div>
+            </section>
+        </main>
+    </body>
 </html>

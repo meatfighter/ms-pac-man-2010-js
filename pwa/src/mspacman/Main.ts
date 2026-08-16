@@ -484,13 +484,7 @@ export class Main extends BasicGame {
                 return false;
             }
         }
-        return Boolean(
-            this.trainingMusic
-            && this.introMusic
-            && this.levelSelectMusic
-            && this.highScoreMusic
-            && this.gameOverMusic
-        );
+        return Boolean(this.trainingMusic && this.introMusic && this.levelSelectMusic && this.highScoreMusic && this.gameOverMusic);
     }
 
     public intersects(ax1: number, ay1: number, ax2: number, ay2: number, bx1: number, by1: number, bx2: number, by2: number): boolean {
@@ -503,10 +497,9 @@ export class Main extends BasicGame {
 
     public downloadScores(): void {
         this.scoresDownloadComplete = false;
-        void HighScoreService.downloadScores(this.highScores)
-            .finally(() => {
-                this.scoresDownloadComplete = true;
-            });
+        void HighScoreService.downloadScores(this.highScores).finally(() => {
+            this.scoresDownloadComplete = true;
+        });
     }
 
     public accessScoresDatabaseAsync(update: boolean, world: number, score: number, initials: string): void {
@@ -519,10 +512,9 @@ export class Main extends BasicGame {
                 return;
             }
 
-            void HighScoreService.submitScore(this.highScores, world, score, normalizedInitials)
-                .finally(() => {
-                    this.uploadComplete = true;
-                });
+            void HighScoreService.submitScore(this.highScores, world, score, normalizedInitials).finally(() => {
+                this.uploadComplete = true;
+            });
         }, 0);
     }
 
@@ -628,8 +620,7 @@ export class Main extends BasicGame {
                         height: Math.max(1, Math.trunc(displayMode.height))
                     };
                 }
-            } catch {
-            }
+            } catch {}
         }
 
         return {
@@ -684,18 +675,17 @@ export class Main extends BasicGame {
         throw new Error("Unsupported mode.");
     }
 
-    private showMouseCursor(): void {
-    }
+    private showMouseCursor(): void {}
 
-    private hideMouseCursor(): void {
-    }
+    private hideMouseCursor(): void {}
 
     private findNativeDisplayMode(): void {
         for (const displayMode of Display.getAvailableDisplayModes()) {
-            if ((displayMode.getWidth() > this.maxWidth || displayMode.getHeight() > this.maxHeight)
-                || (displayMode.getWidth() === this.maxWidth
-                    && displayMode.getHeight() === this.maxHeight
-                    && displayMode.getBitsPerPixel() > this.maxColorDepth)) {
+            if (
+                displayMode.getWidth() > this.maxWidth ||
+                displayMode.getHeight() > this.maxHeight ||
+                (displayMode.getWidth() === this.maxWidth && displayMode.getHeight() === this.maxHeight && displayMode.getBitsPerPixel() > this.maxColorDepth)
+            ) {
                 this.maxWidth = displayMode.getWidth();
                 this.maxHeight = displayMode.getHeight();
                 this.maxColorDepth = displayMode.getBitsPerPixel();
@@ -736,7 +726,7 @@ export class Main extends BasicGame {
     }
 
     private loadStage(a: number, b: number): void {
-        const stage = this.stages[a][b] = new Stage();
+        const stage = (this.stages[a][b] = new Stage());
         const fileName = `stages/stage_${a}_${b}.dat`;
         const bytes = ResourceLoader.getResourceAsStream(fileName);
         if (!bytes) {
@@ -955,7 +945,7 @@ export class Main extends BasicGame {
         glyphs["!".charCodeAt(0)] = pack2.getSprite(`${prefix}_symbol_exclamation`);
         glyphs["/".charCodeAt(0)] = pack2.getSprite(`${prefix}_symbol_forward_slash`);
         glyphs["-".charCodeAt(0)] = pack2.getSprite(`${prefix}_symbol_hyphen`);
-        glyphs["\"".charCodeAt(0)] = pack2.getSprite(`${prefix}_symbol_left_quote`);
+        glyphs['"'.charCodeAt(0)] = pack2.getSprite(`${prefix}_symbol_left_quote`);
         glyphs[".".charCodeAt(0)] = pack2.getSprite(`${prefix}_symbol_period`);
         glyphs["'".charCodeAt(0)] = pack2.getSprite(`${prefix}_symbol_right_quote`);
     }

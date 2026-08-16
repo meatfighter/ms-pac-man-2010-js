@@ -217,13 +217,7 @@ async function importHmacKey(): Promise<CryptoKey | null> {
     }
     const keyBytes = hexToBytes(HMAC_KEY_HEX);
     const keyData = keyBytes.buffer.slice(keyBytes.byteOffset, keyBytes.byteOffset + keyBytes.byteLength) as ArrayBuffer;
-    return crypto.subtle.importKey(
-        "raw",
-        keyData,
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"]
-    );
+    return crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
 }
 
 async function calculateChecksum(key: CryptoKey, candidate: RemoteHighScore): Promise<string> {
@@ -262,11 +256,7 @@ function isWorld(value: unknown): value is number {
 }
 
 function isPlausibleScore(value: unknown): value is number {
-    return typeof value === "number"
-        && Number.isInteger(value)
-        && value > 0
-        && value <= MAX_SCORE
-        && value % 10 === 0;
+    return typeof value === "number" && Number.isInteger(value) && value > 0 && value <= MAX_SCORE && value % 10 === 0;
 }
 
 function isAllowedInitials(value: unknown): value is string {

@@ -15,9 +15,7 @@ const highScoreApiUrl = process.env.MSPACMAN_SCORE_API_URL ?? "/api/ms-pac-man-2
 const highScoreHmacKeyHex = process.env.MSPACMAN_HMAC_KEY_HEX ?? "";
 
 function renderVersionPlaceholders(text: string): string {
-    return text
-        .replaceAll("%APP_VERSION%", versionInfo.version)
-        .replaceAll("%BUILD_STAMP%", encodedBuildStamp);
+    return text.replaceAll("%APP_VERSION%", versionInfo.version).replaceAll("%BUILD_STAMP%", encodedBuildStamp);
 }
 
 function appendBuildStampQuery(url: string): string {
@@ -28,8 +26,10 @@ function appendBuildStampQuery(url: string): string {
 }
 
 function versionBuiltAssetReferences(html: string): string {
-    return html.replace(/\b(src|href)="([^"]*\/assets\/[^"]+\.(?:js|css)(?:\?[^"]*)?)"/g,
-        (_match, attribute: string, url: string) => `${attribute}="${appendBuildStampQuery(url)}"`);
+    return html.replace(
+        /\b(src|href)="([^"]*\/assets\/[^"]+\.(?:js|css)(?:\?[^"]*)?)"/g,
+        (_match, attribute: string, url: string) => `${attribute}="${appendBuildStampQuery(url)}"`
+    );
 }
 
 function placeAppModuleScriptAfterStaticBootHook(html: string): string {
@@ -38,7 +38,8 @@ function placeAppModuleScriptAfterStaticBootHook(html: string): string {
         return html;
     }
 
-    const scriptTag = scriptMatch[0].trim()
+    const scriptTag = scriptMatch[0]
+        .trim()
         .replace(/\s+id="[^"]*"/, "")
         .replace("<script", '<script id="app-module-script"');
     const withoutScript = html.replace(scriptMatch[0], "");
@@ -94,10 +95,7 @@ function versionedStaticAssetsPlugin(): PluginOption {
 export default defineConfig(({ command }) => ({
     root: rootDir,
     base: command === "build" ? "/pwa/" : "/",
-    plugins: [
-        versionedHtmlPlugin(),
-        versionedStaticAssetsPlugin()
-    ],
+    plugins: [versionedHtmlPlugin(), versionedStaticAssetsPlugin()],
     define: {
         __APP_VERSION__: JSON.stringify(versionInfo.version),
         __BUILD_STAMP__: JSON.stringify(versionInfo.buildStamp),

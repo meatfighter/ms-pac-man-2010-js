@@ -60,7 +60,9 @@ main {
     position: relative;
     z-index: 1;
     max-width: 780px;
-    text-shadow: 0 2px 0 #000000, 0 0 16px #000000;
+    text-shadow:
+        0 2px 0 #000000,
+        0 0 16px #000000;
 }
 
 .eyebrow,

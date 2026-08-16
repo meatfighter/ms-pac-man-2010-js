@@ -1,13 +1,4 @@
-import {
-    copyFileSync,
-    cpSync,
-    existsSync,
-    mkdirSync,
-    readdirSync,
-    rmSync,
-    statSync,
-    writeFileSync
-} from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { spawnSync } from "node:child_process";
 import { distDir, readVersion, rootDir } from "./build-utils.mjs";
@@ -30,15 +21,7 @@ const versionedZipPath = join(targetDir, `${distributionName}-${version.version}
 const stableZipPath = join(targetDir, `${distributionName}.zip`);
 const sourcesFile = join(targetDir, "sources.txt");
 const manifestPath = join(targetDir, "MANIFEST.MF");
-const runtimeJars = [
-    "slick.jar",
-    "lwjgl.jar",
-    "lwjgl_util.jar",
-    "jinput.jar",
-    "jogg-0.0.7.jar",
-    "jorbis-0.0.17.jar",
-    "gson-2.11.0.jar"
-];
+const runtimeJars = ["slick.jar", "lwjgl.jar", "lwjgl_util.jar", "jinput.jar", "jogg-0.0.7.jar", "jorbis-0.0.17.jar", "gson-2.11.0.jar"];
 
 function commandExists(command) {
     const finder = process.platform === "win32" ? "where.exe" : "which";
@@ -132,12 +115,7 @@ function formatManifestAttribute(name, value) {
 
 function writeManifest() {
     const classPath = runtimeJars.map((name) => `lib/${name}`).join(" ");
-    const manifest = [
-        "Manifest-Version: 1.0\n",
-        "Main-Class: mspacman.Main\n",
-        formatManifestAttribute("Class-Path", classPath),
-        "\n"
-    ].join("");
+    const manifest = ["Manifest-Version: 1.0\n", "Main-Class: mspacman.Main\n", formatManifestAttribute("Class-Path", classPath), "\n"].join("");
     writeFileSync(manifestPath, manifest);
 }
 
@@ -170,14 +148,7 @@ function createDistribution() {
     cpSync(targetLibDir, join(distributionDir, "lib"), { recursive: true });
     cpSync(targetNativeDir, join(distributionDir, "natives"), { recursive: true });
 
-    for (const name of [
-        "run-windows.cmd",
-        "run-windows.ps1",
-        "run-linux.sh",
-        "run-macos.sh",
-        "README.md",
-        "RUNTIME_DEPENDENCIES.md"
-    ]) {
+    for (const name of ["run-windows.cmd", "run-windows.ps1", "run-linux.sh", "run-macos.sh", "README.md", "RUNTIME_DEPENDENCIES.md"]) {
         copyFileSync(join(desktopDir, name), join(distributionDir, name));
     }
     copyFileSync(join(rootDir, "LICENSE"), join(distributionDir, "LICENSE"));
@@ -206,21 +177,9 @@ writeFileSync(sourcesFile, sources.map((source) => source.replaceAll("\\", "/"))
 
 const classpath = runtimeJars.map((name) => join(libDir, name)).join(process.platform === "win32" ? ";" : ":");
 const javacVersion = getJavacFeatureVersion();
-const releaseArgs = javacVersion !== null && javacVersion >= 9
-    ? ["--release", "8"]
-    : ["-source", "1.8", "-target", "1.8"];
+const releaseArgs = javacVersion !== null && javacVersion >= 9 ? ["--release", "8"] : ["-source", "1.8", "-target", "1.8"];
 
-run("javac", [
-    "-encoding",
-    "UTF-8",
-    "-Xlint:-options",
-    ...releaseArgs,
-    "-cp",
-    classpath,
-    "-d",
-    classesDir,
-    `@${sourcesFile}`
-]);
+run("javac", ["-encoding", "UTF-8", "-Xlint:-options", ...releaseArgs, "-cp", classpath, "-d", classesDir, `@${sourcesFile}`]);
 
 copyResources(sourceDir, classesDir);
 writeManifest();

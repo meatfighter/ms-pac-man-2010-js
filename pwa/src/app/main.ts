@@ -10,8 +10,7 @@ import type { MsPacManGameStateStore } from "../mspacman/persistence/MsPacManGam
 type SlickRuntime = typeof import("slick2d-ts");
 type MainConstructor = typeof import("../mspacman/Main").Main;
 type ScalableGame2Constructor = typeof import("../mspacman/ScalableGame2").ScalableGame2;
-type MsPacManGameStateStoreConstructor =
-    typeof import("../mspacman/persistence/MsPacManGameStateStore").MsPacManGameStateStore;
+type MsPacManGameStateStoreConstructor = typeof import("../mspacman/persistence/MsPacManGameStateStore").MsPacManGameStateStore;
 
 type PreparedRuntime = {
     slick: SlickRuntime;
@@ -310,14 +309,14 @@ async function ensureRuntimePrepared(forceRetry = false): Promise<PreparedRuntim
     ResourceLoader.setCacheBust(CACHE_BUST);
     ResourceLoader.setRetryOptions(RESOURCE_CACHE_RETRY_COUNT, RESOURCE_CACHE_RETRY_DELAY_MS);
     preparationPromise = prepareRuntime()
-        .then(runtime => {
+        .then((runtime) => {
             preparedRuntime = runtime;
             preparationError = null;
             preparationProgress = 1;
             refreshVisibleBootProgress();
             return runtime;
         })
-        .catch(error => {
+        .catch((error) => {
             preparationError = error;
             throw error;
         })
@@ -328,12 +327,7 @@ async function ensureRuntimePrepared(forceRetry = false): Promise<PreparedRuntim
 }
 
 async function prepareRuntime(): Promise<PreparedRuntime> {
-    const [
-        slick,
-        mainModule,
-        scalableGameModule,
-        gameStateStoreModule
-    ] = await Promise.all([
+    const [slick, mainModule, scalableGameModule, gameStateStoreModule] = await Promise.all([
         import("slick2d-ts"),
         import("../mspacman/Main"),
         import("../mspacman/ScalableGame2"),
@@ -351,7 +345,7 @@ async function prepareRuntime(): Promise<PreparedRuntime> {
 
 async function preloadPreparedResources(resourceRefs: readonly string[]): Promise<void> {
     const audioRefs = resourceRefs.filter(isAudioResourceRef);
-    const nonAudioRefs = resourceRefs.filter(ref => !isAudioResourceRef(ref));
+    const nonAudioRefs = resourceRefs.filter((ref) => !isAudioResourceRef(ref));
     const total = audioRefs.length + nonAudioRefs.length;
     let audioLoaded = 0;
     let nonAudioLoaded = 0;
@@ -362,11 +356,11 @@ async function preloadPreparedResources(resourceRefs: readonly string[]): Promis
 
     updateProgress();
     await Promise.all([
-        ResourceLoader.preloadResources(nonAudioRefs, progress => {
+        ResourceLoader.preloadResources(nonAudioRefs, (progress) => {
             nonAudioLoaded = progress.loaded;
             updateProgress();
         }),
-        SoundStore.get().preloadAudioBuffers(audioRefs, progress => {
+        SoundStore.get().preloadAudioBuffers(audioRefs, (progress) => {
             audioLoaded = progress.loaded;
             updateProgress();
         })
@@ -376,15 +370,14 @@ async function preloadPreparedResources(resourceRefs: readonly string[]): Promis
 }
 
 function scheduleBackgroundPreparation(): void {
-    if (backgroundPreparationScheduled || preparedRuntime !== null
-            || preparationPromise !== null || preparationError !== null) {
+    if (backgroundPreparationScheduled || preparedRuntime !== null || preparationPromise !== null || preparationError !== null) {
         return;
     }
     backgroundPreparationScheduled = true;
     requestAnimationFrame(() => {
         window.setTimeout(() => {
             backgroundPreparationScheduled = false;
-            void ensureRuntimePrepared().catch(error => {
+            void ensureRuntimePrepared().catch((error) => {
                 console.warn("MS Pac-Man background preparation failed.", error);
             });
         }, 0);
@@ -414,11 +407,12 @@ function updateVolumeUi(volumeInput: HTMLInputElement, volumeValue: HTMLElement 
 }
 
 function volumeIcon(value: number): string {
-    const waves = Math.round(value * 100) === 0
-        ? `<path d="M18 9l5 5m0-5l-5 5"></path>`
-        : value < 0.33
-            ? `<path d="M17 10a4 4 0 0 1 0 4"></path>`
-            : value < 0.66
+    const waves =
+        Math.round(value * 100) === 0
+            ? `<path d="M18 9l5 5m0-5l-5 5"></path>`
+            : value < 0.33
+              ? `<path d="M17 10a4 4 0 0 1 0 4"></path>`
+              : value < 0.66
                 ? `<path d="M17 8a6 6 0 0 1 0 8"></path><path d="M20 6a9 9 0 0 1 0 12"></path>`
                 : `<path d="M17 8a6 6 0 0 1 0 8"></path><path d="M20 6a9 9 0 0 1 0 12"></path><path d="M23 4a12 12 0 0 1 0 16"></path>`;
 
@@ -496,18 +490,12 @@ function hasPotentialSavedGameState(): boolean {
 function clearStoredGameState(): void {
     try {
         localStorage.removeItem(GAME_STATE_STORAGE_KEY);
-    } catch {
-    }
+    } catch {}
     gameStateStore?.clear();
 }
 
 function hasLiveSuspendedGame(): boolean {
-    return liveMenuOpen
-        && menuOverlay !== null
-        && game !== null
-        && container !== null
-        && activeGameHost !== null
-        && !game.isLoadingScreenActive();
+    return liveMenuOpen && menuOverlay !== null && game !== null && container !== null && activeGameHost !== null && !game.isLoadingScreenActive();
 }
 
 function showLiveMenuOverlay(): void {
@@ -771,8 +759,7 @@ function applyResponsiveWindowedDisplayMode(): void {
 
     const displayMode = getResponsiveWindowedDisplayMode();
     try {
-        void Promise.resolve(container.setDisplayMode(displayMode.width, displayMode.height, false))
-            .catch(reportResponsiveResizeError);
+        void Promise.resolve(container.setDisplayMode(displayMode.width, displayMode.height, false)).catch(reportResponsiveResizeError);
     } catch (error) {
         reportResponsiveResizeError(error);
     }
@@ -885,12 +872,7 @@ async function registerServiceWorker(): Promise<void> {
 }
 
 function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
 function formatError(error: unknown): string {

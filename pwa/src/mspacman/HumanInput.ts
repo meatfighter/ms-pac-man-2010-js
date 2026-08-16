@@ -11,37 +11,13 @@ export class HumanInput implements IInput {
     private static readonly EXTRA_HORIZONTAL_AXES = [2, 6];
     private static readonly EXTRA_VERTICAL_AXES = [3, 7];
 
-    private static readonly UP_KEYS = [
-        Input.KEY_UP,
-        Input.KEY_W,
-        Input.KEY_I,
-        Input.KEY_8,
-        Input.KEY_NUMPAD8
-    ];
+    private static readonly UP_KEYS = [Input.KEY_UP, Input.KEY_W, Input.KEY_I, Input.KEY_8, Input.KEY_NUMPAD8];
 
-    private static readonly DOWN_KEYS = [
-        Input.KEY_DOWN,
-        Input.KEY_S,
-        Input.KEY_K,
-        Input.KEY_2,
-        Input.KEY_NUMPAD2
-    ];
+    private static readonly DOWN_KEYS = [Input.KEY_DOWN, Input.KEY_S, Input.KEY_K, Input.KEY_2, Input.KEY_NUMPAD2];
 
-    private static readonly LEFT_KEYS = [
-        Input.KEY_LEFT,
-        Input.KEY_A,
-        Input.KEY_J,
-        Input.KEY_4,
-        Input.KEY_NUMPAD4
-    ];
+    private static readonly LEFT_KEYS = [Input.KEY_LEFT, Input.KEY_A, Input.KEY_J, Input.KEY_4, Input.KEY_NUMPAD4];
 
-    private static readonly RIGHT_KEYS = [
-        Input.KEY_RIGHT,
-        Input.KEY_D,
-        Input.KEY_L,
-        Input.KEY_6,
-        Input.KEY_NUMPAD6
-    ];
+    private static readonly RIGHT_KEYS = [Input.KEY_RIGHT, Input.KEY_D, Input.KEY_L, Input.KEY_6, Input.KEY_NUMPAD6];
 
     private static readonly CONFIRM_START_KEYS = [
         Input.KEY_ENTER,
@@ -109,9 +85,7 @@ export class HumanInput implements IInput {
     private extraAxisDownDown = false;
     private extraAxisLeftDown = false;
     private extraAxisRightDown = false;
-    private readonly extraAxisBaselines = new Array<number>(
-        HumanInput.CONTROLLER_INDEX_LIMIT * HumanInput.GAMEPAD_AXIS_LIMIT
-    ).fill(Number.NaN);
+    private readonly extraAxisBaselines = new Array<number>(HumanInput.CONTROLLER_INDEX_LIMIT * HumanInput.GAMEPAD_AXIS_LIMIT).fill(Number.NaN);
 
     public constructor(gc: GameContainer) {
         this.input = gc.getInput();
@@ -122,27 +96,19 @@ export class HumanInput implements IInput {
     }
 
     public isUp(): boolean {
-        return this.isAnyKeyDown(HumanInput.UP_KEYS)
-            || this.input.isControllerUp(Input.ANY_CONTROLLER)
-            || this.isExtraAxisUpDown();
+        return this.isAnyKeyDown(HumanInput.UP_KEYS) || this.input.isControllerUp(Input.ANY_CONTROLLER) || this.isExtraAxisUpDown();
     }
 
     public isDown(): boolean {
-        return this.isAnyKeyDown(HumanInput.DOWN_KEYS)
-            || this.input.isControllerDown(Input.ANY_CONTROLLER)
-            || this.isExtraAxisDownDown();
+        return this.isAnyKeyDown(HumanInput.DOWN_KEYS) || this.input.isControllerDown(Input.ANY_CONTROLLER) || this.isExtraAxisDownDown();
     }
 
     public isLeft(): boolean {
-        return this.isAnyKeyDown(HumanInput.LEFT_KEYS)
-            || this.input.isControllerLeft(Input.ANY_CONTROLLER)
-            || this.isExtraAxisLeftDown();
+        return this.isAnyKeyDown(HumanInput.LEFT_KEYS) || this.input.isControllerLeft(Input.ANY_CONTROLLER) || this.isExtraAxisLeftDown();
     }
 
     public isRight(): boolean {
-        return this.isAnyKeyDown(HumanInput.RIGHT_KEYS)
-            || this.input.isControllerRight(Input.ANY_CONTROLLER)
-            || this.isExtraAxisRightDown();
+        return this.isAnyKeyDown(HumanInput.RIGHT_KEYS) || this.input.isControllerRight(Input.ANY_CONTROLLER) || this.isExtraAxisRightDown();
     }
 
     public isUpPressed(): boolean {

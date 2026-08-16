@@ -51,8 +51,7 @@ export class ScalableGame2 implements Game {
         this.renderOverlay(container, g);
     }
 
-    protected renderOverlay(container: GameContainer, g: Graphics): void {
-    }
+    protected renderOverlay(container: GameContainer, g: Graphics): void {}
 
     public closeRequested(): boolean {
         return this.held.closeRequested();
