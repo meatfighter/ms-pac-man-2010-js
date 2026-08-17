@@ -5,7 +5,7 @@ const APP_STATIC_RESOURCES = ["./", "./index.html", "./manifest.webmanifest", ".
 
 function canUseCacheApi(request) {
     const url = new URL(request.url);
-    return request.method === "GET" && (url.protocol === "http:" || url.protocol === "https:");
+    return request.method === "GET" && url.origin === self.location.origin && (url.protocol === "http:" || url.protocol === "https:");
 }
 
 function remember(request, response) {
@@ -61,13 +61,13 @@ self.addEventListener("fetch", (event) => {
                     remember("./index.html", response);
                     return response;
                 })
-                .catch(() => caches.match("./index.html"))
+                .catch(() => caches.match("./index.html", { ignoreSearch: true }))
         );
         return;
     }
 
     event.respondWith(
-        caches.match(request).then((cached) => {
+        caches.match(request, { ignoreSearch: true }).then((cached) => {
             const networked = fetch(request)
                 .then((response) => {
                     remember(request, response);

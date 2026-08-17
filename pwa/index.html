@@ -147,6 +147,68 @@
                 }
             </style>
         </noscript>
+        <script>
+            (function () {
+                window.__msPacManBooted = false;
+                window.__msPacManBootFailed = false;
+
+                function getBootScreen() {
+                    return document.getElementById("staticBootScreen");
+                }
+
+                function showStaticBootFailure() {
+                    if (window.__msPacManBooted) {
+                        return;
+                    }
+
+                    window.__msPacManBootFailed = true;
+
+                    var boot = getBootScreen();
+                    if (!boot) {
+                        if (document.readyState === "loading") {
+                            window.addEventListener("DOMContentLoaded", showStaticBootFailure, { once: true });
+                        }
+                        return;
+                    }
+                    if (!boot.isConnected) {
+                        return;
+                    }
+                    boot.classList.add("static-boot-failed");
+                }
+
+                function hasSameOriginUrl(urlText) {
+                    try {
+                        return new URL(urlText, window.location.href).origin === window.location.origin;
+                    } catch (error) {
+                        return false;
+                    }
+                }
+
+                function isInitialAssetFailure(target) {
+                    if (!target || window.__msPacManBooted) {
+                        return false;
+                    }
+                    if (target instanceof HTMLScriptElement) {
+                        return target.type === "module" && hasSameOriginUrl(target.src);
+                    }
+                    if (target instanceof HTMLLinkElement) {
+                        return target.rel.toLowerCase() === "stylesheet" && hasSameOriginUrl(target.href);
+                    }
+                    return false;
+                }
+
+                window.addEventListener(
+                    "error",
+                    function (event) {
+                        if (isInitialAssetFailure(event.target) || (!window.__msPacManBooted && event.target === window)) {
+                            showStaticBootFailure();
+                        }
+                    },
+                    true
+                );
+                window.addEventListener("unhandledrejection", showStaticBootFailure);
+            })();
+        </script>
     </head>
     <body>
         <div id="app">
@@ -164,32 +226,6 @@
                 </section>
             </main>
         </div>
-        <script>
-            (function () {
-                var boot = document.getElementById("staticBootScreen");
-                if (!boot) {
-                    return;
-                }
-
-                function showStaticBootFailure() {
-                    if (!boot.isConnected) {
-                        return;
-                    }
-                    boot.classList.add("static-boot-failed");
-                }
-
-                window.addEventListener(
-                    "error",
-                    function (event) {
-                        var target = event.target;
-                        if (target && target.id === "app-module-script") {
-                            showStaticBootFailure();
-                        }
-                    },
-                    true
-                );
-            })();
-        </script>
-        <script id="app-module-script" type="module" src="/src/app/main.ts"></script>
+        <script type="module" src="/src/app/main.ts"></script>
     </body>
 </html>

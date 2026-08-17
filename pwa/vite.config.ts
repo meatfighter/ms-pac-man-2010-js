@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type PluginOption } from "vite";
 
@@ -32,26 +32,61 @@ function versionBuiltAssetReferences(html: string): string {
     );
 }
 
-function placeAppModuleScriptAfterStaticBootHook(html: string): string {
-    const scriptMatch = html.match(/[ \t]*<script\b(?=[^>]*\btype="module")(?=[^>]*\bsrc="[^"]+")[^>]*><\/script>\r?\n?/);
-    if (!scriptMatch) {
+function placeInitialStylesheetsBeforeModuleScripts(html: string): string {
+    const headCloseTag = "</head>";
+    const headCloseIndex = html.indexOf(headCloseTag);
+    if (headCloseIndex < 0) {
         return html;
     }
 
-    const scriptTag = scriptMatch[0]
-        .trim()
-        .replace(/\s+id="[^"]*"/, "")
-        .replace("<script", '<script id="app-module-script"');
-    const withoutScript = html.replace(scriptMatch[0], "");
-    return withoutScript.replace(/\r?\n[ \t]*<\/body>/, `\n        ${scriptTag}\n    </body>`);
+    const stylesheetTags: string[] = [];
+    const moduleScriptTags: string[] = [];
+    const head = html
+        .slice(0, headCloseIndex)
+        .replace(/\s*<link\b(?=[^>]*\brel="stylesheet")(?=[^>]*\bhref="[^"]*\/assets\/[^"]+\.css(?:\?[^"]*)?")[^>]*>/g, (tag) => {
+            stylesheetTags.push(tag.trim());
+            return "";
+        })
+        .replace(/\s*<script\b(?=[^>]*\btype="module")(?=[^>]*\bsrc="[^"]*\/assets\/[^"]+\.js(?:\?[^"]*)?")[^>]*><\/script>/g, (tag) => {
+            moduleScriptTags.push(tag.trim());
+            return "";
+        })
+        .trimEnd();
+
+    if (stylesheetTags.length === 0 || moduleScriptTags.length === 0) {
+        return html;
+    }
+
+    const initialAssetTags = [...stylesheetTags, ...moduleScriptTags].map((tag) => `        ${tag}`).join("\n");
+    return `${head}\n${initialAssetTags}\n    ${headCloseTag}${html.slice(headCloseIndex + headCloseTag.length)}`;
 }
 
 function renderVersionedHtml(html: string): string {
-    return versionBuiltAssetReferences(renderVersionPlaceholders(html));
+    return placeInitialStylesheetsBeforeModuleScripts(versionBuiltAssetReferences(renderVersionPlaceholders(html)));
 }
 
-function renderBuiltIndexHtml(html: string): string {
-    return placeAppModuleScriptAfterStaticBootHook(renderVersionedHtml(html));
+function collectPrecacheResources(dir: string, baseDir = dir): string[] {
+    const resources: string[] = [];
+    for (const entry of readdirSync(dir).sort((a, b) => a.localeCompare(b))) {
+        const path = join(dir, entry);
+        const stat = statSync(path);
+        if (stat.isDirectory()) {
+            resources.push(...collectPrecacheResources(path, baseDir));
+            continue;
+        }
+
+        const ref = relative(baseDir, path).replaceAll("\\", "/");
+        if (ref === "sw.js") {
+            continue;
+        }
+        resources.push(`./${ref}`);
+    }
+    return resources;
+}
+
+function renderServiceWorker(sw: string, pwaDistDir: string): string {
+    const resources = Array.from(new Set(["./", ...collectPrecacheResources(pwaDistDir)]));
+    return sw.replace(/const APP_STATIC_RESOURCES = \[[^\]]*\];/, `const APP_STATIC_RESOURCES = ${JSON.stringify(resources, null, 4)};`);
 }
 
 function versionedHtmlPlugin(): PluginOption {
@@ -79,6 +114,7 @@ function versionedStaticAssetsPlugin(): PluginOption {
             }
         },
         closeBundle(): void {
+            const pwaDistDir = join(rootDir, "..", "dist", "pwa");
             const manifestPath = join(rootDir, "..", "dist", "pwa", "manifest.webmanifest");
             if (existsSync(manifestPath)) {
                 writeFileSync(manifestPath, renderVersionPlaceholders(readFileSync(manifestPath, "utf8")));
@@ -86,7 +122,12 @@ function versionedStaticAssetsPlugin(): PluginOption {
 
             const indexPath = join(rootDir, "..", "dist", "pwa", "index.html");
             if (existsSync(indexPath)) {
-                writeFileSync(indexPath, renderBuiltIndexHtml(readFileSync(indexPath, "utf8")));
+                writeFileSync(indexPath, renderVersionedHtml(readFileSync(indexPath, "utf8")));
+            }
+
+            const serviceWorkerPath = join(rootDir, "..", "dist", "pwa", "sw.js");
+            if (existsSync(serviceWorkerPath)) {
+                writeFileSync(serviceWorkerPath, renderServiceWorker(renderVersionPlaceholders(readFileSync(serviceWorkerPath, "utf8")), pwaDistDir));
             }
         }
     };

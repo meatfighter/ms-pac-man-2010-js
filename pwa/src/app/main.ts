@@ -80,10 +80,13 @@ let backgroundPreparationScheduled = false;
 let gameStateStore: MsPacManGameStateStore | null = null;
 let volume = safeReadVolume();
 
-setupGlobalErrorHandlers();
-setupPageLifecycleHandlers();
-void registerServiceWorker();
-renderMenu();
+if (!window.__msPacManBootFailed) {
+    setupGlobalErrorHandlers();
+    setupPageLifecycleHandlers();
+    void registerServiceWorker();
+    renderMenu();
+    window.__msPacManBooted = true;
+}
 
 function renderMenu(errorText = ""): void {
     destroyGame();

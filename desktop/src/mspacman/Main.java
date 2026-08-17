@@ -147,7 +147,6 @@ public class Main extends BasicGame {
   }
 
   public void init(GameContainer gc) throws SlickException {
-    System.out.println(Thread.currentThread().getName());
     findNativeDisplayMode();
     initializeHighScores();
     initializeFadeColors();

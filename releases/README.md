@@ -1,11 +1,13 @@
 # Releases
 
-This directory contains intentionally committed downloadable artifacts.
+This directory is a local staging area for uploadable desktop release artifacts.
 
-Generated build folders such as `dist/` and `desktop/target/` remain ignored. Use this command when the committed Java desktop download should be refreshed:
+Generated release zips are ignored by default to avoid accidental repository bloat. Use this command when the Java desktop download should be refreshed locally:
 
 ```text
 npm.cmd run release:desktop
 ```
+
+Upload the generated zip to GitHub Releases or another artifact host. If a zip truly needs to be committed, add that specific file intentionally with `git add -f`.
 
 The desktop zip contains the runnable Java jar, legacy Slick2D/LWJGL jars, native libraries, launch scripts, and runtime notes.

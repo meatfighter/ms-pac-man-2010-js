@@ -5,7 +5,6 @@ This directory contains the maintained legacy Java desktop build for Ms. Pac-Man
 Included desktop materials:
 
 - `src/` Java sources and runtime resources.
-- `test/` desktop test/support material.
 - `pom.xml` and `assembly.xml` for the Maven build.
 - `lib/` vendored legacy Java dependencies.
 - `natives/` bundled LWJGL/JInput native libraries.

@@ -79,8 +79,6 @@ public class MsPacMan extends Thing {
       speed *= speedPercentChange;
     }
 
-    // System.out.println(speed);
-
     speedRemainder += speed;
 
     while(speedRemainder >= 1f) {

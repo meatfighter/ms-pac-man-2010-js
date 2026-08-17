@@ -2,7 +2,19 @@
 
 This project depends on slick2d-ts for the browser runtime. slick2d-ts is distributed under the BSD 3-Clause License and includes attribution for selected Slick2D API behavior.
 
-Desktop Java runtime dependencies are documented separately in desktop/RUNTIME_DEPENDENCIES.md where present.
+Desktop Java runtime dependencies are documented separately in desktop/RUNTIME_DEPENDENCIES.md where present. The downloadable desktop package bundles legacy jars and native libraries; keep this notice file with that package.
+
+## Bundled Desktop Runtime Summary
+
+| Component                   | Included files                                       | License / notice                                                                                   |
+| --------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Slick2D                     | `slick.jar`                                          | BSD 3-Clause License. Full notice reproduced below.                                                |
+| LWJGL 2.8.5                 | `lwjgl.jar`, `lwjgl_util.jar`, bundled LWJGL natives | BSD-style license from the Lightweight Java Game Library project.                                  |
+| JInput                      | `jinput.jar`, bundled JInput natives                 | BSD-style license from the Java Game Technology Group / JInput project.                            |
+| JOrbis / JCraft Ogg support | `jogg-0.0.7.jar`, `jorbis-0.0.17.jar`                | BSD-style license from JCraft, Inc.                                                                |
+| Gson 2.11.0                 | `gson-2.11.0.jar`                                    | Apache License 2.0. The jar metadata identifies `https://www.apache.org/licenses/LICENSE-2.0.txt`. |
+
+The vendored desktop runtime set is intentionally conservative so the legacy Slick2D/LWJGL desktop version can still run on modern machines. If any bundled jar or native library is replaced, update this table and the runtime dependency notes before publishing a new release.
 
 ## slick2d-ts
 

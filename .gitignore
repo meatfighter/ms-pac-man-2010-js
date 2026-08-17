@@ -1,9 +1,13 @@
 node_modules/
 dist/
 .vite/
+.env
+.env.*
+!.env.example
 desktop/build/
 desktop/dist/
 desktop/target/
+releases/*.zip
 releases/*.tmp
 releases/*.log
 *.log
