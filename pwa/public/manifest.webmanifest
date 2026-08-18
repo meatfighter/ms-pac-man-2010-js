@@ -10,9 +10,27 @@
     "theme_color": "#0f0f0f",
     "icons": [
         {
+            "src": "favicon.svg?v=%BUILD_STAMP%",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        },
+        {
+            "src": "favicon-16.png?v=%BUILD_STAMP%",
+            "sizes": "16x16",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
             "src": "favicon.png?v=%BUILD_STAMP%",
             "sizes": "32x32",
             "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "icon.svg?v=%BUILD_STAMP%",
+            "sizes": "any",
+            "type": "image/svg+xml",
             "purpose": "any"
         },
         {
@@ -25,12 +43,6 @@
             "src": "icon-512.png?v=%BUILD_STAMP%",
             "sizes": "512x512",
             "type": "image/png",
-            "purpose": "any"
-        },
-        {
-            "src": "icon.svg?v=%BUILD_STAMP%",
-            "sizes": "any",
-            "type": "image/svg+xml",
             "purpose": "any"
         }
     ]

@@ -211,6 +211,7 @@ export class Main extends BasicGame {
             if (this.isGameplayPauseTogglePressed()) {
                 this.setPaused(false);
                 gc.setMusicOn(true);
+                this.resumeCurrentMusicForBrowser(gc);
             }
             this.resetNextFrameTime();
             return;
@@ -404,8 +405,16 @@ export class Main extends BasicGame {
             this.appGameContainer?.setMusicOn(false);
         } else {
             this.appGameContainer?.setMusicOn(!this.paused);
+            this.resumeCurrentMusicForBrowser(this.appGameContainer);
             this.resetNextFrameTime();
         }
+    }
+
+    private resumeCurrentMusicForBrowser(gc: GameContainer | null | undefined): void {
+        if (this.paused || gc === null || gc === undefined || !gc.isMusicOn()) {
+            return;
+        }
+        this.currentMusic?.resume();
     }
 
     public drawRotatedScaled(image: Image, x: number, y: number, angle: number, scale: number): void {

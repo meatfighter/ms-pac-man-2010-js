@@ -1,7 +1,19 @@
 const VERSION = new URL(self.location.href).searchParams.get("v") || "dev";
 const CACHE_NAME = `ms-pac-man-2010-pwa-${VERSION}`;
 const CACHE_PREFIXES = ["ms-pac-man-2010-", "ms-pac-man-2010-pwa-"];
-const APP_STATIC_RESOURCES = ["./", "./index.html", "./manifest.webmanifest", "./favicon.png", "./icon.svg"];
+const APP_STATIC_RESOURCES = [
+    "./",
+    "./index.html",
+    "./manifest.webmanifest",
+    "./favicon.svg",
+    "./favicon-16.png",
+    "./favicon-32.png",
+    "./favicon.png",
+    "./apple-touch-icon.png",
+    "./icon.svg",
+    "./icon-192.png",
+    "./icon-512.png"
+];
 
 function canUseCacheApi(request) {
     const url = new URL(request.url);

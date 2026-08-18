@@ -1029,7 +1029,7 @@ public class Main extends BasicGame {
 
   private void configureWindowIcon() {
     try {
-      appGameContainer.setIcon("favicon.png");
+      appGameContainer.setIcons(new String[] {"favicon-16.png", "favicon-32.png"});
     } catch(Throwable t) {
       Log.warn("Unable to set the desktop window icon: " + describe(t));
     }

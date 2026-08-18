@@ -507,12 +507,12 @@ function showLiveMenuOverlay(): void {
     }
 
     liveMenuOpen = true;
+    saveCurrentGameState();
     game.setBrowserSuspended(true);
     container.stopSoundEffects();
     container.setLoopSuspended(true);
     container.getInput().pause();
     game.input.clearKeyPressedRecord();
-    saveCurrentGameState();
     stopHamburgerVisibilityMonitor();
     setHamburgerHidden(true);
     stopGameCursorAutoHide();
@@ -564,9 +564,9 @@ function returnToMenu(): void {
         showLiveMenuOverlay();
         return;
     }
+    saveCurrentGameState();
     game?.setBrowserSuspended(true);
     container?.stopSoundEffects();
-    saveCurrentGameState();
     renderMenu();
 }
 
@@ -574,10 +574,10 @@ function suspendCurrentGame(): void {
     if (!game || game.isLoadingScreenActive()) {
         return;
     }
+    saveCurrentGameState();
     game.setBrowserSuspended(true);
     container?.stopSoundEffects();
     container?.setLoopSuspended(true);
-    saveCurrentGameState();
 }
 
 function resumeCurrentGame(): void {
