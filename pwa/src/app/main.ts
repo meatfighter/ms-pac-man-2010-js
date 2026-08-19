@@ -770,7 +770,9 @@ function applyResponsiveWindowedDisplayMode(): void {
 
 function reportResponsiveResizeError(error: unknown): void {
     console.error(error);
-    renderLoadError(error);
+    const restoreSavedGame = saveCurrentGameState();
+    destroyGame();
+    renderLoadError(error, restoreSavedGame);
 }
 
 function getResponsiveWindowedDisplayMode(): { width: number; height: number } {

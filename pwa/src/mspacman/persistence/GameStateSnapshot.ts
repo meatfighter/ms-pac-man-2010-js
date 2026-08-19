@@ -1,3 +1,4 @@
+// Increment whenever saved-state structure or semantics become incompatible across releases.
 export const GAME_STATE_VERSION = 1;
 
 export type JsonPrimitive = string | number | boolean | null;
