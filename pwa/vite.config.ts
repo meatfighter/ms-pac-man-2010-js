@@ -101,7 +101,7 @@ function versionedHtmlPlugin(): PluginOption {
     };
 }
 
-function versionedStaticAssetsPlugin(): PluginOption {
+function versionedStaticAssetsPlugin(command: string): PluginOption {
     return {
         name: "versioned-static-assets",
         generateBundle(_options, bundle): void {
@@ -114,6 +114,10 @@ function versionedStaticAssetsPlugin(): PluginOption {
             }
         },
         closeBundle(): void {
+            if (command !== "build") {
+                return;
+            }
+
             const pwaDistDir = join(rootDir, "..", "dist", "pwa");
             const manifestPath = join(rootDir, "..", "dist", "pwa", "manifest.webmanifest");
             if (existsSync(manifestPath)) {
@@ -136,7 +140,7 @@ function versionedStaticAssetsPlugin(): PluginOption {
 export default defineConfig(({ command }) => ({
     root: rootDir,
     base: command === "build" ? "/pwa/" : "/",
-    plugins: [versionedHtmlPlugin(), versionedStaticAssetsPlugin()],
+    plugins: [versionedHtmlPlugin(), versionedStaticAssetsPlugin(command)],
     define: {
         __APP_VERSION__: JSON.stringify(versionInfo.version),
         __BUILD_STAMP__: JSON.stringify(versionInfo.buildStamp),

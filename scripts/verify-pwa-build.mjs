@@ -41,6 +41,7 @@ function main() {
     }
 
     assertApiBypassPrecedesCacheHandling(serviceWorker);
+    assertNormalizedServiceWorkerCacheKeys(serviceWorker);
     assertIndexAssetReferencesAreStamped(readFileSync(indexPath, "utf8"), versionInfo.buildStamp);
 
     console.log(`PWA build verified: ${builtAssets.length} built assets are precached.`);
@@ -82,6 +83,21 @@ function assertApiBypassPrecedesCacheHandling(serviceWorker) {
     assert.ok(apiBypassIndex >= 0, "Service worker no longer explicitly bypasses the high-score API.");
     assert.ok(cacheGuardIndex >= 0, "Service worker cache handling guard was not found.");
     assert.ok(apiBypassIndex < cacheGuardIndex, "High-score API bypass must run before Cache API handling.");
+}
+
+function assertNormalizedServiceWorkerCacheKeys(serviceWorker) {
+    assert.ok(
+        serviceWorker.includes('const IGNORED_CACHE_SEARCH_PARAMS = new Set(["v"]);'),
+        "Service worker must declare build-stamp query parameters that are ignored for cache keys."
+    );
+    assert.ok(serviceWorker.includes("function createCacheUrl"), "Service worker must normalize app cache keys.");
+    assert.ok(
+        serviceWorker.includes("APP_STATIC_RESOURCES.map((url) => createCacheUrl(url))"),
+        "Service worker install precache must use normalized cache keys."
+    );
+    assert.ok(serviceWorker.includes("cache.put(cacheUrl, copy)"), "Service worker runtime cache writes must use normalized cache keys.");
+    assert.ok(serviceWorker.includes("caches.match(createCacheUrl(request))"), "Service worker runtime cache reads must use normalized cache keys.");
+    assert.equal(serviceWorker.includes("ignoreSearch"), false, "Service worker should use normalized cache keys instead of ignoreSearch.");
 }
 
 function assertIndexAssetReferencesAreStamped(html, buildStamp) {

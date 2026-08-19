@@ -1,6 +1,8 @@
 const VERSION = new URL(self.location.href).searchParams.get("v") || "dev";
 const CACHE_NAME = `ms-pac-man-2010-pwa-${VERSION}`;
 const CACHE_PREFIXES = ["ms-pac-man-2010-", "ms-pac-man-2010-pwa-"];
+const IGNORED_CACHE_SEARCH_PARAMS = new Set(["v"]);
+const APP_INDEX = createCacheUrl("./index.html");
 const APP_STATIC_RESOURCES = [
     "./",
     "./index.html",
@@ -17,7 +19,26 @@ const APP_STATIC_RESOURCES = [
 
 function canUseCacheApi(request) {
     const url = new URL(request.url);
-    return request.method === "GET" && url.origin === self.location.origin && (url.protocol === "http:" || url.protocol === "https:");
+    return (
+        request.method === "GET" &&
+        url.origin === self.location.origin &&
+        (url.protocol === "http:" || url.protocol === "https:") &&
+        url.href.startsWith(self.registration.scope)
+    );
+}
+
+function createCacheUrl(requestOrUrl) {
+    const rawUrl = typeof requestOrUrl === "string" ? requestOrUrl : requestOrUrl.url;
+    const url = new URL(rawUrl, self.registration.scope);
+
+    if (url.origin === self.location.origin && url.href.startsWith(self.registration.scope)) {
+        for (const param of IGNORED_CACHE_SEARCH_PARAMS) {
+            url.searchParams.delete(param);
+        }
+    }
+
+    url.hash = "";
+    return url.href;
 }
 
 function remember(request, response) {
@@ -25,10 +46,11 @@ function remember(request, response) {
         return;
     }
 
+    const cacheUrl = createCacheUrl(request);
     const copy = response.clone();
     caches
         .open(CACHE_NAME)
-        .then((cache) => cache.put(request, copy))
+        .then((cache) => cache.put(cacheUrl, copy))
         .catch(() => undefined);
 }
 
@@ -36,7 +58,7 @@ self.addEventListener("install", (event) => {
     event.waitUntil(
         (async () => {
             const cache = await caches.open(CACHE_NAME);
-            await cache.addAll(APP_STATIC_RESOURCES);
+            await cache.addAll(APP_STATIC_RESOURCES.map((url) => createCacheUrl(url)));
             await self.skipWaiting();
         })()
     );
@@ -70,16 +92,16 @@ self.addEventListener("fetch", (event) => {
         event.respondWith(
             fetch(request)
                 .then((response) => {
-                    remember("./index.html", response);
+                    remember(APP_INDEX, response);
                     return response;
                 })
-                .catch(() => caches.match("./index.html", { ignoreSearch: true }))
+                .catch(() => caches.match(APP_INDEX))
         );
         return;
     }
 
     event.respondWith(
-        caches.match(request, { ignoreSearch: true }).then((cached) => {
+        caches.match(createCacheUrl(request)).then((cached) => {
             const networked = fetch(request)
                 .then((response) => {
                     remember(request, response);
