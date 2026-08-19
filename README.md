@@ -12,6 +12,8 @@ Repository layout:
 Useful commands:
 
 - `npm.cmd run dev` starts the PWA dev server.
+- `npm.cmd test` runs the PWA save/restore state tests.
+- `npm.cmd run verify:pwa-build` verifies an existing generated PWA build.
 - `npm.cmd run build:web` builds only the about page and PWA.
 - `npm.cmd run build:desktop` builds the legacy Java desktop jar and zip.
 - `npm.cmd run release:desktop` refreshes the staged desktop release zip for upload.
