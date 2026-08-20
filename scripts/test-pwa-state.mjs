@@ -204,6 +204,18 @@ try {
         const extraModeField = clone(snapshot);
         extraModeField.mode.fields.extra = 1;
         assert.equal(serializer.isSupportedSnapshot(extraModeField), false);
+
+        const zeroSubmittedScore = clone(snapshot);
+        zeroSubmittedScore.submittedScore = { world: 0, score: 0, initials: "AAA" };
+        assert.equal(serializer.isSupportedSnapshot(zeroSubmittedScore), false);
+
+        const nonMultipleSubmittedScore = clone(snapshot);
+        nonMultipleSubmittedScore.submittedScore = { world: 0, score: 12341, initials: "AAA" };
+        assert.equal(serializer.isSupportedSnapshot(nonMultipleSubmittedScore), false);
+
+        const invalidInitialsSubmittedScore = clone(snapshot);
+        invalidInitialsSubmittedScore.submittedScore = { world: 0, score: 12340, initials: "cat" };
+        assert.equal(serializer.isSupportedSnapshot(invalidInitialsSubmittedScore), false);
     });
 
     await runTest("store saves and restores a non-playing mode snapshot", () => {
@@ -294,7 +306,8 @@ try {
         const source = createFakeMain("attract", "source", {
             score: 12340,
             worldIndex: 1,
-            highScore: { world: 1, score: 12340, initials: "CAT" }
+            highScore: { world: 1, score: 12340, initials: "CAT" },
+            submittedScore: { world: 1, score: 12340, initials: "CAT" }
         });
         const snapshot = serializer.createSnapshot(source, APP_VERSION);
         assert.deepEqual(snapshot.submittedScore, { world: 1, score: 12340, initials: "CAT" });
@@ -304,6 +317,29 @@ try {
         });
         serializer.restoreSnapshot(target, createGameContainer(), snapshot);
         assert.deepEqual(target.scoreAccessCalls, []);
+        assert.deepEqual(target.submittedScore, { world: 1, score: 12340, initials: "CAT" });
+    });
+
+    await runTest("serializer captures the explicit submitted score when equal-score rows exist", () => {
+        const serializer = new MsPacManGameStateSerializer();
+        const source = createFakeMain("attract", "source", {
+            score: 12340,
+            worldIndex: 1,
+            highScores: [
+                { world: 1, score: 12340, initials: "DOG" },
+                { world: 1, score: 12340, initials: "CAT" }
+            ],
+            submittedScore: { world: 1, score: 12340, initials: "CAT" }
+        });
+
+        const snapshot = serializer.createSnapshot(source, APP_VERSION);
+        assert.deepEqual(snapshot.submittedScore, { world: 1, score: 12340, initials: "CAT" });
+
+        const target = createFakeMain("attract", "target", {
+            highScore: { world: 1, score: 12340, initials: "DOG" }
+        });
+        serializer.restoreSnapshot(target, createGameContainer(), snapshot);
+        assert.deepEqual(target.scoreAccessCalls, [{ upload: true, world: 1, score: 12340, initials: "CAT" }]);
     });
 } finally {
     await server.close();
@@ -334,7 +370,8 @@ function createFakeMain(modeId, variant, options = {}) {
         ...createMainFields(variant, options),
         input: createInput(),
         random: createRandom(variant),
-        highScores: createHighScores(options.highScore),
+        highScores: createHighScores(options.highScores ?? options.highScore),
+        submittedScore: options.submittedScore ?? null,
         robotInputs: createRobotInputs(variant),
         restoreModes: {},
         mode: null,
@@ -396,6 +433,7 @@ function createFakeMain(modeId, variant, options = {}) {
         },
         accessScoresDatabase(upload, world, score, initials) {
             this.scoreAccessCalls.push({ upload, world, score, initials });
+            this.submittedScore = upload ? { world, score, initials } : null;
         }
     };
 
@@ -607,9 +645,10 @@ function createRobotInputs(variant) {
     return [0, 1, 2, 3].map((index) => ({ index: offset + index + 1 }));
 }
 
-function createHighScores(highScore) {
+function createHighScores(highScoreOrScores) {
     const scores = [[], [], [], []];
-    if (highScore) {
+    const highScores = Array.isArray(highScoreOrScores) ? highScoreOrScores : highScoreOrScores ? [highScoreOrScores] : [];
+    for (const highScore of highScores) {
         scores[highScore.world].push({
             score: highScore.score,
             initials: highScore.initials

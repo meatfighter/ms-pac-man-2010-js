@@ -41,17 +41,9 @@ function createCacheUrl(requestOrUrl) {
     return url.href;
 }
 
-function remember(request, response) {
-    if (!response.ok) {
-        return;
-    }
-
-    const cacheUrl = createCacheUrl(request);
-    const copy = response.clone();
-    caches
-        .open(CACHE_NAME)
-        .then((cache) => cache.put(cacheUrl, copy))
-        .catch(() => undefined);
+async function matchCurrentCache(requestOrUrl) {
+    const cache = await caches.open(CACHE_NAME);
+    return cache.match(createCacheUrl(requestOrUrl));
 }
 
 self.addEventListener("install", (event) => {
@@ -89,27 +81,13 @@ self.addEventListener("fetch", (event) => {
     }
 
     if (request.mode === "navigate") {
-        event.respondWith(
-            fetch(request)
-                .then((response) => {
-                    remember(APP_INDEX, response);
-                    return response;
-                })
-                .catch(() => caches.match(APP_INDEX))
-        );
+        event.respondWith(fetch(request).catch(() => matchCurrentCache(APP_INDEX)));
         return;
     }
 
     event.respondWith(
-        caches.match(createCacheUrl(request)).then((cached) => {
-            const networked = fetch(request)
-                .then((response) => {
-                    remember(request, response);
-                    return response;
-                })
-                .catch(() => cached);
-
-            return cached || networked;
+        matchCurrentCache(request).then((cached) => {
+            return cached || fetch(request);
         })
     );
 });

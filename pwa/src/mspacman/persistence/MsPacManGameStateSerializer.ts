@@ -1,4 +1,5 @@
 import type { GameContainer, Music } from "slick2d-ts";
+import { isValidSubmittedScoreTuple, normalizeHighScoreInitials } from "../HighScoreProtocol";
 import type { Main } from "../Main";
 import type { PlayingMode } from "../PlayingMode";
 import {
@@ -361,7 +362,6 @@ const FRUIT_TARGET_SNAPSHOT_KEYS = ["fields", "exitPath"] as const;
 const MUSIC_SNAPSHOT_KEYS = ["id", "looped", "paused", "playing", "playbackRate", "position", "volume"] as const;
 const RANDOM_SNAPSHOT_KEYS = ["seed0", "seed1", "seed2"] as const;
 const ROBOT_INPUT_SNAPSHOT_KEYS = ["index"] as const;
-const SUBMITTED_SCORE_SNAPSHOT_KEYS = ["initials", "score", "world"] as const;
 
 const BOOLEAN_FIELD_NAMES = new Set<string>([
     "paused",
@@ -534,15 +534,7 @@ function isValidRobotInputs(value: unknown): value is RobotInputSnapshot[] {
 }
 
 function isValidSubmittedScoreSnapshot(value: unknown): value is SubmittedScoreSnapshot {
-    const snapshot = asRecord(value);
-    return (
-        snapshot !== null &&
-        hasExactKeys(snapshot, SUBMITTED_SCORE_SNAPSHOT_KEYS) &&
-        typeof snapshot.initials === "string" &&
-        snapshot.initials.length === 3 &&
-        isIntegerInRange(snapshot.score, 0, 2147483647) &&
-        isIntegerInRange(snapshot.world, 0, 3)
-    );
+    return isValidSubmittedScoreTuple(value);
 }
 
 function isValidFieldBag(value: unknown, fields: readonly string[]): value is JsonRecord {
@@ -857,20 +849,14 @@ export class MsPacManGameStateSerializer {
     }
 
     private captureSubmittedScore(main: Main): SubmittedScoreSnapshot | null {
-        if (main.score <= 0) {
-            return null;
-        }
-
-        const rows = main.highScores[main.worldIndex] ?? [];
-        const row = rows.find((score) => score.score === main.score);
-        if (!row) {
+        if (main.submittedScore === null || !isValidSubmittedScoreSnapshot(main.submittedScore)) {
             return null;
         }
 
         return {
-            initials: row.initials,
-            score: row.score,
-            world: main.worldIndex
+            initials: main.submittedScore.initials,
+            score: main.submittedScore.score,
+            world: main.submittedScore.world
         };
     }
 
@@ -879,9 +865,18 @@ export class MsPacManGameStateSerializer {
             return;
         }
 
+        if (!isValidSubmittedScoreSnapshot(snapshot)) {
+            return;
+        }
+
         const rows = main.highScores[snapshot.world] ?? [];
-        const initials = snapshot.initials.padEnd(3, " ").substring(0, 3);
+        const initials = normalizeHighScoreInitials(snapshot.initials);
         if (rows.some((row) => row.score === snapshot.score && row.initials === initials)) {
+            main.submittedScore = {
+                initials,
+                score: snapshot.score,
+                world: snapshot.world
+            };
             return;
         }
 

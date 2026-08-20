@@ -42,6 +42,7 @@ function main() {
 
     assertApiBypassPrecedesCacheHandling(serviceWorker);
     assertNormalizedServiceWorkerCacheKeys(serviceWorker);
+    assertImmutableServiceWorkerRuntimeCache(serviceWorker);
     assertIndexAssetReferencesAreStamped(readFileSync(indexPath, "utf8"), versionInfo.buildStamp);
 
     console.log(`PWA build verified: ${builtAssets.length} built assets are precached.`);
@@ -95,9 +96,21 @@ function assertNormalizedServiceWorkerCacheKeys(serviceWorker) {
         serviceWorker.includes("APP_STATIC_RESOURCES.map((url) => createCacheUrl(url))"),
         "Service worker install precache must use normalized cache keys."
     );
-    assert.ok(serviceWorker.includes("cache.put(cacheUrl, copy)"), "Service worker runtime cache writes must use normalized cache keys.");
-    assert.ok(serviceWorker.includes("caches.match(createCacheUrl(request))"), "Service worker runtime cache reads must use normalized cache keys.");
+    assert.ok(serviceWorker.includes("cache.match(createCacheUrl(requestOrUrl))"), "Service worker runtime cache reads must use normalized cache keys.");
     assert.equal(serviceWorker.includes("ignoreSearch"), false, "Service worker should use normalized cache keys instead of ignoreSearch.");
+}
+
+function assertImmutableServiceWorkerRuntimeCache(serviceWorker) {
+    assert.equal(serviceWorker.includes("cache.put("), false, "Service worker must not overwrite precached resources at runtime.");
+    assert.equal(serviceWorker.includes("remember("), false, "Service worker must not keep the old runtime cache-write helper.");
+    assert.ok(
+        serviceWorker.includes("fetch(request).catch(() => matchCurrentCache(APP_INDEX))"),
+        "Navigation fallback must fetch first and fall back to cached APP_INDEX without replacing APP_INDEX."
+    );
+    assert.ok(
+        serviceWorker.includes("return cached || fetch(request);"),
+        "Non-navigation requests must return current-cache hits directly and fetch uncached requests without overwriting precached assets."
+    );
 }
 
 function assertIndexAssetReferencesAreStamped(html, buildStamp) {

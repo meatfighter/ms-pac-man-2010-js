@@ -29,12 +29,13 @@ import { EndingMode } from "./EndingMode";
 import { EnterInitialsMode } from "./EnterInitialsMode";
 import { HallOfFameMode } from "./HallOfFameMode";
 import { HighScore } from "./HighScore";
+import { ROWS_PER_WORLD, type RemoteHighScore, isAllowedInitials, isPlausibleScore, isWorld, normalizeHighScoreInitials } from "./HighScoreProtocol";
 import { HighScoreService } from "./HighScoreService";
 import { HumanInput } from "./HumanInput";
 import type { IInput } from "./IInput";
 import type { IMode } from "./IMode";
 import { IntroMode } from "./IntroMode";
-import type { ModeId } from "./persistence/GameStateSnapshot";
+import type { ModeId, SubmittedScoreSnapshot } from "./persistence/GameStateSnapshot";
 import { RobotInput } from "./RobotInput";
 import { ScalableGame2 } from "./ScalableGame2";
 import { SelectWorldMode } from "./SelectWorldMode";
@@ -121,6 +122,7 @@ export class Main extends BasicGame {
     public fadeMusicFlag = false;
     public uploadComplete = false;
     public scoresDownloadComplete = true;
+    public submittedScore: SubmittedScoreSnapshot | null = null;
     public robotInputs: RobotInput[] = new Array<RobotInput>(4);
     public demoIndex = 0;
     public demoMode = false;
@@ -129,6 +131,7 @@ export class Main extends BasicGame {
     public loadingCompleteHandler: ((gc: GameContainer) => boolean) | null = null;
     public windowedDisplayModeProvider: WindowedDisplayModeProvider | null = null;
     public pauseStateChangeHandler: PauseStateChangeHandler | null = null;
+    private leaderboardRevision = 0;
 
     public symbols = imageGrid<Image | null>(6, 256);
     public ghostSprites = imageCube<Image>(4, 4, 2);
@@ -501,43 +504,73 @@ export class Main extends BasicGame {
     }
 
     public isHighScore(): boolean {
-        return this.score > 0 && this.highScores[this.worldIndex][4].score <= this.score;
+        return this.score > 0 && this.highScores[this.worldIndex][4].score < this.score;
     }
 
     public downloadScores(): void {
         this.scoresDownloadComplete = false;
-        void HighScoreService.downloadScores(this.highScores).finally(() => {
-            this.scoresDownloadComplete = true;
-        });
+        const revision = this.leaderboardRevision;
+        void HighScoreService.downloadScores()
+            .then((scores) => {
+                if (scores !== null) {
+                    this.applyRemoteScoresIfCurrent(scores, revision);
+                }
+            })
+            .finally(() => {
+                this.scoresDownloadComplete = true;
+            });
     }
 
     public accessScoresDatabaseAsync(update: boolean, world: number, score: number, initials: string): void {
         this.uploadComplete = false;
         setTimeout(() => {
             const normalizedInitials = this.normalizeHighScoreInitials(initials);
-            this.accessScoresDatabase(update, world, score, normalizedInitials);
-            if (!update) {
+            const submittedScore = this.accessScoresDatabase(update, world, score, normalizedInitials);
+            if (submittedScore === null) {
                 this.uploadComplete = true;
                 return;
             }
 
-            void HighScoreService.submitScore(this.highScores, world, score, normalizedInitials).finally(() => {
-                this.uploadComplete = true;
-            });
+            const revision = this.leaderboardRevision;
+            void HighScoreService.submitScore(submittedScore.world, submittedScore.score, submittedScore.initials)
+                .then((scores) => {
+                    if (scores !== null) {
+                        this.applyRemoteScoresIfCurrent(scores, revision);
+                    }
+                })
+                .finally(() => {
+                    this.uploadComplete = true;
+                });
         }, 0);
     }
 
-    public accessScoresDatabase(update: boolean, world: number, score: number, initials: string): void {
-        if (!update || world < 0 || world >= this.highScores.length) {
-            return;
+    public accessScoresDatabase(update: boolean, world: number, score: number, initials: string): SubmittedScoreSnapshot | null {
+        const normalizedInitials = this.normalizeHighScoreInitials(initials);
+        if (!update || !isWorld(world) || !isPlausibleScore(score) || !isAllowedInitials(normalizedInitials)) {
+            return null;
         }
         const rows = this.highScores[world];
+        const before = this.serializeHighScoreRows(rows);
         const candidate = new HighScore();
         candidate.score = score;
-        candidate.initials = this.normalizeHighScoreInitials(initials);
+        candidate.initials = normalizedInitials;
         rows.push(candidate);
         rows.sort((a, b) => b.score - a.score);
-        rows.length = 5;
+        rows.length = ROWS_PER_WORLD;
+
+        if (this.serializeHighScoreRows(rows) !== before) {
+            this.leaderboardRevision++;
+        }
+
+        const submittedScore = rows.some((row) => row.score === score && row.initials === normalizedInitials)
+            ? {
+                  initials: normalizedInitials,
+                  score,
+                  world
+              }
+            : null;
+        this.submittedScore = submittedScore;
+        return submittedScore;
     }
 
     public override closeRequested(): boolean {
@@ -615,8 +648,43 @@ export class Main extends BasicGame {
         this.pauseStateChangeHandler?.(paused);
     }
 
+    private applyRemoteScoresIfCurrent(scores: readonly RemoteHighScore[], revision: number): void {
+        if (revision !== this.leaderboardRevision) {
+            return;
+        }
+        this.applyRemoteScores(scores);
+        this.leaderboardRevision++;
+    }
+
+    private applyRemoteScores(scores: readonly RemoteHighScore[]): void {
+        for (let world = 0; world < this.highScores.length; world++) {
+            for (let row = 0; row < ROWS_PER_WORLD; row++) {
+                this.highScores[world][row] = new HighScore();
+            }
+        }
+
+        const indexes = new Array<number>(this.highScores.length).fill(0);
+        for (const score of scores) {
+            if (!isWorld(score.world)) {
+                continue;
+            }
+            const row = indexes[score.world]++;
+            if (row >= ROWS_PER_WORLD) {
+                continue;
+            }
+            const highScore = new HighScore();
+            highScore.score = score.score;
+            highScore.initials = score.initials;
+            this.highScores[score.world][row] = highScore;
+        }
+    }
+
+    private serializeHighScoreRows(rows: readonly HighScore[]): string {
+        return rows.map((row) => `${row.score}|${row.initials}`).join("\n");
+    }
+
     private normalizeHighScoreInitials(initials: string): string {
-        return initials.padEnd(3, " ").substring(0, 3);
+        return normalizeHighScoreInitials(initials);
     }
 
     private getWindowedDisplayMode(): { width: number; height: number } {

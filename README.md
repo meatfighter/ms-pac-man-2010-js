@@ -15,6 +15,7 @@ Useful commands:
 - `npm.cmd test` runs the PWA save/restore state tests.
 - `npm.cmd run verify:pwa-build` verifies an existing generated PWA build.
 - `npm.cmd run build:web` builds only the about page and PWA.
+- `npm.cmd run build:web:release` builds the about page and PWA in release mode, requiring `MSPACMAN_HMAC_KEY_HEX`.
 - `npm.cmd run build:desktop` builds the legacy Java desktop jar and zip.
 - `npm.cmd run release:desktop` refreshes the staged desktop release zip for upload.
 - `npm.cmd run build` builds the full release bundle.
@@ -23,7 +24,8 @@ Useful commands:
 High-score server configuration:
 
 - PWA builds use `MSPACMAN_SCORE_API_URL` when set, otherwise `/api/ms-pac-man-2010/scores`.
-- PWA score submission uses build-time `MSPACMAN_HMAC_KEY_HEX`; without it, downloads still run and submissions remain local-only. Because browser bundles are inspectable, this value must not be treated as a private server secret.
+- Browser score API URLs must be same-origin `/api/ms-pac-man-2010/` paths; cross-origin browser score APIs are unsupported because the server deliberately does not provide CORS.
+- PWA score submission uses build-time `MSPACMAN_HMAC_KEY_HEX`; without it, downloads still run and submissions remain local-only. Nonempty keys must be exactly 64 lowercase hexadecimal characters. Release-mode PWA builds require the key. Because browser bundles are inspectable, this value must not be treated as a private server secret.
 - Desktop Java uses `MSPACMAN_SCORE_API_URL` or `-Dmspacman.scoreApiUrl=...`; otherwise it defaults to `https://meatfighter.com/api/ms-pac-man-2010/scores`.
 - Desktop Java uses `MSPACMAN_HMAC_KEY_HEX` or `-Dmspacman.hmacKeyHex=...` for remote submission; without it, downloads still run and submissions remain local-only.
 

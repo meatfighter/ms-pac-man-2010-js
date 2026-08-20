@@ -11,8 +11,50 @@ interface VersionInfo {
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const versionInfo = JSON.parse(readFileSync(new URL("../version.json", import.meta.url), "utf8")) as VersionInfo;
 const encodedBuildStamp = encodeURIComponent(versionInfo.buildStamp);
-const highScoreApiUrl = process.env.MSPACMAN_SCORE_API_URL ?? "/api/ms-pac-man-2010/scores";
-const highScoreHmacKeyHex = process.env.MSPACMAN_HMAC_KEY_HEX ?? "";
+const DEFAULT_HIGH_SCORE_API_URL = "/api/ms-pac-man-2010/scores";
+const HIGH_SCORE_API_PREFIX = "/api/ms-pac-man-2010/";
+const HMAC_KEY_PATTERN = /^[0-9a-f]{64}$/;
+
+interface HighScoreBuildConfig {
+    readonly apiUrl: string;
+    readonly hmacKeyHex: string;
+}
+
+function resolveHighScoreBuildConfig(command: string, mode: string): HighScoreBuildConfig {
+    const apiUrl = process.env.MSPACMAN_SCORE_API_URL ?? DEFAULT_HIGH_SCORE_API_URL;
+    const hmacKeyHex = process.env.MSPACMAN_HMAC_KEY_HEX ?? "";
+    const releaseBuild = command === "build" && mode === "release";
+
+    validateHighScoreApiUrl(apiUrl, releaseBuild);
+    validateHighScoreHmacKey(hmacKeyHex, releaseBuild);
+
+    return {
+        apiUrl,
+        hmacKeyHex
+    };
+}
+
+function validateHighScoreApiUrl(apiUrl: string, releaseBuild: boolean): void {
+    if (!apiUrl.startsWith("/") || apiUrl.startsWith("//")) {
+        throw new Error("Browser score API URLs must be same-origin paths; cross-origin score APIs are unsupported.");
+    }
+    const parsed = new URL(apiUrl, "https://ms-pac-man.invalid");
+    if (parsed.origin !== "https://ms-pac-man.invalid" || !parsed.pathname.startsWith(HIGH_SCORE_API_PREFIX) || parsed.search !== "" || parsed.hash !== "") {
+        throw new Error("MSPACMAN_SCORE_API_URL must be a same-origin /api/ms-pac-man-2010/ path without query or fragment.");
+    }
+    if (releaseBuild && apiUrl !== DEFAULT_HIGH_SCORE_API_URL) {
+        throw new Error("Release PWA builds use the fixed same-origin /api/ms-pac-man-2010/scores endpoint.");
+    }
+}
+
+function validateHighScoreHmacKey(hmacKeyHex: string, releaseBuild: boolean): void {
+    if (hmacKeyHex !== "" && !HMAC_KEY_PATTERN.test(hmacKeyHex)) {
+        throw new Error("MSPACMAN_HMAC_KEY_HEX must be exactly 64 lowercase hexadecimal characters.");
+    }
+    if (releaseBuild && hmacKeyHex === "") {
+        throw new Error("MSPACMAN_HMAC_KEY_HEX is required for release PWA builds.");
+    }
+}
 
 function renderVersionPlaceholders(text: string): string {
     return text.replaceAll("%APP_VERSION%", versionInfo.version).replaceAll("%BUILD_STAMP%", encodedBuildStamp);
@@ -137,28 +179,32 @@ function versionedStaticAssetsPlugin(command: string): PluginOption {
     };
 }
 
-export default defineConfig(({ command }) => ({
-    root: rootDir,
-    base: command === "build" ? "/pwa/" : "/",
-    plugins: [versionedHtmlPlugin(), versionedStaticAssetsPlugin(command)],
-    define: {
-        __APP_VERSION__: JSON.stringify(versionInfo.version),
-        __BUILD_STAMP__: JSON.stringify(versionInfo.buildStamp),
-        __HIGH_SCORE_API_URL__: JSON.stringify(highScoreApiUrl),
-        __HIGH_SCORE_HMAC_KEY_HEX__: JSON.stringify(highScoreHmacKeyHex)
-    },
-    build: {
-        outDir: "../dist/pwa",
-        emptyOutDir: true,
-        target: "es2022",
-        sourcemap: false
-    },
-    server: {
-        port: 5173,
-        strictPort: false
-    },
-    preview: {
-        port: 4173,
-        strictPort: false
-    }
-}));
+export default defineConfig(({ command, mode }) => {
+    const highScoreBuildConfig = resolveHighScoreBuildConfig(command, mode);
+
+    return {
+        root: rootDir,
+        base: command === "build" ? "/pwa/" : "/",
+        plugins: [versionedHtmlPlugin(), versionedStaticAssetsPlugin(command)],
+        define: {
+            __APP_VERSION__: JSON.stringify(versionInfo.version),
+            __BUILD_STAMP__: JSON.stringify(versionInfo.buildStamp),
+            __HIGH_SCORE_API_URL__: JSON.stringify(highScoreBuildConfig.apiUrl),
+            __HIGH_SCORE_HMAC_KEY_HEX__: JSON.stringify(highScoreBuildConfig.hmacKeyHex)
+        },
+        build: {
+            outDir: "../dist/pwa",
+            emptyOutDir: true,
+            target: "es2022",
+            sourcemap: false
+        },
+        server: {
+            port: 5173,
+            strictPort: false
+        },
+        preview: {
+            port: 4173,
+            strictPort: false
+        }
+    };
+});
