@@ -181,6 +181,8 @@ export class Main extends BasicGame {
 
     public init(gc: GameContainer): void {
         this.startupLoadingComplete = false;
+        this.leaderboardRevision = 0;
+        this.submittedScore = null;
         this.findNativeDisplayMode();
         this.initializeHighScores();
         this.initializeFadeColors();
@@ -550,6 +552,17 @@ export class Main extends BasicGame {
             return null;
         }
         const rows = this.highScores[world];
+        const submittedScore = {
+            initials: normalizedInitials,
+            score,
+            world
+        };
+        if (rows.some((row) => row.score === score && row.initials === normalizedInitials)) {
+            this.leaderboardRevision++;
+            this.submittedScore = submittedScore;
+            return submittedScore;
+        }
+
         const before = this.serializeHighScoreRows(rows);
         const candidate = new HighScore();
         candidate.score = score;
@@ -558,17 +571,16 @@ export class Main extends BasicGame {
         rows.sort((a, b) => b.score - a.score);
         rows.length = ROWS_PER_WORLD;
 
-        if (this.serializeHighScoreRows(rows) !== before) {
+        const after = this.serializeHighScoreRows(rows);
+        if (after !== before) {
             this.leaderboardRevision++;
         }
 
-        const submittedScore = rows.some((row) => row.score === score && row.initials === normalizedInitials)
-            ? {
-                  initials: normalizedInitials,
-                  score,
-                  world
-              }
-            : null;
+        if (!rows.some((row) => row.score === score && row.initials === normalizedInitials)) {
+            this.submittedScore = null;
+            return null;
+        }
+
         this.submittedScore = submittedScore;
         return submittedScore;
     }
@@ -585,7 +597,6 @@ export class Main extends BasicGame {
     }
 
     private completeStartupLoading(gc: GameContainer): void {
-        this.downloadScores();
         this.levelSelectMusic = new Music("music/level_select.ogg");
         this.gameOverMusic = new Music("music/game_over.ogg");
         this.highScoreMusic = new Music("music/high_score.ogg");
@@ -608,6 +619,7 @@ export class Main extends BasicGame {
         } else {
             this.resetNextFrameTime();
         }
+        this.downloadScores();
     }
 
     private fullScreenToggleCheck(gc: GameContainer): void {
@@ -653,6 +665,7 @@ export class Main extends BasicGame {
             return;
         }
         this.applyRemoteScores(scores);
+        this.submittedScore = null;
         this.leaderboardRevision++;
     }
 

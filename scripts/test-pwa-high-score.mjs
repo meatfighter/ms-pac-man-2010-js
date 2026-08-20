@@ -10,6 +10,7 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const pwaRoot = resolve(rootDir, "pwa");
 const originalFetch = globalThis.fetch;
 const originalWindow = globalThis.window;
+const originalCrypto = globalThis.crypto;
 
 process.env.MSPACMAN_SCORE_API_URL = API_URL;
 process.env.MSPACMAN_HMAC_KEY_HEX = KEY_HEX;
@@ -28,7 +29,8 @@ const server = await createServer({
 });
 
 try {
-    const { HighScoreService, calculateScoreChecksumForTesting } = await server.ssrLoadModule("/src/mspacman/HighScoreService.ts");
+    const { HighScoreService, calculateScoreChecksumForTesting, resetHighScoreServiceForTesting } =
+        await server.ssrLoadModule("/src/mspacman/HighScoreService.ts");
     const { PROTOCOL_VERSION } = await server.ssrLoadModule("/src/mspacman/HighScoreProtocol.ts");
     const { Main } = await server.ssrLoadModule("/src/mspacman/Main.ts");
     const { HighScore } = await server.ssrLoadModule("/src/mspacman/HighScore.ts");
@@ -148,6 +150,109 @@ try {
         };
     });
 
+    await runTest("unavailable WebCrypto returns ordinary submission failure without network retry", async () => {
+        resetHighScoreServiceForTesting();
+        const calls = installFetch(() => jsonResponse([], PROTOCOL_VERSION));
+        Object.defineProperty(globalThis, "crypto", {
+            configurable: true,
+            value: {
+                subtle: {
+                    importKey() {
+                        return Promise.reject(new Error("synthetic crypto import failure"));
+                    },
+                    sign() {
+                        return Promise.reject(new Error("synthetic crypto sign failure"));
+                    }
+                }
+            }
+        });
+
+        assert.equal(await HighScoreService.submitScore(0, 123450, "MJB"), null);
+        assert.equal(calls.length, 0);
+        restoreCrypto();
+        resetHighScoreServiceForTesting();
+    });
+
+    await runTest("rejecting WebCrypto signing returns ordinary submission failure without network retry", async () => {
+        resetHighScoreServiceForTesting();
+        const calls = installFetch(() => jsonResponse([], PROTOCOL_VERSION));
+        Object.defineProperty(globalThis, "crypto", {
+            configurable: true,
+            value: {
+                subtle: {
+                    importKey() {
+                        return Promise.resolve({});
+                    },
+                    sign() {
+                        return Promise.reject(new Error("synthetic crypto sign failure"));
+                    }
+                }
+            }
+        });
+
+        assert.equal(await HighScoreService.submitScore(0, 123450, "MJB"), null);
+        assert.equal(calls.length, 0);
+        restoreCrypto();
+        resetHighScoreServiceForTesting();
+    });
+
+    await runTest("score exactly equal to fifth place is not a high score", () => {
+        const main = createMain(Main, HighScore, [
+            [
+                { score: 50000, initials: "AAA" },
+                { score: 40000, initials: "BBB" },
+                { score: 30000, initials: "CCC" },
+                { score: 20000, initials: "DDD" },
+                { score: 10000, initials: "EEE" }
+            ]
+        ]);
+        main.worldIndex = 0;
+        main.score = 10000;
+        assert.equal(main.isHighScore(), false);
+        main.score = 10010;
+        assert.equal(main.isHighScore(), true);
+    });
+
+    await runTest("exact duplicate submission leaves five-row local table unchanged", () => {
+        const initialRows = [
+            { score: 50000, initials: "AAA" },
+            { score: 40000, initials: "BBB" },
+            { score: 30000, initials: "CCC" },
+            { score: 20000, initials: "DDD" },
+            { score: 10000, initials: "EEE" }
+        ];
+        const main = createMain(Main, HighScore, [initialRows]);
+        const result = main.accessScoresDatabase(true, 0, 30000, "CCC");
+
+        assert.deepEqual(readWorld(main, 0), initialRows);
+        assert.deepEqual(result, { world: 0, score: 30000, initials: "CCC" });
+        assert.equal(readWorld(main, 0).filter((row) => row.score === 30000 && row.initials === "CCC").length, 1);
+    });
+
+    await runTest("exact duplicate while server is unreachable leaves one local copy", async () => {
+        const initialRows = [
+            { score: 50000, initials: "AAA" },
+            { score: 40000, initials: "BBB" },
+            { score: 30000, initials: "CCC" },
+            { score: 20000, initials: "DDD" },
+            { score: 10000, initials: "EEE" }
+        ];
+        const post = deferred();
+        const restore = overrideScoreService(HighScoreService, Promise.resolve(null), post.promise);
+        try {
+            const main = createMain(Main, HighScore, [initialRows]);
+            main.accessScoresDatabaseAsync(true, 0, 30000, "CCC");
+            await tick();
+            post.resolve(null);
+            await tick();
+
+            assert.deepEqual(readWorld(main, 0), initialRows);
+            assert.equal(readWorld(main, 0).filter((row) => row.score === 30000 && row.initials === "CCC").length, 1);
+        } finally {
+            restore();
+        }
+    });
+
     await runTest("startup GET cannot overwrite a later successful POST response", async () => {
         const startupGet = deferred();
         const post = deferred();
@@ -196,9 +301,83 @@ try {
             restore();
         }
     });
+
+    await runTest("fresh server GET after restored submitted score becomes authoritative", async () => {
+        const serverGet = deferred();
+        const restore = overrideScoreService(HighScoreService, serverGet.promise, Promise.resolve(null));
+        try {
+            const main = createMain(Main, HighScore);
+            main.accessScoresDatabase(true, 0, 123450, "CAT");
+            main.downloadScores();
+            serverGet.resolve([
+                { world: 0, score: 200000, initials: "TOP" },
+                { world: 0, score: 150000, initials: "MID" },
+                { world: 1, score: 50000, initials: "SUE" }
+            ]);
+            await tick();
+
+            assert.deepEqual(readWorld(main, 0), [
+                { score: 200000, initials: "TOP" },
+                { score: 150000, initials: "MID" },
+                { score: 0, initials: "AAA" },
+                { score: 0, initials: "AAA" },
+                { score: 0, initials: "AAA" }
+            ]);
+            assert.equal(main.submittedScore, null);
+        } finally {
+            restore();
+        }
+    });
+
+    await runTest("authoritative POST table without candidate clears rejected submitted score", async () => {
+        const post = deferred();
+        const restore = overrideScoreService(HighScoreService, Promise.resolve(null), post.promise);
+        try {
+            const main = createMain(Main, HighScore);
+            main.accessScoresDatabaseAsync(true, 0, 123450, "MJB");
+            await tick();
+            post.resolve([{ world: 0, score: 99990, initials: "OLD" }]);
+            await tick();
+
+            assert.deepEqual(readWorld(main, 0), [
+                { score: 99990, initials: "OLD" },
+                { score: 0, initials: "AAA" },
+                { score: 0, initials: "AAA" },
+                { score: 0, initials: "AAA" },
+                { score: 0, initials: "AAA" }
+            ]);
+            assert.equal(main.submittedScore, null);
+        } finally {
+            restore();
+        }
+    });
+
+    await runTest("exact duplicate POST supersedes an older startup GET", async () => {
+        const startupGet = deferred();
+        const post = deferred();
+        const restore = overrideScoreService(HighScoreService, startupGet.promise, post.promise);
+        try {
+            const main = createMain(Main, HighScore, [[{ score: 123450, initials: "MJB" }]]);
+            main.downloadScores();
+            main.accessScoresDatabaseAsync(true, 0, 123450, "MJB");
+            await tick();
+
+            post.resolve([{ world: 0, score: 123450, initials: "MJB" }]);
+            await tick();
+            startupGet.resolve([{ world: 0, score: 99990, initials: "OLD" }]);
+            await tick();
+
+            assert.equal(readWorld(main, 0)[0].score, 123450);
+            assert.equal(readWorld(main, 0)[0].initials, "MJB");
+            assert.equal(main.submittedScore, null);
+        } finally {
+            restore();
+        }
+    });
 } finally {
     globalThis.fetch = originalFetch;
     globalThis.window = originalWindow;
+    restoreCrypto();
     await server.close();
 }
 
@@ -247,9 +426,18 @@ function protocolHeaders(contentType) {
     };
 }
 
-function createMain(Main, HighScore) {
+function createMain(Main, HighScore, worldRows = []) {
     const main = new Main();
     main.highScores = Array.from({ length: 4 }, () => Array.from({ length: 5 }, () => makeHighScore(HighScore, 0, "AAA")));
+    for (let world = 0; world < worldRows.length; world++) {
+        const rows = worldRows[world];
+        if (!Array.isArray(rows)) {
+            continue;
+        }
+        for (let row = 0; row < Math.min(rows.length, 5); row++) {
+            main.highScores[world][row] = makeHighScore(HighScore, rows[row].score, rows[row].initials);
+        }
+    }
     return main;
 }
 
@@ -294,4 +482,11 @@ function deferred() {
 
 async function tick() {
     await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function restoreCrypto() {
+    Object.defineProperty(globalThis, "crypto", {
+        configurable: true,
+        value: originalCrypto
+    });
 }

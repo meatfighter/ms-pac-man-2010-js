@@ -53,6 +53,10 @@ export async function calculateScoreChecksumForTesting(keyHex: string, candidate
     }
 }
 
+export function resetHighScoreServiceForTesting(): void {
+    hmacKeyPromise = null;
+}
+
 async function requestScores(method: "GET" | "POST", body?: unknown): Promise<RemoteHighScore[] | null> {
     try {
         const controller = new AbortController();
