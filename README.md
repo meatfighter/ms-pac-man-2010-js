@@ -12,8 +12,9 @@ Repository layout:
 Useful commands:
 
 - `npm.cmd run dev` starts the PWA dev server.
-- `npm.cmd test` runs the PWA save/restore, high-score, and build-configuration tests.
+- `npm.cmd test` runs the PWA save/restore, high-score, release-script, and build-configuration tests.
 - `npm.cmd run verify:pwa-build` verifies an existing generated PWA build.
+- `npm.cmd run build:pwa:release` builds the release PWA and stamps a fresh cache version first.
 - `npm.cmd run build:web` builds only the about page and PWA in release mode, requiring `MSPACMAN_HMAC_KEY_HEX`.
 - `npm.cmd run build:web:unsigned` builds a local unsigned web artifact with score submissions disabled; do not upload it as a production release.
 - `npm.cmd run build:desktop` builds the legacy Java desktop jar and zip.

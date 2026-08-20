@@ -3,13 +3,15 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const version = readVersion();
+const cacheBust = `${version.version}-${version.buildStamp}`;
 const encodedBuildStamp = encodeURIComponent(version.buildStamp);
+const encodedCacheBust = encodeURIComponent(cacheBust);
 const replacements = {
     __APP_VERSION__: version.version,
     __BUILD_STAMP__: version.buildStamp,
     __BUILD_STAMP_ENCODED__: encodedBuildStamp,
     __DESKTOP_ZIP__: `downloads/ms-pac-man-2010-desktop.zip?v=${encodedBuildStamp}`,
-    __PWA_URL__: `pwa/?v=${encodedBuildStamp}`
+    __PWA_URL__: `pwa/?v=${encodedCacheBust}`
 };
 
 const aboutDir = join(rootDir, "about");

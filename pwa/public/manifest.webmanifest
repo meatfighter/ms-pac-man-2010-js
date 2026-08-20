@@ -2,7 +2,7 @@
     "name": "Ms. Pac-Man 2010",
     "short_name": "Ms. Pac-Man",
     "description": "Ms. Pac-Man 2010.",
-    "start_url": "./?v=%BUILD_STAMP%",
+    "start_url": "./?v=%CACHE_VERSION%",
     "scope": ".",
     "display": "standalone",
     "orientation": "landscape",
@@ -10,37 +10,37 @@
     "theme_color": "#0f0f0f",
     "icons": [
         {
-            "src": "favicon.svg?v=%BUILD_STAMP%",
+            "src": "favicon.svg?v=%CACHE_VERSION%",
             "sizes": "any",
             "type": "image/svg+xml",
             "purpose": "any"
         },
         {
-            "src": "favicon-16.png?v=%BUILD_STAMP%",
+            "src": "favicon-16.png?v=%CACHE_VERSION%",
             "sizes": "16x16",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "favicon.png?v=%BUILD_STAMP%",
+            "src": "favicon.png?v=%CACHE_VERSION%",
             "sizes": "32x32",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "icon.svg?v=%BUILD_STAMP%",
+            "src": "icon.svg?v=%CACHE_VERSION%",
             "sizes": "any",
             "type": "image/svg+xml",
             "purpose": "any"
         },
         {
-            "src": "icon-192.png?v=%BUILD_STAMP%",
+            "src": "icon-192.png?v=%CACHE_VERSION%",
             "sizes": "192x192",
             "type": "image/png",
             "purpose": "any"
         },
         {
-            "src": "icon-512.png?v=%BUILD_STAMP%",
+            "src": "icon-512.png?v=%CACHE_VERSION%",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any"

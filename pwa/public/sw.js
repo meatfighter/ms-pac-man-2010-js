@@ -1,7 +1,6 @@
-const VERSION = new URL(self.location.href).searchParams.get("v") || "dev";
+const VERSION = "__SERVICE_WORKER_VERSION__";
 const CACHE_NAME = `ms-pac-man-2010-pwa-${VERSION}`;
 const CACHE_PREFIXES = ["ms-pac-man-2010-", "ms-pac-man-2010-pwa-"];
-const IGNORED_CACHE_SEARCH_PARAMS = new Set(["v"]);
 const APP_INDEX = createCacheUrl("./index.html");
 const APP_STATIC_RESOURCES = [
     "./",
@@ -31,10 +30,8 @@ function createCacheUrl(requestOrUrl) {
     const rawUrl = typeof requestOrUrl === "string" ? requestOrUrl : requestOrUrl.url;
     const url = new URL(rawUrl, self.registration.scope);
 
-    if (url.origin === self.location.origin && url.href.startsWith(self.registration.scope)) {
-        for (const param of IGNORED_CACHE_SEARCH_PARAMS) {
-            url.searchParams.delete(param);
-        }
+    if (url.origin === self.location.origin && url.href.startsWith(self.registration.scope) && !url.searchParams.has("v")) {
+        url.searchParams.set("v", VERSION);
     }
 
     url.hash = "";
@@ -51,7 +48,6 @@ self.addEventListener("install", (event) => {
         (async () => {
             const cache = await caches.open(CACHE_NAME);
             await cache.addAll(APP_STATIC_RESOURCES.map((url) => createCacheUrl(url)));
-            await self.skipWaiting();
         })()
     );
 });

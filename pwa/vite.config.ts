@@ -11,6 +11,10 @@ interface VersionInfo {
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const versionInfo = JSON.parse(readFileSync(new URL("../version.json", import.meta.url), "utf8")) as VersionInfo;
 const encodedBuildStamp = encodeURIComponent(versionInfo.buildStamp);
+const cacheBust = `${versionInfo.version}-${versionInfo.buildStamp}`;
+const encodedCacheBust = encodeURIComponent(cacheBust);
+const SERVICE_WORKER_VERSION_TOKEN = "__SERVICE_WORKER_VERSION__";
+const SERVICE_WORKER_VERSION_PLACEHOLDER = JSON.stringify(SERVICE_WORKER_VERSION_TOKEN);
 const DEFAULT_HIGH_SCORE_API_URL = "/api/ms-pac-man-2010/scores";
 const HIGH_SCORE_API_PREFIX = "/api/ms-pac-man-2010/";
 const HMAC_KEY_PATTERN = /^[0-9a-f]{64}$/;
@@ -57,20 +61,20 @@ function validateHighScoreHmacKey(hmacKeyHex: string, releaseBuild: boolean): vo
 }
 
 function renderVersionPlaceholders(text: string): string {
-    return text.replaceAll("%APP_VERSION%", versionInfo.version).replaceAll("%BUILD_STAMP%", encodedBuildStamp);
+    return text.replaceAll("%APP_VERSION%", versionInfo.version).replaceAll("%BUILD_STAMP%", encodedBuildStamp).replaceAll("%CACHE_VERSION%", encodedCacheBust);
 }
 
-function appendBuildStampQuery(url: string): string {
+function appendCacheBustQuery(url: string): string {
     if (/[?&]v=/.test(url)) {
         return url;
     }
-    return `${url}${url.includes("?") ? "&" : "?"}v=${encodedBuildStamp}`;
+    return `${url}${url.includes("?") ? "&" : "?"}v=${encodedCacheBust}`;
 }
 
 function versionBuiltAssetReferences(html: string): string {
     return html.replace(
         /\b(src|href)="([^"]*\/assets\/[^"]+\.(?:js|css)(?:\?[^"]*)?)"/g,
-        (_match, attribute: string, url: string) => `${attribute}="${appendBuildStampQuery(url)}"`
+        (_match, attribute: string, url: string) => `${attribute}="${appendCacheBustQuery(url)}"`
     );
 }
 
@@ -128,7 +132,9 @@ function collectPrecacheResources(dir: string, baseDir = dir): string[] {
 
 function renderServiceWorker(sw: string, pwaDistDir: string): string {
     const resources = Array.from(new Set(["./", ...collectPrecacheResources(pwaDistDir)]));
-    return sw.replace(/const APP_STATIC_RESOURCES = \[[^\]]*\];/, `const APP_STATIC_RESOURCES = ${JSON.stringify(resources, null, 4)};`);
+    return sw
+        .replaceAll(SERVICE_WORKER_VERSION_PLACEHOLDER, JSON.stringify(cacheBust))
+        .replace(/const APP_STATIC_RESOURCES = \[[^\]]*\];/, `const APP_STATIC_RESOURCES = ${JSON.stringify(resources, null, 4)};`);
 }
 
 function versionedHtmlPlugin(): PluginOption {
