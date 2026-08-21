@@ -1,31 +1,36 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { distDir, ensureDirectory, rootDir, versionPath } from "./build-utils.mjs";
+import { rootDir, versionPath } from "./build-utils.mjs";
 import { createCacheIdentity, SYNTHETIC_RELEASE_HMAC_KEY_HEX } from "./hmac-config.mjs";
 
 const packageJson = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 const originalVersionJson = readFileSync(versionPath, "utf8");
+const tempRoot = mkdtempSync(join(tmpdir(), "mspacman-pwa-release-test-"));
+const tempDistDir = join(tempRoot, "dist");
 const syntheticEnv = {
     ...process.env,
+    MSPACMAN_DIST_DIR: tempDistDir,
     MSPACMAN_HMAC_KEY_HEX: SYNTHETIC_RELEASE_HMAC_KEY_HEX
 };
 
 try {
     assertReleaseScriptStructure();
     const first = runStandaloneReleasePwaBuild();
+    writeFileSync(join(tempDistDir, "preserved-web-shell.txt"), "preserve me\n");
     const second = runStandaloneReleasePwaBuild();
 
     assert.notEqual(first.version.buildStamp, second.version.buildStamp, "Standalone release PWA builds must stamp a fresh buildStamp.");
     assert.notEqual(first.workerVersion, second.workerVersion, "Standalone release PWA builds must produce distinct service-worker VERSION values.");
     assert.equal(first.workerVersion, createCacheIdentity(first.version, SYNTHETIC_RELEASE_HMAC_KEY_HEX));
     assert.equal(second.workerVersion, createCacheIdentity(second.version, SYNTHETIC_RELEASE_HMAC_KEY_HEX));
+    assert.equal(existsSync(join(tempDistDir, "preserved-web-shell.txt")), true, "Standalone PWA release builds must not clean unrelated dist files.");
     console.log("ok - standalone release PWA builds stamp distinct service-worker versions");
 } finally {
     writeFileSync(versionPath, originalVersionJson);
-    rmSync(distDir, { recursive: true, force: true });
-    ensureDirectory(distDir);
+    rmSync(tempRoot, { recursive: true, force: true });
 }
 
 function assertReleaseScriptStructure() {
@@ -49,6 +54,8 @@ function assertReleaseScriptStructure() {
         "node scripts/build-release.mjs --target=full --key-source=active",
         "build must use the release orchestrator with the active key."
     );
+    assert.equal(scripts["release:provision"], "node scripts/release-provision.mjs", "release:provision must run the full provision workflow.");
+    assert.equal(scripts["release:rotate-hmac"], "node scripts/release-rotate-hmac.mjs", "release:rotate-hmac must run the candidate rotation workflow.");
 }
 
 function runStandaloneReleasePwaBuild() {
@@ -62,11 +69,11 @@ function runStandaloneReleasePwaBuild() {
     assert.equal(
         result.status,
         0,
-        ["Standalone npm run build:pwa:release failed.", "stdout:", result.stdout, "stderr:", result.stderr, "error:", result.error?.message ?? ""].join("\n")
+        ["Standalone env-key release PWA build failed.", "stdout:", result.stdout, "stderr:", result.stderr, "error:", result.error?.message ?? ""].join("\n")
     );
 
     const version = JSON.parse(readFileSync(versionPath, "utf8"));
-    const serviceWorkerPath = join(distDir, "pwa", "sw.js");
+    const serviceWorkerPath = join(tempDistDir, "pwa", "sw.js");
     assert.ok(existsSync(serviceWorkerPath), "Standalone release PWA build did not generate dist/pwa/sw.js.");
     const workerVersion = readEmbeddedServiceWorkerVersion(readFileSync(serviceWorkerPath, "utf8"));
     return {

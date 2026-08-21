@@ -24,12 +24,21 @@ The original online high-score service is not restored. This build targets the r
 High-score configuration:
 
 - API URL: `MSPACMAN_SCORE_API_URL` or `-Dmspacman.scoreApiUrl=...`; default is `https://meatfighter.com/api/ms-pac-man-2010/scores`.
-- HMAC key: `MSPACMAN_HMAC_KEY_HEX` or `-Dmspacman.hmacKeyHex=...`; without it, remote POST is skipped and local high-score behavior remains.
+- Unsigned desktop builds have no embedded HMAC key. They can download scores, but remote POST is skipped unless a valid runtime override is supplied.
+- Release desktop builds embed the selected deployment HMAC key in the generated JAR. The checked-in Java source never contains that key.
+- Runtime HMAC key precedence is `-Dmspacman.hmacKeyHex`, then `MSPACMAN_HMAC_KEY_HEX`, then the embedded release key. Without any valid key, remote POST is skipped and local high-score behavior remains.
+- Malformed explicit runtime overrides do not fall back. If `-Dmspacman.hmacKeyHex` or `MSPACMAN_HMAC_KEY_HEX` is present but is not exactly 64 lowercase hexadecimal characters, remote POST is disabled for that run.
 
 Build from the repository root:
 
 ```text
 npm.cmd run build:desktop
+```
+
+Build the release desktop archive from the repository root:
+
+```text
+npm.cmd run build:desktop:release
 ```
 
 If Maven is installed, this should also be buildable from this directory:

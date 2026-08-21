@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type PluginOption } from "vite";
 
@@ -10,6 +10,9 @@ interface VersionInfo {
 }
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
+const distRootDir =
+    process.env.MSPACMAN_DIST_DIR !== undefined && process.env.MSPACMAN_DIST_DIR !== "" ? resolve(process.env.MSPACMAN_DIST_DIR) : join(rootDir, "..", "dist");
+const pwaDistDir = join(distRootDir, "pwa");
 const versionInfo = JSON.parse(readFileSync(new URL("../version.json", import.meta.url), "utf8")) as VersionInfo;
 const encodedBuildStamp = encodeURIComponent(versionInfo.buildStamp);
 const SERVICE_WORKER_VERSION_TOKEN = "__SERVICE_WORKER_VERSION__";
@@ -183,18 +186,17 @@ function versionedStaticAssetsPlugin(command: string, config: HighScoreBuildConf
                 return;
             }
 
-            const pwaDistDir = join(rootDir, "..", "dist", "pwa");
-            const manifestPath = join(rootDir, "..", "dist", "pwa", "manifest.webmanifest");
+            const manifestPath = join(pwaDistDir, "manifest.webmanifest");
             if (existsSync(manifestPath)) {
                 writeFileSync(manifestPath, renderVersionPlaceholders(readFileSync(manifestPath, "utf8"), config.encodedCacheBust));
             }
 
-            const indexPath = join(rootDir, "..", "dist", "pwa", "index.html");
+            const indexPath = join(pwaDistDir, "index.html");
             if (existsSync(indexPath)) {
                 writeFileSync(indexPath, renderVersionedHtml(readFileSync(indexPath, "utf8"), config.encodedCacheBust));
             }
 
-            const serviceWorkerPath = join(rootDir, "..", "dist", "pwa", "sw.js");
+            const serviceWorkerPath = join(pwaDistDir, "sw.js");
             if (existsSync(serviceWorkerPath)) {
                 writeFileSync(
                     serviceWorkerPath,
@@ -224,7 +226,7 @@ export default defineConfig(({ command, mode }) => {
             __HIGH_SCORE_HMAC_KEY_HEX__: JSON.stringify(highScoreBuildConfig.hmacKeyHex)
         },
         build: {
-            outDir: "../dist/pwa",
+            outDir: pwaDistDir,
             emptyOutDir: true,
             target: "es2022",
             sourcemap: false

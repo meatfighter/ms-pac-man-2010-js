@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { cleanDirectory, distDir, readVersion, rootDir } from "./build-utils.mjs";
+import { rmSync } from "node:fs";
+import { join } from "node:path";
+import { cleanDirectory, distDir, ensureDirectory, readVersion, rootDir } from "./build-utils.mjs";
 import { checkRotationKeys, createCacheIdentity, getHmacFingerprint, readSelectedHmacKey } from "./hmac-config.mjs";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -27,7 +29,7 @@ const releaseEnv = {
     MSPACMAN_HMAC_KEY_HEX: hmacKeyHex
 };
 
-cleanDirectory(distDir);
+prepareOutputTarget(target);
 
 if (target === "pwa" || target === "web" || target === "full") {
     runNpmScript("_build:pwa:release", releaseEnv);
@@ -56,6 +58,28 @@ function readOption(name, fallback) {
     const prefix = `--${name}=`;
     const match = process.argv.find((arg) => arg.startsWith(prefix));
     return match === undefined ? fallback : match.slice(prefix.length);
+}
+
+function prepareOutputTarget(target) {
+    switch (target) {
+        case "full":
+            cleanDirectory(distDir);
+            break;
+        case "pwa":
+            ensureDirectory(distDir);
+            cleanDirectory(join(distDir, "pwa"));
+            break;
+        case "web":
+            ensureDirectory(distDir);
+            cleanDirectory(join(distDir, "pwa"));
+            cleanDirectory(join(distDir, "assets"));
+            rmSync(join(distDir, "index.html"), { force: true });
+            rmSync(join(distDir, "styles.css"), { force: true });
+            console.log("Building web-only release artifacts; use npm run build for the canonical full production bundle.");
+            break;
+        case "desktop":
+            break;
+    }
 }
 
 function runNpmScript(scriptName, env = process.env) {

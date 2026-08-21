@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
     abortRotation,
+    checkActiveHmacKey,
     checkRotationKeys,
     createCacheIdentity,
+    createHmacKeyHex,
+    fileContainsBuffer,
     getHmacFingerprint,
     getReleaseSecretPaths,
     importActiveKey,
@@ -39,6 +42,11 @@ try {
         assert.equal(fingerprint, getHmacFingerprint(importedKey));
     });
 
+    await runTest("a second import cannot change the active key", () => {
+        assert.throws(() => importActiveKey(secondKey), /already exists/);
+        assert.equal(readKeyFile(getReleaseSecretPaths().active, "Active HMAC key"), importedKey);
+    });
+
     await runTest("init leaves an existing active key unchanged", () => {
         const result = initActiveKey();
         assert.equal(result.created, false);
@@ -64,13 +72,37 @@ try {
         assert.equal(createCacheIdentity(version, ""), "1.0.0-2026-08-21T00:00:00.000Z-unsigned");
         assert.equal(createCacheIdentity(version, secondKey), `1.0.0-2026-08-21T00:00:00.000Z-k${getHmacFingerprint(secondKey)}`);
     });
+
+    await runTest("hmac check validates a random active key without printing or scanning gaps", async () => {
+        const previousSecretsDir = process.env.MSPACMAN_RELEASE_SECRETS_DIR;
+        const checkDir = mkdtempSync(join(tmpdir(), "mspacman-hmac-check-test-"));
+        try {
+            process.env.MSPACMAN_RELEASE_SECRETS_DIR = checkDir;
+            const key = createHmacKeyHex();
+            importActiveKey(key);
+            assert.equal(await checkActiveHmacKey(), getHmacFingerprint(key));
+        } finally {
+            restoreEnv("MSPACMAN_RELEASE_SECRETS_DIR", previousSecretsDir);
+            rmSync(checkDir, { recursive: true, force: true });
+        }
+    });
+
+    await runTest("tracked-file secret scan can search beyond eight MiB", async () => {
+        const path = join(tempDir, "large-secret-scan.bin");
+        writeFileSync(path, Buffer.concat([Buffer.alloc(8 * 1024 * 1024 + 17, 0x61), Buffer.from(secondKey, "utf8")]));
+        assert.equal(await fileContainsBuffer(path, Buffer.from(secondKey, "utf8")), true);
+    });
 } finally {
-    if (originalSecretsDir === undefined) {
-        delete process.env.MSPACMAN_RELEASE_SECRETS_DIR;
-    } else {
-        process.env.MSPACMAN_RELEASE_SECRETS_DIR = originalSecretsDir;
-    }
+    restoreEnv("MSPACMAN_RELEASE_SECRETS_DIR", originalSecretsDir);
     rmSync(tempDir, { recursive: true, force: true });
+}
+
+function restoreEnv(name, value) {
+    if (value === undefined) {
+        delete process.env[name];
+    } else {
+        process.env[name] = value;
+    }
 }
 
 async function runTest(name, fn) {

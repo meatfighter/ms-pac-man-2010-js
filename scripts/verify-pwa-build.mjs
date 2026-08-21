@@ -1,16 +1,14 @@
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, relative } from "node:path";
 import { runInNewContext } from "node:vm";
+import { distDir, versionPath } from "./build-utils.mjs";
 import { createCacheIdentity, readEnvHmacKey } from "./hmac-config.mjs";
 
-const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const pwaDistDir = join(rootDir, "dist", "pwa");
+const pwaDistDir = join(distDir, "pwa");
 const assetsDir = join(pwaDistDir, "assets");
 const serviceWorkerPath = join(pwaDistDir, "sw.js");
 const indexPath = join(pwaDistDir, "index.html");
-const versionPath = join(rootDir, "version.json");
 
 async function main() {
     assert.ok(existsSync(pwaDistDir), "dist/pwa does not exist. Run npm run build:pwa first.");

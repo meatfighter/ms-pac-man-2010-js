@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
-import { createCacheIdentity, getHmacFingerprint, readSelectedHmacKey, SYNTHETIC_RELEASE_HMAC_KEY_HEX } from "./hmac-config.mjs";
+import {
+    assertSecretAbsentFromTrackedFiles,
+    createCacheIdentity,
+    getHmacFingerprint,
+    readSelectedHmacKey,
+    SYNTHETIC_RELEASE_HMAC_KEY_HEX
+} from "./hmac-config.mjs";
 import { distDir, readVersion, rootDir } from "./build-utils.mjs";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
@@ -35,7 +41,7 @@ if (target === "desktop" || target === "full") {
     verifyDesktopRelease();
 }
 
-verifyTrackedSourceDoesNotContainSelectedKey();
+await verifyTrackedSourceDoesNotContainSelectedKey();
 console.log(`Release artifacts verified for target ${target} with key fingerprint ${fingerprint}.`);
 
 function verifyPwaRelease() {
@@ -100,35 +106,19 @@ function verifyJarReleaseProperties(jarPath) {
 }
 
 function verifyDistDoesNotContainReleaseSecrets() {
+    if (!existsSync(distDir)) {
+        return;
+    }
     for (const path of listFiles(distDir)) {
         assert.equal(relative(distDir, path).split(/[\\/]/).includes(".release-secrets"), false, "Release secrets must not be copied into dist.");
     }
 }
 
-function verifyTrackedSourceDoesNotContainSelectedKey() {
+async function verifyTrackedSourceDoesNotContainSelectedKey() {
     if (hmacKeyHex === SYNTHETIC_RELEASE_HMAC_KEY_HEX) {
         return;
     }
-
-    const result = spawnSync("git", ["ls-files", "-z"], {
-        cwd: rootDir,
-        encoding: "utf8",
-        maxBuffer: 32 * 1024 * 1024,
-        windowsHide: true
-    });
-    if (result.status !== 0 || result.error) {
-        throw result.error ?? new Error("git ls-files failed.");
-    }
-
-    const trackedFiles = result.stdout.split("\0").filter(Boolean);
-    for (const file of trackedFiles) {
-        const path = join(rootDir, file);
-        const stat = statSync(path);
-        if (stat.isDirectory() || stat.size > 8 * 1024 * 1024) {
-            continue;
-        }
-        assert.equal(readFileSync(path, "utf8").includes(hmacKeyHex), false, `Tracked source contains the selected HMAC key: ${file}`);
-    }
+    await assertSecretAbsentFromTrackedFiles(hmacKeyHex);
 }
 
 function listArchiveEntries(archivePath) {
@@ -159,6 +149,9 @@ function readJavaProperties(path) {
 }
 
 function listFiles(dir) {
+    if (!existsSync(dir)) {
+        return [];
+    }
     const files = [];
     collectFiles(dir, files);
     return files;

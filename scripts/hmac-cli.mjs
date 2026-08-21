@@ -1,6 +1,9 @@
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { createInterface } from "node:readline/promises";
 import {
     abortRotation,
+    checkActiveHmacKey,
     checkRotationKeys,
     getHmacFingerprint,
     getReleaseSecretPaths,
@@ -22,10 +25,10 @@ try {
             await runImport();
             break;
         case "check":
-            runCheck();
+            await runCheck();
             break;
         case "show":
-            runShow();
+            await runShow();
             break;
         case "rotate:prepare":
             runRotatePrepare();
@@ -34,13 +37,13 @@ try {
             runRotateCheck();
             break;
         case "rotate:show-next":
-            runRotateShowNext();
+            await runRotateShowNext();
             break;
         case "rotate:promote":
-            runRotatePromote();
+            await runRotatePromote();
             break;
         case "rotate:abort":
-            runRotateAbort();
+            await runRotateAbort();
             break;
         default:
             throw new Error(
@@ -59,20 +62,22 @@ function runInit() {
 }
 
 async function runImport() {
+    const paths = getReleaseSecretPaths();
+    if (existsSync(paths.active)) {
+        throw new Error("Active HMAC key already exists. Use rotation to replace an established key.");
+    }
     const keyHex = await readHiddenKey("Enter active HMAC key hex: ");
     const fingerprint = importActiveKey(keyHex);
     console.log("Imported active HMAC key.");
     console.log(`Active key fingerprint: ${fingerprint}`);
 }
 
-function runCheck() {
-    const paths = getReleaseSecretPaths();
-    const keyHex = readKeyFile(paths.active, "Active HMAC key");
-    console.log("Active HMAC key is valid.");
-    console.log(`Active key fingerprint: ${getHmacFingerprint(keyHex)}`);
+async function runCheck() {
+    console.log(await checkActiveHmacKey());
 }
 
-function runShow() {
+async function runShow() {
+    await confirmDangerousOperation("This will print the active HMAC key.", "SHOW ACTIVE HMAC KEY");
     const paths = getReleaseSecretPaths();
     const keyHex = readKeyFile(paths.active, "Active HMAC key");
     console.log(`Active HMAC key: ${keyHex}`);
@@ -92,23 +97,47 @@ function runRotateCheck() {
     console.log(`Next key fingerprint: ${fingerprints.nextFingerprint}`);
 }
 
-function runRotateShowNext() {
+async function runRotateShowNext() {
+    await confirmDangerousOperation("This will print the next HMAC key.", "SHOW NEXT HMAC KEY");
     const paths = getReleaseSecretPaths();
     const keyHex = readKeyFile(paths.next, "Next HMAC key");
     console.log(`Next HMAC key: ${keyHex}`);
     console.log(`Next key fingerprint: ${getHmacFingerprint(keyHex)}`);
 }
 
-function runRotatePromote() {
+async function runRotatePromote() {
+    await confirmDangerousOperation("This will promote the next HMAC key and archive the current active key.", "PROMOTE NEXT HMAC KEY");
     const fingerprints = promoteNextKey();
     console.log("Promoted next HMAC key.");
     console.log(`Previous key fingerprint: ${fingerprints.previousFingerprint}`);
     console.log(`Active key fingerprint: ${fingerprints.activeFingerprint}`);
 }
 
-function runRotateAbort() {
+async function runRotateAbort() {
+    await confirmDangerousOperation("This will delete the staged next HMAC key.", "ABORT HMAC ROTATION");
     const removed = abortRotation();
     console.log(removed ? "Removed next HMAC key." : "No next HMAC key was present.");
+}
+
+async function confirmDangerousOperation(warning, confirmationText) {
+    if (!process.stdin.isTTY) {
+        throw new Error(`Interactive confirmation required. Re-run from a terminal and type: ${confirmationText}`);
+    }
+
+    console.error(`WARNING: ${warning}`);
+    console.error(`Type ${confirmationText} to continue.`);
+    const rl = createInterface({
+        input: process.stdin,
+        output: process.stderr
+    });
+    try {
+        const answer = await rl.question("> ");
+        if (answer !== confirmationText) {
+            throw new Error("Confirmation did not match; operation cancelled.");
+        }
+    } finally {
+        rl.close();
+    }
 }
 
 async function readHiddenKey(promptText) {

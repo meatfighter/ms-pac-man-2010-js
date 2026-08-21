@@ -16,16 +16,18 @@ Useful commands:
 - `npm.cmd test` runs the PWA save/restore, high-score, release-script, HMAC-management, Java high-score, and build-configuration tests.
 - `npm.cmd run verify:pwa-build` verifies an existing generated PWA build.
 - `npm.cmd run hmac:init` creates a local active release HMAC key if one does not already exist.
-- `npm.cmd run hmac:import` imports an existing active release HMAC key using a hidden prompt.
-- `npm.cmd run hmac:check` validates the active release HMAC key and prints only its fingerprint.
+- `npm.cmd run hmac:import` imports an existing active release HMAC key using a hidden prompt. It refuses to overwrite an existing active key.
+- `npm.cmd run hmac:check` validates the active release HMAC key, checks that `.release-secrets/` is ignored and untracked, scans tracked files for the selected key, and prints only its fingerprint.
 - `npm.cmd run hmac:rotate:prepare`, `npm.cmd run hmac:rotate:check`, `npm.cmd run hmac:rotate:show-next`, `npm.cmd run hmac:rotate:promote`, and `npm.cmd run hmac:rotate:abort` manage a staged next key.
 - `npm.cmd run build:pwa:release` builds the release PWA using the active local HMAC key and stamps a fresh cache version first.
-- `npm.cmd run build:web` builds only the about page and PWA in release mode using the active local HMAC key.
+- `npm.cmd run build:web` builds only the about page and PWA in release mode using the active local HMAC key. This is a partial web refresh and preserves existing desktop downloads if present; use `npm.cmd run build` for the canonical production-site bundle.
 - `npm.cmd run build:web:unsigned` builds a local unsigned web artifact with score submissions disabled; do not upload it as a production release.
 - `npm.cmd run build:desktop` builds an unsigned legacy Java desktop jar and zip.
 - `npm.cmd run build:desktop:release` builds the legacy Java desktop jar and zip with the active local HMAC key embedded in the generated JAR.
 - `npm.cmd run release:desktop` refreshes the staged desktop release zip for upload.
-- `npm.cmd run build` builds the full release bundle using the active local HMAC key, stamps exactly once, assembles `dist/`, and runs release verification.
+- `npm.cmd run release:provision` creates a new active local HMAC key and performs a complete verified full release. It does not modify the server.
+- `npm.cmd run release:rotate-hmac` creates a staged next local HMAC key and performs a complete verified candidate release with it. It does not alter active and does not promote automatically.
+- `npm.cmd run build` builds the canonical full production-site bundle using the active local HMAC key, stamps exactly once, assembles `dist/`, and runs release verification.
 - `npm.cmd run run:desktop` launches the built desktop jar with the local native libraries.
 
 High-score server configuration:
@@ -38,6 +40,52 @@ High-score server configuration:
 - The HMAC key is a release coordination and spam-resistance control, not a true client secret. Production PWA JavaScript and release desktop JARs are inspectable by users, so the high-score server must continue to validate every submitted score independently.
 - Automated/smoke release builds should use `node scripts/build-release.mjs --target=full --key-source=env` with a synthetic valid key such as `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f`. Do not use or print the real production key in automated review output.
 - `.release-secrets/` must never be copied into `dist/`, `releases/`, desktop ZIPs, or manually prepared source archives.
+
+Production operations:
+
+Current deployment with an existing production server key:
+
+```text
+npm.cmd run hmac:import
+npm.cmd run hmac:check
+npm.cmd test
+npm.cmd run lint
+npm.cmd run format:check
+npm.cmd run build
+```
+
+The imported value must be the same existing key currently configured in `/etc/ms-pac-man-2010-server.env`. Ordinary releases do not change that server file.
+
+New deployment:
+
+```text
+npm.cmd run release:provision
+npm.cmd run hmac:show
+```
+
+Use `hmac:show` only when deliberately provisioning the server. Manually install the shown value as `MSPACMAN_HMAC_KEY_HEX` in the server environment, restart the server, and verify the deployment.
+
+HMAC rotation:
+
+```text
+npm.cmd run release:rotate-hmac
+npm.cmd run hmac:rotate:show-next
+npm.cmd run hmac:rotate:promote
+```
+
+After `release:rotate-hmac`, verify the candidate artifacts before revealing the next key. Then manually replace `MSPACMAN_HMAC_KEY_HEX` on the server, restart `ms-pac-man-2010.service`, deploy the matching PWA/Java release, run public GET plus valid disposable/safe POST verification, and run `hmac:rotate:promote` only after success. Old PWA/Java clients using the previous key can no longer submit after a single-key server rotation.
+
+To compare the local active-key fingerprint with the production server without printing the key:
+
+```text
+npm.cmd run hmac:check
+```
+
+On the server, an administrator can print the same 12-character fingerprint from `/etc/ms-pac-man-2010-server.env` without displaying the key:
+
+```sh
+sudo bash -lc 'set -a; source /etc/ms-pac-man-2010-server.env; set +a; printf "%s" "$MSPACMAN_HMAC_KEY_HEX" | xxd -r -p | sha256sum | cut -c1-12'
+```
 
 ## License
 

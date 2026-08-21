@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { rootDir } from "./build-utils.mjs";
 
@@ -104,9 +105,26 @@ export function initActiveKey() {
 
 export function importActiveKey(keyHex) {
     const paths = getReleaseSecretPaths();
+    if (existsSync(paths.active)) {
+        throw new Error("Active HMAC key already exists. Use rotation to replace an established key.");
+    }
     const normalized = normalizeImportedHmacKey(keyHex);
     writeKeyFile(paths.active, normalized);
     return getHmacFingerprint(normalized);
+}
+
+export function createNewActiveKey() {
+    const paths = getReleaseSecretPaths();
+    if (existsSync(paths.active)) {
+        throw new Error("Active HMAC key already exists.");
+    }
+
+    const keyHex = createHmacKeyHex();
+    writeKeyFile(paths.active, keyHex);
+    return {
+        fingerprint: getHmacFingerprint(keyHex),
+        keyHex
+    };
 }
 
 export function prepareNextKey() {
@@ -158,4 +176,76 @@ export function abortRotation() {
     const existed = existsSync(paths.next);
     rmSync(paths.next, { force: true });
     return existed;
+}
+
+export async function checkActiveHmacKey() {
+    const paths = getReleaseSecretPaths();
+    const activeKey = readKeyFile(paths.active, "Active HMAC key");
+    assertRepositoryReleaseSecretsIgnored();
+    await assertSecretAbsentFromTrackedFiles(activeKey);
+    return getHmacFingerprint(activeKey);
+}
+
+export function assertRepositoryReleaseSecretsIgnored() {
+    const ignoredPath = ".release-secrets/ms-pac-man-2010-hmac.hex";
+    const checkIgnored = spawnGit(["check-ignore", "-q", "--", ignoredPath]);
+    if (checkIgnored.status !== 0) {
+        throw new Error(".release-secrets/ is not ignored by Git.");
+    }
+
+    const trackedSecrets = spawnGit(["ls-files", "-z", "--", ".release-secrets"]);
+    if (trackedSecrets.stdout.length > 0) {
+        throw new Error(".release-secrets contains tracked Git entries.");
+    }
+}
+
+export async function assertSecretAbsentFromTrackedFiles(secret) {
+    validateHmacKeyHex(secret, "Selected HMAC key");
+    const needle = Buffer.from(secret, "utf8");
+    for (const file of listTrackedFiles()) {
+        const path = join(rootDir, file);
+        if (!existsSync(path)) {
+            continue;
+        }
+        if (await fileContainsBuffer(path, needle)) {
+            throw new Error(`Tracked file contains the selected HMAC key: ${file}`);
+        }
+    }
+}
+
+export function listTrackedFiles() {
+    const result = spawnGit(["ls-files", "-z"]);
+    return result.stdout.split("\0").filter(Boolean);
+}
+
+export async function fileContainsBuffer(path, needle) {
+    if (needle.length === 0) {
+        return false;
+    }
+
+    let tail = Buffer.alloc(0);
+    for await (const chunk of createReadStream(path)) {
+        const combined = tail.length === 0 ? chunk : Buffer.concat([tail, chunk]);
+        if (combined.indexOf(needle) >= 0) {
+            return true;
+        }
+        tail = combined.subarray(Math.max(0, combined.length - needle.length + 1));
+    }
+    return false;
+}
+
+function spawnGit(args) {
+    const result = spawnSync("git", args, {
+        cwd: rootDir,
+        encoding: "utf8",
+        maxBuffer: 32 * 1024 * 1024,
+        windowsHide: true
+    });
+    if (result.status !== 0 && args[0] !== "check-ignore") {
+        throw result.error ?? new Error(`git ${args.join(" ")} failed.`);
+    }
+    if (result.error) {
+        throw result.error;
+    }
+    return result;
 }

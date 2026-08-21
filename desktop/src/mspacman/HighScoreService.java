@@ -86,8 +86,8 @@ public class HighScoreService {
       connection = (HttpURLConnection) url.openConnection();
       connection.setRequestMethod(method);
       connection.setUseCaches(false);
-      connection.setConnectTimeout(TIMEOUT_MS);
-      connection.setReadTimeout(TIMEOUT_MS);
+      connection.setConnectTimeout(configuration.getTimeoutMs());
+      connection.setReadTimeout(configuration.getTimeoutMs());
       connection.setRequestProperty(
           "MsPacMan-Protocol-Version", String.valueOf(PROTOCOL_VERSION));
       if ("POST".equals(method)) {
@@ -398,6 +398,8 @@ public class HighScoreService {
     String getEnvironment(String name);
 
     String getEmbeddedHmacKeyHex();
+
+    int getTimeoutMs();
   }
 
   private static class DefaultConfiguration implements Configuration {
@@ -431,6 +433,10 @@ public class HighScoreService {
         } catch(IOException e) {
         }
       }
+    }
+
+    public int getTimeoutMs() {
+      return TIMEOUT_MS;
     }
   }
 

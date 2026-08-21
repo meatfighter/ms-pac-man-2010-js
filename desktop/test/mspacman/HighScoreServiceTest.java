@@ -23,6 +23,7 @@ public class HighScoreServiceTest {
     testKeyPrecedence();
     testGetAndPostProtocol();
     testInvalidResponses();
+    testDelayedResponseTimesOutWithoutRetry();
     testHighScoreSemantics();
     testDelayedDownloadDoesNotOverwriteNewerLocalState();
     testFailedPostLeavesLocalLeaderboard();
@@ -144,6 +145,24 @@ public class HighScoreServiceTest {
           "HTTP failures must be ignored.");
       assertEquals(1, server.requestCount,
           "HTTP failures must not be retried.");
+    } finally {
+      server.close();
+    }
+  }
+
+  private static void testDelayedResponseTimesOutWithoutRetry()
+      throws Exception {
+
+    TestServer server = new TestServer();
+    try {
+      server.responseDelayMs = 250L;
+      server.start(validScoresResponse());
+      HighScoreService service = new HighScoreService(
+          new TestConfiguration(server.getUrl(), null, null, KEY, 50));
+      assertEquals(null, service.downloadScores(),
+          "Delayed responses beyond the timeout must be ignored.");
+      assertEquals(1, server.requestCount,
+          "Delayed responses beyond the timeout must not be retried.");
     } finally {
       server.close();
     }
@@ -344,14 +363,22 @@ public class HighScoreServiceTest {
     private final String propertyKey;
     private final String envKey;
     private final String embeddedKey;
+    private final int timeoutMs;
 
     public TestConfiguration(String apiUrl, String propertyKey, String envKey,
         String embeddedKey) {
+
+      this(apiUrl, propertyKey, envKey, embeddedKey, 5000);
+    }
+
+    public TestConfiguration(String apiUrl, String propertyKey, String envKey,
+        String embeddedKey, int timeoutMs) {
 
       this.apiUrl = apiUrl;
       this.propertyKey = propertyKey;
       this.envKey = envKey;
       this.embeddedKey = embeddedKey;
+      this.timeoutMs = timeoutMs;
     }
 
     public String getSystemProperty(String name) {
@@ -374,6 +401,10 @@ public class HighScoreServiceTest {
     public String getEmbeddedHmacKeyHex() {
       return embeddedKey;
     }
+
+    public int getTimeoutMs() {
+      return timeoutMs;
+    }
   }
 
   private static class TestServer implements Closeable {
@@ -384,6 +415,7 @@ public class HighScoreServiceTest {
     public int status = 200;
     public boolean includeProtocolHeader = true;
     public String contentType = "application/json";
+    public long responseDelayMs;
     public String lastMethod;
     public String lastProtocolHeader;
     public String lastContentType;
@@ -402,6 +434,13 @@ public class HighScoreServiceTest {
           lastContentType = exchange.getRequestHeaders()
               .getFirst("Content-Type");
           lastRequestBody = readAll(exchange.getRequestBody());
+          if (responseDelayMs > 0L) {
+            try {
+              Thread.sleep(responseDelayMs);
+            } catch(InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+          }
           if (includeProtocolHeader) {
             exchange.getResponseHeaders().set(
                 "MsPacMan-Protocol-Version", "1");
