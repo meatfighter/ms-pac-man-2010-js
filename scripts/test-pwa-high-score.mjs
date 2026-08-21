@@ -233,6 +233,65 @@ try {
         assert.equal(readWorld(main, 0).filter((row) => row.score === 30000 && row.initials === "CCC").length, 1);
     });
 
+    await runTest("async submission updates local leaderboard before an event-loop tick", async () => {
+        const post = deferred();
+        const restore = overrideScoreService(HighScoreService, Promise.resolve(null), post.promise);
+        try {
+            const main = createMain(Main, HighScore);
+            main.accessScoresDatabaseAsync(true, 0, 123450, "MJB");
+
+            assert.deepEqual(readWorld(main, 0), [
+                { score: 123450, initials: "MJB" },
+                { score: 0, initials: "AAA" },
+                { score: 0, initials: "AAA" },
+                { score: 0, initials: "AAA" },
+                { score: 0, initials: "AAA" }
+            ]);
+            assert.deepEqual(main.submittedScore, { world: 0, score: 123450, initials: "MJB" });
+            assert.equal(main.uploadComplete, false);
+
+            post.resolve(null);
+            await tick();
+            assert.equal(main.uploadComplete, true);
+        } finally {
+            restore();
+        }
+    });
+
+    await runTest("async non-qualifying score completes synchronously without POST", () => {
+        let submitCount = 0;
+        const originalSubmit = HighScoreService.submitScore;
+        HighScoreService.submitScore = () => {
+            submitCount++;
+            return Promise.resolve(null);
+        };
+        try {
+            const main = createMain(Main, HighScore, [
+                [
+                    { score: 50000, initials: "AAA" },
+                    { score: 40000, initials: "BBB" },
+                    { score: 30000, initials: "CCC" },
+                    { score: 20000, initials: "DDD" },
+                    { score: 10000, initials: "EEE" }
+                ]
+            ]);
+
+            main.accessScoresDatabaseAsync(true, 0, 9990, "LOW");
+            assert.deepEqual(readWorld(main, 0), [
+                { score: 50000, initials: "AAA" },
+                { score: 40000, initials: "BBB" },
+                { score: 30000, initials: "CCC" },
+                { score: 20000, initials: "DDD" },
+                { score: 10000, initials: "EEE" }
+            ]);
+            assert.equal(main.submittedScore, null);
+            assert.equal(main.uploadComplete, true);
+            assert.equal(submitCount, 0);
+        } finally {
+            HighScoreService.submitScore = originalSubmit;
+        }
+    });
+
     await runTest("exact duplicate while server is unreachable leaves one local copy", async () => {
         const initialRows = [
             { score: 50000, initials: "AAA" },
@@ -246,7 +305,7 @@ try {
         try {
             const main = createMain(Main, HighScore, [initialRows]);
             main.accessScoresDatabaseAsync(true, 0, 30000, "CCC");
-            await tick();
+            assert.deepEqual(readWorld(main, 0), initialRows);
             post.resolve(null);
             await tick();
 
@@ -265,7 +324,7 @@ try {
             const main = createMain(Main, HighScore);
             main.downloadScores();
             main.accessScoresDatabaseAsync(true, 0, 123450, "MJB");
-            await tick();
+            assert.deepEqual(readWorld(main, 0)[0], { score: 123450, initials: "MJB" });
 
             post.resolve([{ world: 0, score: 123450, initials: "MJB" }]);
             await tick();
@@ -292,7 +351,7 @@ try {
             const main = createMain(Main, HighScore);
             main.downloadScores();
             main.accessScoresDatabaseAsync(true, 0, 123450, "MJB");
-            await tick();
+            assert.deepEqual(readWorld(main, 0)[0], { score: 123450, initials: "MJB" });
 
             post.resolve(null);
             await tick();
@@ -339,7 +398,7 @@ try {
         try {
             const main = createMain(Main, HighScore);
             main.accessScoresDatabaseAsync(true, 0, 123450, "MJB");
-            await tick();
+            assert.deepEqual(readWorld(main, 0)[0], { score: 123450, initials: "MJB" });
             post.resolve([{ world: 0, score: 99990, initials: "OLD" }]);
             await tick();
 
@@ -364,7 +423,7 @@ try {
             const main = createMain(Main, HighScore, [[{ score: 123450, initials: "MJB" }]]);
             main.downloadScores();
             main.accessScoresDatabaseAsync(true, 0, 123450, "MJB");
-            await tick();
+            assert.deepEqual(readWorld(main, 0)[0], { score: 123450, initials: "MJB" });
 
             post.resolve([{ world: 0, score: 123450, initials: "MJB" }]);
             await tick();

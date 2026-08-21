@@ -5,11 +5,14 @@ import { createServer } from "vite";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const pwaRoot = resolve(rootDir, "pwa");
-const STORAGE_KEY = "ms-pac-man-2010.game-state";
 const APP_VERSION = "test-version";
+const STAGE_URL = "https://meatfighter.com/ms-pac-man-2010-staging/pwa/?v=1.0.0-stage";
+const STAGE_ROTATED_URL = "https://meatfighter.com/ms-pac-man-2010-staging/pwa/?v=1.0.1-krotated";
+const PRODUCTION_URL = "https://meatfighter.com/ms-pac-man-2010/pwa/?v=1.0.0-production";
 const originalApiUrl = process.env.MSPACMAN_SCORE_API_URL;
 const originalCacheVersion = process.env.MSPACMAN_CACHE_VERSION;
 const originalHmacKey = process.env.MSPACMAN_HMAC_KEY_HEX;
+const originalLocation = globalThis.location;
 
 delete process.env.MSPACMAN_SCORE_API_URL;
 delete process.env.MSPACMAN_CACHE_VERSION;
@@ -181,18 +184,73 @@ try {
         "/src/mspacman/persistence/MsPacManGameStateSerializer.ts"
     );
     const { MsPacManGameStateStore } = await server.ssrLoadModule("/src/mspacman/persistence/MsPacManGameStateStore.ts");
+    const { createBrowserStorageKeys } = await server.ssrLoadModule("/src/app/BrowserStorageKeys.ts");
 
     await runTest("store clears corrupted local-storage snapshots", () => {
         const storage = installMemoryLocalStorage();
         const store = new MsPacManGameStateStore(APP_VERSION);
+        setTestLocation(STAGE_URL);
+        const storageKey = createBrowserStorageKeys().gameState;
 
-        storage.setItem(STORAGE_KEY, "{");
+        storage.setItem(storageKey, "{");
         assert.equal(store.hasValidSave(), false);
-        assert.equal(storage.getItem(STORAGE_KEY), null);
+        assert.equal(storage.getItem(storageKey), null);
 
-        storage.setItem(STORAGE_KEY, JSON.stringify({ version: 999 }));
+        storage.setItem(storageKey, JSON.stringify({ version: 999 }));
         assert.equal(store.hasValidSave(), false);
-        assert.equal(storage.getItem(STORAGE_KEY), null);
+        assert.equal(storage.getItem(storageKey), null);
+    });
+
+    await runTest("browser storage keys isolate save state by deployment path", () => {
+        const storage = installMemoryLocalStorage();
+        const store = new MsPacManGameStateStore(APP_VERSION);
+        const stageSource = createFakeMain("attract", "source", { score: 11110 });
+        const productionSource = createFakeMain("attract", "source", { score: 22220 });
+
+        setTestLocation(STAGE_URL);
+        const stageKeys = createBrowserStorageKeys();
+        assert.equal(store.save(stageSource), true);
+        assert.equal(store.hasValidSave(), true);
+        const stageSnapshot = storage.getItem(stageKeys.gameState);
+        assert.notEqual(stageSnapshot, null);
+
+        setTestLocation(PRODUCTION_URL);
+        const productionKeys = createBrowserStorageKeys();
+        assert.notEqual(stageKeys.gameState, productionKeys.gameState);
+        assert.equal(store.hasValidSave(), false);
+        assert.equal(store.save(productionSource), true);
+        const productionSnapshot = storage.getItem(productionKeys.gameState);
+        assert.notEqual(productionSnapshot, null);
+        assert.notEqual(stageSnapshot, productionSnapshot);
+
+        setTestLocation(STAGE_URL);
+        assert.equal(store.hasValidSave(), true);
+        storage.setItem(stageKeys.gameState, "{");
+        assert.equal(store.hasValidSave(), false);
+        assert.equal(storage.getItem(stageKeys.gameState), null);
+        assert.equal(storage.getItem(productionKeys.gameState), productionSnapshot);
+
+        assert.equal(store.save(stageSource), true);
+        assert.notEqual(storage.getItem(stageKeys.gameState), productionSnapshot);
+        assert.equal(storage.getItem(productionKeys.gameState), productionSnapshot);
+    });
+
+    await runTest("browser storage keys isolate volume and ignore release query changes", () => {
+        const storage = installMemoryLocalStorage();
+        const stageKeys = createBrowserStorageKeys(STAGE_URL);
+        const stageRotatedKeys = createBrowserStorageKeys(STAGE_ROTATED_URL);
+        const productionKeys = createBrowserStorageKeys(PRODUCTION_URL);
+
+        assert.equal(stageKeys.deploymentId, stageRotatedKeys.deploymentId);
+        assert.equal(stageKeys.gameState, stageRotatedKeys.gameState);
+        assert.equal(stageKeys.volume, stageRotatedKeys.volume);
+        assert.notEqual(stageKeys.deploymentId, productionKeys.deploymentId);
+        assert.notEqual(stageKeys.volume, productionKeys.volume);
+
+        storage.setItem(stageKeys.volume, "10");
+        storage.setItem(productionKeys.volume, "80");
+        assert.equal(storage.getItem(stageRotatedKeys.volume), "10");
+        assert.equal(storage.getItem(productionKeys.volume), "80");
     });
 
     await runTest("serializer rejects malformed snapshots", () => {
@@ -228,13 +286,15 @@ try {
     await runTest("store saves and restores a non-playing mode snapshot", () => {
         const storage = installMemoryLocalStorage();
         const store = new MsPacManGameStateStore(APP_VERSION);
+        setTestLocation(STAGE_URL);
+        const storageKey = createBrowserStorageKeys().gameState;
         const source = createFakeMain("attract", "source");
         const target = createFakeMain("attract", "target");
         const gc = createGameContainer();
 
         assert.equal(store.save(source), true);
         assert.equal(store.hasValidSave(), true);
-        assert.notEqual(storage.getItem(STORAGE_KEY), null);
+        assert.notEqual(storage.getItem(storageKey), null);
 
         assert.equal(store.restore(target, gc), true);
         assert.deepEqual(pickFields(target, MAIN_FIELDS), pickFields(source, MAIN_FIELDS));
@@ -352,6 +412,7 @@ try {
     restoreEnv("MSPACMAN_SCORE_API_URL", originalApiUrl);
     restoreEnv("MSPACMAN_CACHE_VERSION", originalCacheVersion);
     restoreEnv("MSPACMAN_HMAC_KEY_HEX", originalHmacKey);
+    restoreLocation();
     await server.close();
 }
 
@@ -373,6 +434,24 @@ function installMemoryLocalStorage() {
         value: storage
     });
     return storage;
+}
+
+function setTestLocation(href) {
+    Object.defineProperty(globalThis, "location", {
+        configurable: true,
+        value: new URL(href)
+    });
+}
+
+function restoreLocation() {
+    if (originalLocation === undefined) {
+        delete globalThis.location;
+    } else {
+        Object.defineProperty(globalThis, "location", {
+            configurable: true,
+            value: originalLocation
+        });
+    }
 }
 
 function createFakeMain(modeId, variant, options = {}) {

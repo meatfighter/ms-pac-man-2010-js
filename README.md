@@ -13,11 +13,11 @@ Repository layout:
 Useful commands:
 
 - `npm.cmd run dev` starts the PWA dev server.
-- `npm.cmd test` runs the PWA save/restore, high-score, release-script, HMAC-management, Java high-score, and build-configuration tests.
+- `npm.cmd test` runs the PWA save/restore, high-score, release-script, preview-server, release-safety, HMAC-management, Java high-score, and build-configuration tests.
 - `npm.cmd run verify:pwa-build` verifies an existing generated PWA build.
 - `npm.cmd run hmac:init` creates a local active release HMAC key if one does not already exist.
 - `npm.cmd run hmac:import` imports an existing active release HMAC key using a hidden prompt. It refuses to overwrite an existing active key.
-- `npm.cmd run hmac:check` validates the active release HMAC key, checks that `.release-secrets/` is ignored and untracked, scans tracked files for the selected key, and prints only its fingerprint.
+- `npm.cmd run hmac:check` validates the active release HMAC key, reports whether a rotation key is staged, checks that `.release-secrets/` is ignored and untracked, scans tracked files for the selected key, and prints fingerprints only.
 - `npm.cmd run hmac:rotate:prepare`, `npm.cmd run hmac:rotate:check`, `npm.cmd run hmac:rotate:show-next`, `npm.cmd run hmac:rotate:promote`, and `npm.cmd run hmac:rotate:abort` manage a staged next key.
 - `npm.cmd run build:pwa:release` builds the release PWA using the active local HMAC key and stamps a fresh cache version first.
 - `npm.cmd run build:web` builds only the about page and PWA in release mode using the active local HMAC key. This is a partial web refresh and preserves existing desktop downloads if present; use `npm.cmd run build` for the canonical production-site bundle.
@@ -28,7 +28,7 @@ Useful commands:
 - `npm.cmd run release:desktop` refreshes the staged desktop release zip for upload.
 - `npm.cmd run release:provision` creates a new active local HMAC key and performs a complete verified full release. It does not modify the server.
 - `npm.cmd run release:rotate-hmac` creates a staged next local HMAC key and performs a complete verified candidate release with it. It does not alter active and does not promote automatically.
-- `npm.cmd run build` builds the canonical full production-site bundle using the active local HMAC key, stamps exactly once, assembles `dist/`, and runs release verification.
+- `npm.cmd run build` builds the canonical full production-site bundle using the active local HMAC key, stamps exactly once, assembles a temporary release tree, verifies it, and atomically promotes it to `dist/`.
 - `npm.cmd run run:desktop` launches the built desktop jar with the local native libraries.
 
 High-score server configuration:
@@ -40,8 +40,9 @@ High-score server configuration:
 - Desktop Java release builds embed the same selected release key in generated `desktop/target/classes/mspacman/high-score-release.properties` before packaging the JAR. At runtime, Java submission key precedence is `-Dmspacman.hmacKeyHex`, `MSPACMAN_HMAC_KEY_HEX`, embedded release resource, then no key. Explicit malformed JVM property or environment values disable remote submission and do not fall back. Without a valid key, downloads still run and submissions remain local-only.
 - The HMAC key is a release coordination and spam-resistance control, not a true client secret. Production PWA JavaScript and release desktop JARs are inspectable by users, so the high-score server must continue to validate every submitted score independently.
 - Automated/smoke release builds should use `node scripts/build-release.mjs --target=full --key-source=env` with a synthetic valid key such as `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f`. Do not use or print the real production key in automated review output.
-- `.release-secrets/` must never be copied into `dist/`, `releases/`, desktop ZIPs, or manually prepared source archives.
+- `.release-secrets/` must never be copied into `dist/`, `releases/`, desktop ZIPs, or generated source archives.
 - An ordinary active-key release refuses to run while `.release-secrets/ms-pac-man-2010-hmac.next.hex` exists. Finish the candidate release with the next key, promote the rotation, or abort it before shipping another active-key release.
+- Failed `release:provision` and `release:rotate-hmac` builds preserve generated key files. Rerun the normal release command after correcting the failure, or explicitly run `npm.cmd run hmac:rotate:abort` if a staged next key should be discarded.
 
 Relocatable web release:
 
@@ -49,7 +50,15 @@ Relocatable web release:
 - Static links in the generated about page and PWA are deployment-relative. Do not hard-code `/pwa/`, `/mspacman2010/`, `/ms-pac-man-2010/`, or staging paths into runtime assets.
 - The high-score API is the intentional exception: the PWA uses the root-relative `/api/ms-pac-man-2010/scores` path so any same-origin deployment directory talks to the same production API.
 - The service worker is registered relative to the current PWA page, and its Cache Storage namespace includes the service-worker scope path. This lets staging and production copies coexist on the same origin without deleting each other's caches.
+- Browser save-state and volume local-storage keys include the encoded deployment path. Staging and production copies on the same origin therefore keep separate saved games and volume settings without migrating legacy keys.
 - `npm.cmd run verify:release` and the release build pipeline check generated files for accidental hard-coded deployment roots and exercise multiple synthetic PWA mount paths.
+
+Generated release artifacts:
+
+- `dist/release.json` contains the app version, build stamp, Git commit, Git tree state, PWA cache identity, and HMAC fingerprint. It never contains the full HMAC key.
+- `dist/checksums.sha256` covers every generated release file except itself.
+- `dist/downloads/ms-pac-man-2010-js-source.zip` and the matching versioned source ZIP contain tracked plus untracked non-ignored project files from the working tree. They exclude `dist/`, `.release-secrets/`, and generated desktop target output.
+- `dist/pwa/THIRD_PARTY_NOTICES.txt` is generated from the canonical root `THIRD_PARTY_NOTICES.md`.
 
 Production operations:
 

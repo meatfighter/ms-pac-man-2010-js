@@ -214,6 +214,7 @@ async function assertVersionedServiceWorkerCacheKeys(serviceWorker, cacheBust) {
     const queriedResource = worker.createCacheUrl("./images/example.png?palette=maze");
     assert.notEqual(queriedResource, ordinaryResource, "Unrelated query parameters must not alias ordinary precached resources.");
     assert.equal(new URL(queriedResource).searchParams.get("palette"), "maze", "Unrelated query parameters must be preserved.");
+    assertLosslessScopeIds(serviceWorker, cacheBust);
     await assertScopeSpecificCacheIsolation(serviceWorker, cacheBust);
 }
 
@@ -394,7 +395,19 @@ function createExpectedCachePrefix(scope) {
 }
 
 function createExpectedCacheScopeId(scope) {
-    return new URL(scope).pathname.replace(/[^a-zA-Z0-9._-]/g, "_");
+    return encodeURIComponent(new URL(scope).pathname);
+}
+
+function assertLosslessScopeIds(serviceWorker, cacheBust) {
+    const scopes = ["https://example.invalid/a/b/", "https://example.invalid/a_b/", "https://example.invalid/a+b/"];
+    const workers = scopes.map((scope) => createServiceWorkerHarness(serviceWorker, cacheBust, scope));
+    assert.deepEqual(
+        workers.map((worker) => worker.CACHE_SCOPE_ID),
+        scopes.map((scope) => createExpectedCacheScopeId(scope)),
+        "Service-worker scope ids must be the encoded scope path."
+    );
+    assert.equal(new Set(workers.map((worker) => worker.CACHE_SCOPE_ID)).size, scopes.length, "Distinct scope paths must not collide.");
+    assert.equal(new Set(workers.map((worker) => worker.CACHE_PREFIX)).size, scopes.length, "Distinct scope paths must produce distinct cache prefixes.");
 }
 
 function createServiceWorkerHarness(serviceWorker, scriptUrlVersion, scope = "https://example.invalid/pwa/", cacheKeys = []) {

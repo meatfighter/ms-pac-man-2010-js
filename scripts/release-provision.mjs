@@ -1,21 +1,21 @@
 import { spawnSync } from "node:child_process";
-import { rmSync } from "node:fs";
-import { abortRotation, checkActiveHmacKey, createNewActiveKey, getReleaseSecretPaths } from "./hmac-config.mjs";
+import { checkActiveHmacKey, createNewActiveKey } from "./hmac-config.mjs";
 import { rootDir } from "./build-utils.mjs";
 
-let created = false;
+let activeFingerprint = "";
 try {
     const active = createNewActiveKey();
-    created = true;
+    activeFingerprint = active.fingerprint;
     await checkActiveHmacKey();
-    console.log(`Created active HMAC key fingerprint: ${active.fingerprint}`);
+    console.log(`Created active HMAC key fingerprint: ${activeFingerprint}`);
     runBuildRelease();
-    console.log(`Provisioned release with active key fingerprint: ${active.fingerprint}`);
+    console.log(`Provisioned release with active key fingerprint: ${activeFingerprint}`);
 } catch (error) {
-    if (created) {
-        removeActiveKey();
-    }
     console.error(error instanceof Error ? error.message : String(error));
+    if (activeFingerprint !== "") {
+        console.error(`Active key fingerprint: ${activeFingerprint}`);
+    }
+    console.error("The active HMAC key was preserved. Do not deploy a failed provision build; rerun npm run build after correcting the failure.");
     process.exitCode = 1;
 }
 
@@ -28,9 +28,4 @@ function runBuildRelease() {
     if (result.status !== 0 || result.error) {
         throw result.error ?? new Error("Provision release build failed.");
     }
-}
-
-function removeActiveKey() {
-    rmSync(getReleaseSecretPaths().active, { force: true });
-    abortRotation();
 }

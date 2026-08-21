@@ -2,6 +2,7 @@ import "./styles.css";
 import type { GameContainer } from "slick2d-ts";
 import { SoundStore } from "slick2d-ts/slick/openal/SoundStore";
 import { ResourceLoader } from "slick2d-ts/slick/util/ResourceLoader";
+import { createBrowserStorageKeys } from "./BrowserStorageKeys";
 import { RESOURCE_REFS } from "./resourceManifest";
 import { APP_VERSION, CACHE_BUST } from "./version";
 import type { Main as MsPacManMain } from "../mspacman/Main";
@@ -53,7 +54,6 @@ const HIGH_DPI_ENABLED = true;
 const MAX_DEVICE_PIXEL_RATIO = 2;
 const RESOURCE_CACHE_RETRY_COUNT = 3;
 const RESOURCE_CACHE_RETRY_DELAY_MS = 300;
-const GAME_STATE_STORAGE_KEY = "ms-pac-man-2010.game-state";
 
 if (!app) {
     throw new Error("Missing #app root.");
@@ -474,7 +474,7 @@ function getLoadedGameStateStore(): MsPacManGameStateStore | null {
 
 function hasPotentialSavedGameState(): boolean {
     try {
-        const text = localStorage.getItem(GAME_STATE_STORAGE_KEY);
+        const text = localStorage.getItem(createBrowserStorageKeys().gameState);
         if (text === null) {
             return false;
         }
@@ -492,7 +492,7 @@ function hasPotentialSavedGameState(): boolean {
 
 function clearStoredGameState(): void {
     try {
-        localStorage.removeItem(GAME_STATE_STORAGE_KEY);
+        localStorage.removeItem(createBrowserStorageKeys().gameState);
     } catch {}
     gameStateStore?.clear();
 }
@@ -843,7 +843,7 @@ function safeReadVolume(): number {
 }
 
 function readVolume(): number {
-    const value = Number.parseInt(localStorage.getItem("ms-pac-man-volume") ?? "10", 10);
+    const value = Number.parseInt(localStorage.getItem(createBrowserStorageKeys().volume) ?? "10", 10);
     if (!Number.isFinite(value)) {
         return 0.1;
     }
@@ -852,7 +852,7 @@ function readVolume(): number {
 
 function writeVolume(value: number): void {
     try {
-        localStorage.setItem("ms-pac-man-volume", String(Math.round(value * 100)));
+        localStorage.setItem(createBrowserStorageKeys().volume, String(Math.round(value * 100)));
     } catch {
         // Local storage is optional; audio volume still applies in memory.
     }

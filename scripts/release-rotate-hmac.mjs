@@ -1,33 +1,28 @@
 import { spawnSync } from "node:child_process";
-import {
-    abortRotation,
-    assertSecretAbsentFromTrackedFiles,
-    checkActiveHmacKey,
-    checkRotationKeys,
-    prepareNextKey,
-    readSelectedHmacKey
-} from "./hmac-config.mjs";
+import { assertSecretAbsentFromTrackedFiles, checkActiveHmacKey, checkRotationKeys, ensureNextKey, readSelectedHmacKey } from "./hmac-config.mjs";
 import { rootDir } from "./build-utils.mjs";
 
-let nextCreated = false;
+let nextFingerprint = "";
 try {
     const activeFingerprint = await checkActiveHmacKey();
-    const nextFingerprint = prepareNextKey();
-    nextCreated = true;
+    const next = ensureNextKey();
+    nextFingerprint = next.fingerprint;
     const nextKey = readSelectedHmacKey("next");
     await assertSecretAbsentFromTrackedFiles(nextKey);
-    checkRotationKeys();
+    const rotation = checkRotationKeys();
 
     console.log(`Active key fingerprint: ${activeFingerprint}`);
+    console.log(`${next.created ? "Created" : "Reusing"} next HMAC key.`);
     console.log(`Next key fingerprint: ${nextFingerprint}`);
     runBuildRelease();
     console.log(`Verified candidate release with active key fingerprint: ${activeFingerprint}`);
-    console.log(`Verified candidate release with next key fingerprint: ${nextFingerprint}`);
+    console.log(`Verified candidate release with next key fingerprint: ${rotation.nextFingerprint}`);
 } catch (error) {
-    if (nextCreated) {
-        abortRotation();
-    }
     console.error(error instanceof Error ? error.message : String(error));
+    if (nextFingerprint !== "") {
+        console.error(`Staged next key fingerprint: ${nextFingerprint}`);
+    }
+    console.error("The staged next HMAC key was preserved. Do not deploy a failed rotation build; rerun npm run release:rotate-hmac or abort explicitly.");
     process.exitCode = 1;
 }
 

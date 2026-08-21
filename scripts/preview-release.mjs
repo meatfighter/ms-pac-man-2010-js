@@ -1,43 +1,67 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 import { distDir } from "./build-utils.mjs";
 
-const host = readOption("host", "127.0.0.1");
-const port = Number.parseInt(readOption("port", "4175"), 10);
-const basePath = normalizeBasePath(readOption("base", "/ms-pac-man-2010-staging/"));
+if (isCliEntrypoint()) {
+    const host = readOption("host", "127.0.0.1");
+    const port = Number.parseInt(readOption("port", "4175"), 10);
+    const basePath = normalizeBasePath(readOption("base", "/ms-pac-man-2010-staging/"));
 
-if (!Number.isInteger(port) || port <= 0 || port > 65535) {
-    throw new Error("--port must be an integer from 1 through 65535.");
+    if (!Number.isInteger(port) || port < 0 || port > 65535) {
+        throw new Error("--port must be an integer from 0 through 65535.");
+    }
+    if (!existsSync(distDir)) {
+        throw new Error("dist/ does not exist. Run npm run build before previewing a release artifact.");
+    }
+
+    const server = createReleasePreviewServer({
+        basePath,
+        distRoot: distDir,
+        host
+    });
+
+    server.listen(port, host, () => {
+        const address = server.address();
+        const actualPort = typeof address === "object" && address !== null ? address.port : port;
+        console.log(`Serving ${distDir}`);
+        console.log(`Mounted at http://${host}:${actualPort}${basePath}`);
+    });
 }
-if (!existsSync(distDir)) {
-    throw new Error("dist/ does not exist. Run npm run build before previewing a release artifact.");
+
+export function createReleasePreviewServer({ basePath, distRoot, host }) {
+    const normalizedBasePath = normalizeBasePath(basePath);
+    const resolvedDistRoot = resolve(distRoot);
+    return createServer((request, response) => {
+        serveRequest(request.url ?? "/", response, {
+            basePath: normalizedBasePath,
+            distRoot: resolvedDistRoot,
+            host
+        });
+    });
 }
 
-const server = createServer((request, response) => {
-    serveRequest(request.url ?? "/", response);
-});
-
-server.listen(port, host, () => {
-    console.log(`Serving ${distDir}`);
-    console.log(`Mounted at http://${host}:${port}${basePath}`);
-});
-
-function serveRequest(requestUrl, response) {
+function serveRequest(requestUrl, response, options) {
     let url;
     try {
-        url = new URL(requestUrl, `http://${host}:${port}`);
+        url = new URL(requestUrl, `http://${options.host}`);
     } catch {
         sendPlainText(response, 400, "Bad Request");
         return;
     }
 
-    if (!url.pathname.startsWith(basePath)) {
+    if (options.basePath !== "/" && url.pathname === options.basePath.slice(0, -1)) {
+        sendRedirect(response, `${options.basePath}${url.search}`);
+        return;
+    }
+
+    if (!url.pathname.startsWith(options.basePath)) {
         sendPlainText(response, 404, "Not Found");
         return;
     }
 
-    const rawRelativePath = url.pathname.slice(basePath.length);
+    const rawRelativePath = url.pathname.slice(options.basePath.length);
     if (/%2f|%5c/i.test(rawRelativePath)) {
         sendPlainText(response, 400, "Bad Request");
         return;
@@ -59,8 +83,8 @@ function serveRequest(requestUrl, response) {
         relativePath = `${relativePath}index.html`;
     }
 
-    const path = resolve(distDir, relativePath);
-    if (!isInsideDist(path)) {
+    const path = resolve(options.distRoot, relativePath);
+    if (!isInsideDist(path, options.distRoot)) {
         sendPlainText(response, 403, "Forbidden");
         return;
     }
@@ -72,7 +96,11 @@ function serveRequest(requestUrl, response) {
 
     const stat = statSync(path);
     if (stat.isDirectory()) {
-        serveRequest(`${url.pathname.endsWith("/") ? url.pathname : `${url.pathname}/`}index.html${url.search}`, response);
+        if (!url.pathname.endsWith("/")) {
+            sendRedirect(response, `${url.pathname}/${url.search}`);
+            return;
+        }
+        serveRequest(`${url.pathname}index.html${url.search}`, response, options);
         return;
     }
     if (!stat.isFile()) {
@@ -86,8 +114,8 @@ function serveRequest(requestUrl, response) {
     createReadStream(path).pipe(response);
 }
 
-function isInsideDist(path) {
-    const normalizedDist = resolve(distDir);
+function isInsideDist(path, distRoot) {
+    const normalizedDist = resolve(distRoot);
     const normalizedPath = resolve(path);
     const pathRelativeToDist = relative(normalizedDist, normalizedPath);
     return (
@@ -139,6 +167,17 @@ function contentTypeFor(path) {
         default:
             return "application/octet-stream";
     }
+}
+
+function sendRedirect(response, location) {
+    response.statusCode = 308;
+    response.setHeader("Location", location);
+    response.setHeader("Content-Type", "text/plain; charset=utf-8");
+    response.end(`Redirecting to ${location}\n`);
+}
+
+function isCliEntrypoint() {
+    return process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 }
 
 function sendPlainText(response, statusCode, message) {

@@ -18,7 +18,7 @@ const APP_STATIC_RESOURCES = [
 ];
 
 function createCacheScopeId() {
-    return new URL(self.registration.scope).pathname.replace(/[^a-zA-Z0-9._-]/g, "_");
+    return encodeURIComponent(new URL(self.registration.scope).pathname);
 }
 
 function canUseCacheApi(request) {

@@ -149,6 +149,24 @@ export function prepareNextKey() {
     return getHmacFingerprint(keyHex);
 }
 
+export function ensureNextKey() {
+    const paths = getReleaseSecretPaths();
+    readKeyFile(paths.active, "Active HMAC key");
+    if (existsSync(paths.next)) {
+        return {
+            created: false,
+            fingerprint: getHmacFingerprint(readKeyFile(paths.next, "Next HMAC key"))
+        };
+    }
+
+    const keyHex = createHmacKeyHex();
+    writeKeyFile(paths.next, keyHex);
+    return {
+        created: true,
+        fingerprint: getHmacFingerprint(keyHex)
+    };
+}
+
 export function checkRotationKeys() {
     const paths = getReleaseSecretPaths();
     const activeKey = readKeyFile(paths.active, "Active HMAC key");

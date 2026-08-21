@@ -1,62 +1,85 @@
 import { spawnSync } from "node:child_process";
-import { rmSync } from "node:fs";
-import { join } from "node:path";
-import { cleanDirectory, distDir, ensureDirectory, readVersion, rootDir } from "./build-utils.mjs";
+import { existsSync, mkdtempSync, renameSync, rmSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
+import { assertProjectVersionsMatch, cleanDirectory, distDir, ensureDirectory, readVersion, rootDir } from "./build-utils.mjs";
 import { checkRotationKeys, createCacheIdentity, getHmacFingerprint, readSelectedHmacKey } from "./hmac-config.mjs";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const target = readOption("target", "full");
 const keySource = readOption("key-source", "active");
+const canonicalDistDir = distDir;
+const buildDistDir = target === "full" ? createTemporaryFullDistDir(canonicalDistDir) : canonicalDistDir;
+let promotedFullBuild = false;
 
 const validTargets = new Set(["pwa", "web", "desktop", "full"]);
 if (!validTargets.has(target)) {
     throw new Error(`Unknown release target: ${target}`);
 }
 
-if (keySource === "next") {
-    checkRotationKeys();
+try {
+    assertProjectVersionsMatch();
+    if (keySource === "next") {
+        checkRotationKeys();
+    }
+    const hmacKeyHex = readSelectedHmacKey(keySource);
+    const initialFingerprint = getHmacFingerprint(hmacKeyHex);
+    console.log(`Using ${keySource} HMAC key fingerprint: ${initialFingerprint}`);
+
+    runNpmScript("stamp");
+    const version = readVersion();
+    const cacheIdentity = createCacheIdentity(version, hmacKeyHex);
+    const releaseEnv = {
+        ...process.env,
+        MSPACMAN_CACHE_VERSION: cacheIdentity,
+        MSPACMAN_DIST_DIR: buildDistDir,
+        MSPACMAN_HMAC_KEY_HEX: hmacKeyHex
+    };
+
+    prepareOutputTarget(target, buildDistDir);
+
+    if (target === "pwa" || target === "web" || target === "full") {
+        runNpmScript("_build:pwa:release", releaseEnv);
+    }
+
+    if (target === "web" || target === "full") {
+        runNpmScript("_build:about", releaseEnv);
+    }
+
+    if (target === "desktop" || target === "full") {
+        cleanDesktopTarget();
+        runNpmScript("_build:desktop:release", releaseEnv);
+    }
+
+    if (target === "full") {
+        runNpmScript("_assemble", releaseEnv);
+    }
+
+    if (target === "web" || target === "full") {
+        runNodeScript("write-source-archive.mjs", [], releaseEnv);
+    }
+
+    if (target === "web" || target === "full") {
+        runNodeScript("write-release-metadata.mjs", [], releaseEnv);
+        runNodeScript("write-release-checksums.mjs", [], releaseEnv);
+    }
+
+    runNodeScript("verify-release.mjs", ["--key-source=env"], {
+        ...releaseEnv,
+        MSPACMAN_RELEASE_VERIFY_TARGET: target
+    });
+
+    if (target === "full") {
+        promoteFullDist(buildDistDir, canonicalDistDir);
+        promotedFullBuild = true;
+        console.log(`Promoted verified release output to ${canonicalDistDir}.`);
+    }
+
+    console.log(`Release build verified with key fingerprint ${initialFingerprint}.`);
+} finally {
+    if (target === "full" && !promotedFullBuild) {
+        rmSync(buildDistDir, { recursive: true, force: true });
+    }
 }
-const hmacKeyHex = readSelectedHmacKey(keySource);
-const initialFingerprint = getHmacFingerprint(hmacKeyHex);
-console.log(`Using ${keySource} HMAC key fingerprint: ${initialFingerprint}`);
-
-runNpmScript("stamp");
-const version = readVersion();
-const cacheIdentity = createCacheIdentity(version, hmacKeyHex);
-const releaseEnv = {
-    ...process.env,
-    MSPACMAN_CACHE_VERSION: cacheIdentity,
-    MSPACMAN_HMAC_KEY_HEX: hmacKeyHex
-};
-
-prepareOutputTarget(target);
-
-if (target === "pwa" || target === "web" || target === "full") {
-    runNpmScript("_build:pwa:release", releaseEnv);
-}
-
-if (target === "web" || target === "full") {
-    runNpmScript("_build:about", releaseEnv);
-}
-
-if (target === "desktop" || target === "full") {
-    runNpmScript("_build:desktop:release", releaseEnv);
-}
-
-if (target === "full") {
-    runNpmScript("_assemble", releaseEnv);
-}
-
-if (target === "web" || target === "full") {
-    runNodeScript("write-release-checksums.mjs", [], releaseEnv);
-}
-
-runNodeScript("verify-release.mjs", ["--key-source=env"], {
-    ...releaseEnv,
-    MSPACMAN_RELEASE_VERIFY_TARGET: target
-});
-
-console.log(`Release build verified with key fingerprint ${initialFingerprint}.`);
 
 function readOption(name, fallback) {
     const prefix = `--${name}=`;
@@ -64,25 +87,53 @@ function readOption(name, fallback) {
     return match === undefined ? fallback : match.slice(prefix.length);
 }
 
-function prepareOutputTarget(target) {
+function prepareOutputTarget(target, outputDir) {
     switch (target) {
         case "full":
-            cleanDirectory(distDir);
+            cleanDirectory(outputDir);
             break;
         case "pwa":
-            ensureDirectory(distDir);
-            cleanDirectory(join(distDir, "pwa"));
+            ensureDirectory(outputDir);
+            cleanDirectory(join(outputDir, "pwa"));
             break;
         case "web":
-            ensureDirectory(distDir);
-            cleanDirectory(join(distDir, "pwa"));
-            cleanDirectory(join(distDir, "assets"));
-            rmSync(join(distDir, "index.html"), { force: true });
-            rmSync(join(distDir, "styles.css"), { force: true });
+            ensureDirectory(outputDir);
+            cleanDirectory(join(outputDir, "pwa"));
+            cleanDirectory(join(outputDir, "assets"));
+            rmSync(join(outputDir, "index.html"), { force: true });
+            rmSync(join(outputDir, "styles.css"), { force: true });
             console.log("Building web-only release artifacts; use npm run build for the canonical full production bundle.");
             break;
         case "desktop":
             break;
+    }
+}
+
+function cleanDesktopTarget() {
+    rmSync(join(rootDir, "desktop", "target"), { recursive: true, force: true });
+}
+
+function createTemporaryFullDistDir(finalDistDir) {
+    ensureDirectory(dirname(finalDistDir));
+    return mkdtempSync(join(dirname(finalDistDir), `.${basename(finalDistDir)}-pending-`));
+}
+
+function promoteFullDist(sourceDir, finalDistDir) {
+    const backupDir = join(dirname(finalDistDir), `.${basename(finalDistDir)}-previous-${process.pid}-${Date.now()}`);
+    let movedExistingDist = false;
+    try {
+        rmSync(backupDir, { recursive: true, force: true });
+        if (existsSync(finalDistDir)) {
+            renameSync(finalDistDir, backupDir);
+            movedExistingDist = true;
+        }
+        renameSync(sourceDir, finalDistDir);
+        rmSync(backupDir, { recursive: true, force: true });
+    } catch (error) {
+        if (movedExistingDist && !existsSync(finalDistDir) && existsSync(backupDir)) {
+            renameSync(backupDir, finalDistDir);
+        }
+        throw error;
     }
 }
 

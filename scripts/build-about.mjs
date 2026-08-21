@@ -11,7 +11,8 @@ const replacements = {
     __BUILD_STAMP__: version.buildStamp,
     __BUILD_STAMP_ENCODED__: encodedBuildStamp,
     __DESKTOP_ZIP__: `downloads/ms-pac-man-2010-desktop.zip?v=${encodedBuildStamp}`,
-    __PWA_URL__: `pwa/?v=${encodedCacheBust}`
+    __PWA_URL__: `pwa/?v=${encodedCacheBust}`,
+    __SOURCE_ZIP__: `downloads/ms-pac-man-2010-js-source.zip?v=${encodedBuildStamp}`
 };
 
 const aboutDir = join(rootDir, "about");

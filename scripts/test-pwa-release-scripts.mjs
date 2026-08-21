@@ -18,6 +18,7 @@ const syntheticEnv = {
 
 try {
     assertReleaseScriptStructure();
+    assertVersionMismatchFailsBeforeReleaseBuild();
     const first = runStandaloneReleasePwaBuild();
     writeFileSync(join(tempDistDir, "preserved-web-shell.txt"), "preserve me\n");
     const second = runStandaloneReleasePwaBuild();
@@ -31,6 +32,38 @@ try {
 } finally {
     writeFileSync(versionPath, originalVersionJson);
     rmSync(tempRoot, { recursive: true, force: true });
+}
+
+function assertVersionMismatchFailsBeforeReleaseBuild() {
+    writeFileSync(
+        versionPath,
+        `${JSON.stringify(
+            {
+                buildStamp: "2026-08-21T00:00:00.000Z",
+                version: "0.0.0"
+            },
+            null,
+            4
+        )}\n`
+    );
+    try {
+        const result = spawnNodeScript("scripts/build-release.mjs", ["--target=pwa", "--key-source=env"], {
+            cwd: rootDir,
+            encoding: "utf8",
+            env: syntheticEnv,
+            maxBuffer: 32 * 1024 * 1024,
+            windowsHide: true
+        });
+        assert.notEqual(result.status, 0, "Release builds must fail when package.json, version.json, and desktop/pom.xml versions do not match.");
+        assert.equal(
+            `${result.stdout}\n${result.stderr}`.includes("Release versions must match before building."),
+            true,
+            "Version preflight failure should identify the mismatch."
+        );
+        console.log("ok - release builds fail before building when project versions differ");
+    } finally {
+        writeFileSync(versionPath, originalVersionJson);
+    }
 }
 
 function assertReleaseScriptStructure() {

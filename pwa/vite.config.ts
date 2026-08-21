@@ -13,6 +13,7 @@ const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const distRootDir =
     process.env.MSPACMAN_DIST_DIR !== undefined && process.env.MSPACMAN_DIST_DIR !== "" ? resolve(process.env.MSPACMAN_DIST_DIR) : join(rootDir, "..", "dist");
 const pwaDistDir = join(distRootDir, "pwa");
+const thirdPartyNoticesPath = join(rootDir, "..", "THIRD_PARTY_NOTICES.md");
 const versionInfo = JSON.parse(readFileSync(new URL("../version.json", import.meta.url), "utf8")) as VersionInfo;
 const encodedBuildStamp = encodeURIComponent(versionInfo.buildStamp);
 const SERVICE_WORKER_VERSION_TOKEN = "__SERVICE_WORKER_VERSION__";
@@ -194,6 +195,10 @@ function versionedStaticAssetsPlugin(command: string, config: HighScoreBuildConf
             const indexPath = join(pwaDistDir, "index.html");
             if (existsSync(indexPath)) {
                 writeFileSync(indexPath, renderVersionedHtml(readFileSync(indexPath, "utf8"), config.encodedCacheBust));
+            }
+
+            if (existsSync(thirdPartyNoticesPath)) {
+                writeFileSync(join(pwaDistDir, "THIRD_PARTY_NOTICES.txt"), readFileSync(thirdPartyNoticesPath, "utf8"));
             }
 
             const serviceWorkerPath = join(pwaDistDir, "sw.js");

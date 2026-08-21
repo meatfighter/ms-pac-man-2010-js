@@ -73,7 +73,15 @@ async function runImport() {
 }
 
 async function runCheck() {
-    console.log(await checkActiveHmacKey());
+    const activeFingerprint = await checkActiveHmacKey();
+    const paths = getReleaseSecretPaths();
+    console.log("HMAC configuration: OK");
+    console.log(`Rotation staged: ${existsSync(paths.next) ? "yes" : "no"}`);
+    console.log(`Active key fingerprint: ${activeFingerprint}`);
+    if (existsSync(paths.next)) {
+        const fingerprints = checkRotationKeys();
+        console.log(`Next key fingerprint: ${fingerprints.nextFingerprint}`);
+    }
 }
 
 async function runShow() {

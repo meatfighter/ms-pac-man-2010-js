@@ -6,15 +6,15 @@ This directory now includes a conservative legacy Slick2D/LWJGL runtime set to i
 
 Copied into `desktop/lib/`:
 
-| Target              | Provenance                                       | Notes                                                                          |
-| ------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------ |
-| `slick.jar`         | Legacy Slick2D runtime                           | Slick2D jar paired with the LWJGL 2.8.5-era setup used by this desktop build.  |
-| `lwjgl.jar`         | LWJGL 2.8.5 runtime                              | Core LWJGL 2 classes.                                                          |
-| `lwjgl_util.jar`    | LWJGL 2.8.5 runtime                              | LWJGL utility classes.                                                         |
-| `jinput.jar`        | LWJGL 2.8.5 runtime                              | JInput jar from the same LWJGL-era runtime set.                                |
-| `jogg-0.0.7.jar`    | JOrbis/JCraft OGG runtime                        | OGG support dependency used by Slick2D audio playback.                         |
-| `jorbis-0.0.17.jar` | JOrbis/JCraft OGG runtime                        | OGG support dependency used by Slick2D audio playback.                         |
-| `gson-2.11.0.jar`   | Maven Central `com.google.code.gson:gson:2.11.0` | Used only for syntactic JSON parsing in the replacement high-score API client. |
+| Target              | Provenance                                       | Notes                                                                                                                   |
+| ------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `slick.jar`         | Legacy Slick2D runtime                           | Slick2D jar paired with the LWJGL 2.8.5-era setup used by this desktop build.                                           |
+| `lwjgl.jar`         | LWJGL 2.8.5 runtime                              | Core LWJGL 2 classes.                                                                                                   |
+| `lwjgl_util.jar`    | LWJGL 2.8.5 runtime                              | LWJGL utility classes.                                                                                                  |
+| `jinput.jar`        | LWJGL 2.8.5 runtime                              | JInput jar from the same LWJGL-era runtime set.                                                                         |
+| `jogg-0.0.7.jar`    | JOrbis/JCraft OGG runtime                        | OGG support dependency used by Slick2D audio playback; GNU Lesser/Library GPL terms per JOrbis metadata/source headers. |
+| `jorbis-0.0.17.jar` | JOrbis/JCraft OGG runtime                        | OGG support dependency used by Slick2D audio playback; GNU Lesser/Library GPL terms per JOrbis metadata/source headers. |
+| `gson-2.11.0.jar`   | Maven Central `com.google.code.gson:gson:2.11.0` | Used only for syntactic JSON parsing in the replacement high-score API client.                                          |
 
 ## Native Libraries
 
@@ -42,4 +42,4 @@ The included run scripts do this automatically for the copied runtime layout. Th
 
 This dependency copy does not modernize Slick2D itself and does not upgrade the game code. It only vendors a better-matched legacy runtime set for desktop build work.
 
-Before publishing a release, keep third-party license notices for the bundled runtime jars and native libraries with the downloadable desktop package.
+Before publishing a release, keep third-party license notices for the bundled runtime jars and native libraries with the downloadable desktop package. The canonical notice file is the repository root `THIRD_PARTY_NOTICES.md`.

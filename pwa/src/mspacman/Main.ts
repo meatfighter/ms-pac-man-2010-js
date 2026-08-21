@@ -525,25 +525,23 @@ export class Main extends BasicGame {
 
     public accessScoresDatabaseAsync(update: boolean, world: number, score: number, initials: string): void {
         this.uploadComplete = false;
-        setTimeout(() => {
-            const normalizedInitials = this.normalizeHighScoreInitials(initials);
-            const submittedScore = this.accessScoresDatabase(update, world, score, normalizedInitials);
-            if (submittedScore === null) {
-                this.uploadComplete = true;
-                return;
-            }
+        const normalizedInitials = this.normalizeHighScoreInitials(initials);
+        const submittedScore = this.accessScoresDatabase(update, world, score, normalizedInitials);
+        if (submittedScore === null) {
+            this.uploadComplete = true;
+            return;
+        }
 
-            const revision = this.leaderboardRevision;
-            void HighScoreService.submitScore(submittedScore.world, submittedScore.score, submittedScore.initials)
-                .then((scores) => {
-                    if (scores !== null) {
-                        this.applyRemoteScoresIfCurrent(scores, revision);
-                    }
-                })
-                .finally(() => {
-                    this.uploadComplete = true;
-                });
-        }, 0);
+        const revision = this.leaderboardRevision;
+        void HighScoreService.submitScore(submittedScore.world, submittedScore.score, submittedScore.initials)
+            .then((scores) => {
+                if (scores !== null) {
+                    this.applyRemoteScoresIfCurrent(scores, revision);
+                }
+            })
+            .finally(() => {
+                this.uploadComplete = true;
+            });
     }
 
     public accessScoresDatabase(update: boolean, world: number, score: number, initials: string): SubmittedScoreSnapshot | null {

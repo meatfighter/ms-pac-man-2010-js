@@ -9,6 +9,7 @@ import {
     checkRotationKeys,
     createCacheIdentity,
     createHmacKeyHex,
+    ensureNextKey,
     fileContainsBuffer,
     getHmacFingerprint,
     getReleaseSecretPaths,
@@ -57,6 +58,9 @@ try {
 
     await runTest("rotation prepare, check, promote, and abort use distinct keys", () => {
         const nextFingerprint = prepareNextKey();
+        const existingNext = ensureNextKey();
+        assert.equal(existingNext.created, false);
+        assert.equal(existingNext.fingerprint, nextFingerprint);
         assert.throws(() => assertNoStagedNextKey(), /next HMAC rotation key is staged/);
         assert.throws(() => readSelectedHmacKey("active"), /next HMAC rotation key is staged/);
         const rotation = checkRotationKeys();

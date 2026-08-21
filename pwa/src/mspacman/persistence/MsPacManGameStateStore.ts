@@ -1,11 +1,10 @@
 import type { GameContainer } from "slick2d-ts";
+import { createBrowserStorageKeys } from "../../app/BrowserStorageKeys";
 import type { Main } from "../Main";
 import type { MsPacManGameStateSnapshot } from "./GameStateSnapshot";
 import { MsPacManGameStateSerializer } from "./MsPacManGameStateSerializer";
 
 export class MsPacManGameStateStore {
-    private static readonly STORAGE_KEY = "ms-pac-man-2010.game-state";
-
     private readonly serializer = new MsPacManGameStateSerializer();
 
     public constructor(private readonly appVersion: string) {}
@@ -17,7 +16,7 @@ export class MsPacManGameStateStore {
 
         try {
             const snapshot = this.serializer.createSnapshot(main, this.appVersion);
-            localStorage.setItem(MsPacManGameStateStore.STORAGE_KEY, JSON.stringify(snapshot));
+            localStorage.setItem(createBrowserStorageKeys().gameState, JSON.stringify(snapshot));
             return true;
         } catch (error) {
             console.warn("Unable to save MS Pac-Man game state.", error);
@@ -52,12 +51,12 @@ export class MsPacManGameStateStore {
 
     public clear(): void {
         try {
-            localStorage.removeItem(MsPacManGameStateStore.STORAGE_KEY);
+            localStorage.removeItem(createBrowserStorageKeys().gameState);
         } catch {}
     }
 
     private readSnapshot(): MsPacManGameStateSnapshot | null {
-        const text = localStorage.getItem(MsPacManGameStateStore.STORAGE_KEY);
+        const text = localStorage.getItem(createBrowserStorageKeys().gameState);
         if (text === null) {
             return null;
         }

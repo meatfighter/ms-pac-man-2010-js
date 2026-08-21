@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
+import { inflateRawSync } from "node:zlib";
 import {
     assertSecretAbsentFromTrackedFiles,
     createCacheIdentity,
@@ -55,10 +56,15 @@ if (target === "pwa" || target === "web" || target === "full") {
 
 if (target === "web" || target === "full") {
     verifyAboutRelease();
+    verifyReleaseMetadata();
 }
 
 if (target === "desktop" || target === "full") {
     verifyDesktopRelease();
+}
+
+if (target === "web" || target === "full") {
+    verifySourceRelease();
 }
 
 if (target === "web" || target === "full") {
@@ -73,12 +79,19 @@ function verifyPwaRelease() {
     runNpmScript("verify:pwa-build");
 
     const pwaDistDir = join(distDir, "pwa");
+    const thirdPartyNoticesPath = join(pwaDistDir, "THIRD_PARTY_NOTICES.txt");
     const serviceWorker = readFileSync(join(pwaDistDir, "sw.js"), "utf8");
     assert.ok(
         serviceWorker.includes(`const VERSION = ${JSON.stringify(cacheIdentity)};`),
         "Service worker VERSION must include the version, build stamp, and HMAC fingerprint."
     );
     assert.equal(serviceWorker.includes(hmacKeyHex), false, "Service worker must not contain the full HMAC key.");
+    assert.ok(existsSync(thirdPartyNoticesPath), "PWA release output must include THIRD_PARTY_NOTICES.txt.");
+    assert.equal(
+        readFileSync(thirdPartyNoticesPath, "utf8"),
+        readFileSync(join(rootDir, "THIRD_PARTY_NOTICES.md"), "utf8"),
+        "PWA third-party notices must be copied from the canonical root notice file."
+    );
 
     const sourceMaps = listFiles(pwaDistDir).filter((path) => path.endsWith(".map"));
     assert.deepEqual(sourceMaps, [], "Release PWA output must not contain source maps.");
@@ -95,6 +108,10 @@ function verifyPwaRelease() {
 function verifyAboutRelease() {
     const aboutIndex = readFileSync(join(distDir, "index.html"), "utf8");
     assert.ok(aboutIndex.includes(`pwa/?v=${encodeURIComponent(cacheIdentity)}`), "About page Play link must use the selected release cache identity.");
+    assert.ok(
+        aboutIndex.includes(`downloads/ms-pac-man-2010-js-source.zip?v=${encodeURIComponent(version.buildStamp)}`),
+        "About page must link to the generated source archive."
+    );
 }
 
 function verifyDesktopRelease() {
@@ -111,11 +128,63 @@ function verifyDesktopRelease() {
 
     const zipEntries = listArchiveEntries(versionedZipPath);
     assert.ok(zipEntries.includes(`${distributionName}/${distributionName}.jar`), "Desktop release ZIP must contain the runnable desktop JAR.");
+    assert.ok(zipEntries.includes(`${distributionName}/LICENSE`), "Desktop release ZIP must contain the project LICENSE.");
+    assert.ok(zipEntries.includes(`${distributionName}/THIRD_PARTY_NOTICES.md`), "Desktop release ZIP must contain third-party notices.");
+    assert.ok(zipEntries.includes(`${distributionName}/RUNTIME_DEPENDENCIES.md`), "Desktop release ZIP must contain runtime dependency notes.");
     assert.equal(
         zipEntries.some((entry) => entry.split("/").includes(".release-secrets")),
         false,
         "Desktop release ZIP must not contain .release-secrets."
     );
+}
+
+function verifyReleaseMetadata() {
+    const releaseMetadataPath = join(distDir, "release.json");
+    assert.ok(existsSync(releaseMetadataPath), "Release output must include dist/release.json.");
+    const metadataText = readFileSync(releaseMetadataPath, "utf8");
+    const metadata = JSON.parse(metadataText);
+    assert.equal(metadata.version, version.version, "release.json version must match version.json.");
+    assert.equal(metadata.buildStamp, version.buildStamp, "release.json buildStamp must match version.json.");
+    assert.equal(metadata.hmacKeyFingerprint, fingerprint, "release.json must include the selected HMAC fingerprint.");
+    assert.equal(metadataText.includes(hmacKeyHex), false, "release.json must not contain the full HMAC key.");
+    assert.equal(metadata.deployment?.pwaBase, "./", "release.json must record the relocatable PWA base.");
+    assert.equal(metadata.deployment?.scoreApiUrl, "/api/ms-pac-man-2010/scores", "release.json must record the fixed score API path.");
+    if (metadata.pwa !== null) {
+        assert.equal(metadata.pwa.serviceWorkerVersion, cacheIdentity, "release.json must record the embedded PWA service-worker version.");
+    }
+}
+
+function verifySourceRelease() {
+    const downloadsDir = join(distDir, "downloads");
+    const stableSourcePath = join(downloadsDir, "ms-pac-man-2010-js-source.zip");
+    const versionedSourcePath = join(downloadsDir, `ms-pac-man-2010-js-source-${version.version}.zip`);
+    assert.ok(existsSync(stableSourcePath), "Release output must include the stable source archive.");
+    assert.ok(existsSync(versionedSourcePath), "Release output must include the versioned source archive.");
+
+    const archiveRoot = `ms-pac-man-2010-js-source-${version.version}/`;
+    const entries = listArchiveEntries(stableSourcePath);
+    for (const requiredEntry of [
+        `${archiveRoot}LICENSE`,
+        `${archiveRoot}THIRD_PARTY_NOTICES.md`,
+        `${archiveRoot}package.json`,
+        `${archiveRoot}version.json`,
+        `${archiveRoot}desktop/src/mspacman/Main.java`,
+        `${archiveRoot}pwa/src/app/BrowserStorageKeys.ts`,
+        `${archiveRoot}pwa/src/app/main.ts`
+    ]) {
+        assert.ok(entries.includes(requiredEntry), `Source archive is missing ${requiredEntry}.`);
+    }
+    assert.equal(
+        entries.some((entry) => entry.split("/").includes(".release-secrets")),
+        false,
+        "Source archive must not contain .release-secrets."
+    );
+    assert.equal(
+        entries.some((entry) => entry.startsWith(`${archiveRoot}dist/`)),
+        false,
+        "Source archive must not contain dist/."
+    );
+    assertArchiveDoesNotContainSecret(stableSourcePath, hmacKeyHex);
 }
 
 function verifyJarReleaseProperties(jarPath) {
@@ -205,16 +274,81 @@ async function verifyTrackedSourceDoesNotContainSelectedKey() {
 }
 
 function listArchiveEntries(archivePath) {
-    const result = spawnSync("jar", ["tf", archivePath], {
-        cwd: rootDir,
-        encoding: "utf8",
-        maxBuffer: 8 * 1024 * 1024,
-        windowsHide: true
-    });
-    if (result.status !== 0 || result.error) {
-        throw result.error ?? new Error(`Unable to list archive: ${archivePath}`);
+    return readZipEntries(archivePath).map((entry) => entry.name);
+}
+
+function assertArchiveDoesNotContainSecret(archivePath, secret) {
+    if (secret === SYNTHETIC_RELEASE_HMAC_KEY_HEX) {
+        return;
     }
-    return result.stdout.split(/\r?\n/).filter(Boolean);
+
+    const archive = readFileSync(archivePath);
+    const needle = Buffer.from(secret, "utf8");
+    for (const entry of readZipEntriesFromBuffer(archive)) {
+        if (entry.name.endsWith("/")) {
+            continue;
+        }
+        assert.equal(readZipEntryData(archive, entry).includes(needle), false, `Source archive contains the selected HMAC key: ${entry.name}`);
+    }
+}
+
+function readZipEntries(archivePath) {
+    return readZipEntriesFromBuffer(readFileSync(archivePath));
+}
+
+function readZipEntriesFromBuffer(archive) {
+    const endOffset = findEndOfCentralDirectory(archive);
+    const entryCount = archive.readUInt16LE(endOffset + 10);
+    let offset = archive.readUInt32LE(endOffset + 16);
+    const entries = [];
+    for (let i = 0; i < entryCount; i++) {
+        assert.equal(archive.readUInt32LE(offset), 0x02014b50, "Malformed ZIP central directory.");
+        const compressionMethod = archive.readUInt16LE(offset + 10);
+        const compressedSize = archive.readUInt32LE(offset + 20);
+        const uncompressedSize = archive.readUInt32LE(offset + 24);
+        const nameLength = archive.readUInt16LE(offset + 28);
+        const extraLength = archive.readUInt16LE(offset + 30);
+        const commentLength = archive.readUInt16LE(offset + 32);
+        const localHeaderOffset = archive.readUInt32LE(offset + 42);
+        const name = archive.toString("utf8", offset + 46, offset + 46 + nameLength);
+        entries.push({
+            compressedSize,
+            compressionMethod,
+            localHeaderOffset,
+            name,
+            uncompressedSize
+        });
+        offset += 46 + nameLength + extraLength + commentLength;
+    }
+    return entries;
+}
+
+function readZipEntryData(archive, entry) {
+    const offset = entry.localHeaderOffset;
+    assert.equal(archive.readUInt32LE(offset), 0x04034b50, "Malformed ZIP local file header.");
+    const nameLength = archive.readUInt16LE(offset + 26);
+    const extraLength = archive.readUInt16LE(offset + 28);
+    const dataStart = offset + 30 + nameLength + extraLength;
+    const data = archive.subarray(dataStart, dataStart + entry.compressedSize);
+    switch (entry.compressionMethod) {
+        case 0:
+            assert.equal(data.length, entry.uncompressedSize, `Stored ZIP entry has an unexpected size: ${entry.name}`);
+            return data;
+        case 8:
+            return inflateRawSync(data);
+        default:
+            throw new Error(`Unsupported ZIP compression method ${entry.compressionMethod} for ${entry.name}.`);
+    }
+}
+
+function findEndOfCentralDirectory(archive) {
+    const minimumOffset = Math.max(0, archive.length - 65557);
+    for (let offset = archive.length - 22; offset >= minimumOffset; offset--) {
+        if (archive.readUInt32LE(offset) === 0x06054b50) {
+            return offset;
+        }
+    }
+    throw new Error("Could not find ZIP end-of-central-directory record.");
 }
 
 function readJavaProperties(path) {
