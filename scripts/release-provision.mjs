@@ -1,9 +1,12 @@
 import { spawnSync } from "node:child_process";
 import { checkActiveHmacKey, createNewActiveKey } from "./hmac-config.mjs";
-import { rootDir } from "./build-utils.mjs";
+import { assertGitWorkingTreeClean, rootDir } from "./build-utils.mjs";
 
 let activeFingerprint = "";
 try {
+    if (process.env.MSPACMAN_RELEASE_ALLOW_DIRTY !== "1") {
+        assertGitWorkingTreeClean();
+    }
     const active = createNewActiveKey();
     activeFingerprint = active.fingerprint;
     await checkActiveHmacKey();

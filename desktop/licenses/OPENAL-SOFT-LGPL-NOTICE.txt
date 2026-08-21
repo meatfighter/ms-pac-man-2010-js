@@ -1,0 +1,20 @@
+OpenAL Soft Notice
+
+The bundled OpenAL native libraries identify themselves in binary strings as:
+
+- OpenAL Soft
+- OpenAL Community
+- 1.1 ALSOFT 1.14
+
+These files are distributed as unmodified native runtime libraries alongside
+the LWJGL 2 runtime:
+
+- natives/windows/OpenAL32.dll
+- natives/windows/OpenAL64.dll
+- natives/linux/libopenal.so
+- natives/linux/libopenal64.so
+- natives/macosx/openal.dylib
+
+OpenAL Soft is distributed under GNU Library/Lesser GPL terms. The full GNU
+Library General Public License version 2 text is included in this directory as
+GNU-LIBRARY-GPL-2.0.txt.

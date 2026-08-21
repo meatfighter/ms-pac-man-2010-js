@@ -71,7 +71,10 @@ try {
         assert.equal(promoted.previousFingerprint, getHmacFingerprint(importedKey));
         assert.notEqual(promoted.activeFingerprint, getHmacFingerprint(importedKey));
         assert.doesNotThrow(() => assertNoStagedNextKey());
-        assert.equal(abortRotation(), false);
+        assert.deepEqual(abortRotation(), {
+            candidateRemoved: true,
+            nextRemoved: false
+        });
     });
 
     await runTest("cache identity includes unsigned or HMAC fingerprint suffix", () => {

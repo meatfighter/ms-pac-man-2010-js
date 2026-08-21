@@ -18,7 +18,7 @@ Copied into `desktop/lib/`:
 
 ## Native Libraries
 
-Bundled from the LWJGL 2.8.5 native runtime set.
+Bundled from the LWJGL 2.8.5 native runtime set. The OpenAL native libraries identify themselves as OpenAL Soft 1.14 in binary strings and are documented separately from the LWJGL BSD notice.
 
 | Target                     | Contents                                                                                                                                 |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -42,4 +42,4 @@ The included run scripts do this automatically for the copied runtime layout. Th
 
 This dependency copy does not modernize Slick2D itself and does not upgrade the game code. It only vendors a better-matched legacy runtime set for desktop build work.
 
-Before publishing a release, keep third-party license notices for the bundled runtime jars and native libraries with the downloadable desktop package. The canonical notice file is the repository root `THIRD_PARTY_NOTICES.md`.
+Before publishing a release, keep third-party license notices for the bundled runtime jars and native libraries with the downloadable desktop package. The canonical desktop license bundle is `desktop/licenses/`, and the root `THIRD_PARTY_NOTICES.md` summarizes the same dependencies. If a jar or native library changes, update the hashes and license/provenance notes in both places before publishing.

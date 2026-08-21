@@ -29,6 +29,7 @@
         "build": "node scripts/build-release.mjs --target=full --key-source=active",
         "release:provision": "node scripts/release-provision.mjs",
         "release:rotate-hmac": "node scripts/release-rotate-hmac.mjs",
+        "release:finalize-hmac": "node scripts/release-finalize-hmac.mjs",
         "hmac:init": "node scripts/hmac-cli.mjs init",
         "hmac:import": "node scripts/hmac-cli.mjs import",
         "hmac:check": "node scripts/hmac-cli.mjs check",

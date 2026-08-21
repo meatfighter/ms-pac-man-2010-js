@@ -349,41 +349,50 @@ async function assertHighScoreApiBypassesServiceWorkerCache(serviceWorker, base)
 }
 
 async function assertScopeSpecificCacheIsolation(serviceWorker, cacheBust) {
-    const stageScope = "https://example.invalid/stage/pwa/";
-    const productionScope = "https://example.invalid/production/pwa/";
-    const stageWorker = createServiceWorkerHarness(serviceWorker, cacheBust, stageScope);
-    const productionWorker = createServiceWorkerHarness(serviceWorker, cacheBust, productionScope);
+    await assertTwoScopeActivationIsolation(serviceWorker, cacheBust, "https://example.invalid/stage/pwa/", "https://example.invalid/production/pwa/");
+    await assertTwoScopeActivationIsolation(serviceWorker, cacheBust, "https://example.invalid/a/pwa/", "https://example.invalid/a/pwa/-stage/pwa/");
+}
 
-    assert.notEqual(stageWorker.CACHE_PREFIX, productionWorker.CACHE_PREFIX, "Different PWA scopes must have different cache prefixes.");
-    assert.notEqual(stageWorker.CACHE_NAME, productionWorker.CACHE_NAME, "Different PWA scopes must have different cache names.");
+async function assertTwoScopeActivationIsolation(serviceWorker, cacheBust, firstScope, secondScope) {
+    const firstWorker = createServiceWorkerHarness(serviceWorker, cacheBust, firstScope);
+    const secondWorker = createServiceWorkerHarness(serviceWorker, cacheBust, secondScope);
 
-    const stageOldCache = `${stageWorker.CACHE_PREFIX}old`;
-    const productionOldCache = `${productionWorker.CACHE_PREFIX}old`;
+    assert.notEqual(firstWorker.CACHE_PREFIX, secondWorker.CACHE_PREFIX, "Different PWA scopes must have different cache prefixes.");
+    assert.notEqual(firstWorker.CACHE_NAME, secondWorker.CACHE_NAME, "Different PWA scopes must have different cache names.");
+    assert.equal(
+        secondWorker.CACHE_PREFIX.startsWith(firstWorker.CACHE_PREFIX),
+        false,
+        "One complete scope cache prefix must not be a string prefix of another scope cache prefix."
+    );
+    assert.equal(
+        firstWorker.CACHE_PREFIX.startsWith(secondWorker.CACHE_PREFIX),
+        false,
+        "One complete scope cache prefix must not be a string prefix of another scope cache prefix."
+    );
+
+    const firstOldCache = `${firstWorker.CACHE_PREFIX}old`;
+    const secondOldCache = `${secondWorker.CACHE_PREFIX}old`;
     const legacyGlobalCache = `ms-pac-man-2010-pwa-${cacheBust}`;
 
-    const stageActivationWorker = createServiceWorkerHarness(serviceWorker, cacheBust, stageScope, [
-        stageWorker.CACHE_NAME,
-        stageOldCache,
-        productionWorker.CACHE_NAME,
-        productionOldCache,
+    const firstActivationWorker = createServiceWorkerHarness(serviceWorker, cacheBust, firstScope, [
+        firstWorker.CACHE_NAME,
+        firstOldCache,
+        secondWorker.CACHE_NAME,
+        secondOldCache,
         legacyGlobalCache
     ]);
-    await dispatchServiceWorkerActivate(stageActivationWorker);
-    assert.deepEqual(stageActivationWorker.deletedCacheNames, [stageOldCache], "Staging activation must only delete stale caches for the staging scope.");
+    await dispatchServiceWorkerActivate(firstActivationWorker);
+    assert.deepEqual(firstActivationWorker.deletedCacheNames, [firstOldCache], "Activation must only delete stale caches for the active scope.");
 
-    const productionActivationWorker = createServiceWorkerHarness(serviceWorker, cacheBust, productionScope, [
-        stageWorker.CACHE_NAME,
-        stageOldCache,
-        productionWorker.CACHE_NAME,
-        productionOldCache,
+    const secondActivationWorker = createServiceWorkerHarness(serviceWorker, cacheBust, secondScope, [
+        firstWorker.CACHE_NAME,
+        firstOldCache,
+        secondWorker.CACHE_NAME,
+        secondOldCache,
         legacyGlobalCache
     ]);
-    await dispatchServiceWorkerActivate(productionActivationWorker);
-    assert.deepEqual(
-        productionActivationWorker.deletedCacheNames,
-        [productionOldCache],
-        "Production activation must only delete stale caches for the production scope."
-    );
+    await dispatchServiceWorkerActivate(secondActivationWorker);
+    assert.deepEqual(secondActivationWorker.deletedCacheNames, [secondOldCache], "Activation must only delete stale caches for the active scope.");
 }
 
 function createExpectedCacheName(scope, version) {
@@ -391,7 +400,7 @@ function createExpectedCacheName(scope, version) {
 }
 
 function createExpectedCachePrefix(scope) {
-    return `ms-pac-man-2010-pwa-${createExpectedCacheScopeId(scope)}-`;
+    return `ms-pac-man-2010-pwa|${createExpectedCacheScopeId(scope)}|`;
 }
 
 function createExpectedCacheScopeId(scope) {
@@ -399,7 +408,13 @@ function createExpectedCacheScopeId(scope) {
 }
 
 function assertLosslessScopeIds(serviceWorker, cacheBust) {
-    const scopes = ["https://example.invalid/a/b/", "https://example.invalid/a_b/", "https://example.invalid/a+b/"];
+    const scopes = [
+        "https://example.invalid/a/b/",
+        "https://example.invalid/a_b/",
+        "https://example.invalid/a+b/",
+        "https://example.invalid/a/pwa/",
+        "https://example.invalid/a/pwa/-stage/pwa/"
+    ];
     const workers = scopes.map((scope) => createServiceWorkerHarness(serviceWorker, cacheBust, scope));
     assert.deepEqual(
         workers.map((worker) => worker.CACHE_SCOPE_ID),

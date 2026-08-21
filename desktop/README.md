@@ -7,6 +7,7 @@ Included desktop materials:
 - `src/` Java sources and runtime resources.
 - `pom.xml` and `assembly.xml` for the Maven build.
 - `lib/` vendored legacy Java dependencies.
+- `licenses/` third-party license texts and binary provenance notes.
 - `natives/` bundled LWJGL/JInput native libraries.
 - platform launch scripts that set the required native library paths.
 
@@ -53,4 +54,4 @@ Launch after building:
 npm.cmd run run:desktop
 ```
 
-See `RUNTIME_DEPENDENCIES.md` for the bundled legacy Slick2D/LWJGL runtime notes.
+See `RUNTIME_DEPENDENCIES.md` and `licenses/` for the bundled legacy Slick2D/LWJGL runtime notes and third-party license material.

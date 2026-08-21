@@ -12,7 +12,7 @@ import {
     readSelectedHmacKey,
     SYNTHETIC_RELEASE_HMAC_KEY_HEX
 } from "./hmac-config.mjs";
-import { distDir, readVersion, rootDir } from "./build-utils.mjs";
+import { distDir, readVersion, rootDir, spawnGit } from "./build-utils.mjs";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const target = process.env.MSPACMAN_RELEASE_VERIFY_TARGET ?? readOption("target", "full");
@@ -20,7 +20,9 @@ const keySource = readOption("key-source", "env");
 const validTargets = new Set(["pwa", "web", "desktop", "full"]);
 assert.ok(validTargets.has(target), `Unknown release verification target: ${target}`);
 const hmacKeyHex = readSelectedHmacKey(keySource);
-const version = readVersion();
+const sourceVersion = readVersion();
+const releaseMetadata = target === "web" || target === "full" ? readReleaseMetadataIfAvailable() : null;
+const version = readVerificationVersion(sourceVersion, releaseMetadata);
 const cacheIdentity = createCacheIdentity(version, hmacKeyHex);
 const fingerprint = getHmacFingerprint(hmacKeyHex);
 const verifierEnv = {
@@ -131,6 +133,18 @@ function verifyDesktopRelease() {
     assert.ok(zipEntries.includes(`${distributionName}/LICENSE`), "Desktop release ZIP must contain the project LICENSE.");
     assert.ok(zipEntries.includes(`${distributionName}/THIRD_PARTY_NOTICES.md`), "Desktop release ZIP must contain third-party notices.");
     assert.ok(zipEntries.includes(`${distributionName}/RUNTIME_DEPENDENCIES.md`), "Desktop release ZIP must contain runtime dependency notes.");
+    for (const licenseEntry of [
+        "licenses/README.md",
+        "licenses/APACHE-2.0.txt",
+        "licenses/GNU-LIBRARY-GPL-2.0.txt",
+        "licenses/JINPUT-BSD.txt",
+        "licenses/JORBIS-JOGG-LGPL-NOTICE.txt",
+        "licenses/LWJGL-2-BSD.txt",
+        "licenses/OPENAL-SOFT-LGPL-NOTICE.txt",
+        "licenses/SLICK2D-BSD-3-CLAUSE.txt"
+    ]) {
+        assert.ok(zipEntries.includes(`${distributionName}/${licenseEntry}`), `Desktop release ZIP must contain ${licenseEntry}.`);
+    }
     assert.equal(
         zipEntries.some((entry) => entry.split("/").includes(".release-secrets")),
         false,
@@ -143,8 +157,13 @@ function verifyReleaseMetadata() {
     assert.ok(existsSync(releaseMetadataPath), "Release output must include dist/release.json.");
     const metadataText = readFileSync(releaseMetadataPath, "utf8");
     const metadata = JSON.parse(metadataText);
-    assert.equal(metadata.version, version.version, "release.json version must match version.json.");
-    assert.equal(metadata.buildStamp, version.buildStamp, "release.json buildStamp must match version.json.");
+    assert.equal(metadata.version, sourceVersion.version, "release.json version must match version.json.");
+    assert.equal(metadata.buildStamp, version.buildStamp, "release.json buildStamp must match the verified release build stamp.");
+    assert.equal(metadata.gitCommit, readExpectedGitCommit(), "release.json must record the exact pre-build Git commit.");
+    assert.ok(["clean", "unchecked"].includes(metadata.gitTreeState), "release.json must record the pre-build Git tree state.");
+    assert.equal(metadata.source?.gitCommit, metadata.gitCommit, "release.json source commit must match the top-level Git commit.");
+    assert.equal(metadata.source?.gitTreeState, metadata.gitTreeState, "release.json source tree state must match the top-level Git tree state.");
+    assert.equal(metadata.source?.archiveIncludesCommittedSourceOnly, true, "release.json must record committed-source-only source archives.");
     assert.equal(metadata.hmacKeyFingerprint, fingerprint, "release.json must include the selected HMAC fingerprint.");
     assert.equal(metadataText.includes(hmacKeyHex), false, "release.json must not contain the full HMAC key.");
     assert.equal(metadata.deployment?.pwaBase, "./", "release.json must record the relocatable PWA base.");
@@ -185,6 +204,7 @@ function verifySourceRelease() {
         "Source archive must not contain dist/."
     );
     assertArchiveDoesNotContainSecret(stableSourcePath, hmacKeyHex);
+    assertSourceArchiveMatchesGitCommit(stableSourcePath, archiveRoot, readExpectedGitCommit());
 }
 
 function verifyJarReleaseProperties(jarPath) {
@@ -290,6 +310,46 @@ function assertArchiveDoesNotContainSecret(archivePath, secret) {
         }
         assert.equal(readZipEntryData(archive, entry).includes(needle), false, `Source archive contains the selected HMAC key: ${entry.name}`);
     }
+}
+
+function assertSourceArchiveMatchesGitCommit(archivePath, archiveRoot, gitCommit) {
+    const tempDir = mkdtempSync(join(tmpdir(), "mspacman-source-archive-"));
+    const expectedArchivePath = join(tempDir, "expected-source.zip");
+    try {
+        spawnGit(["archive", "--format=zip", `--prefix=${archiveRoot}`, `--output=${expectedArchivePath}`, gitCommit]);
+        assert.equal(sha256File(archivePath), sha256File(expectedArchivePath), "Source archive must match git archive output for release.json gitCommit.");
+    } finally {
+        rmSync(tempDir, { recursive: true, force: true });
+    }
+}
+
+function readVerificationVersion(sourceVersion, metadata) {
+    if (metadata === null) {
+        return sourceVersion;
+    }
+    assert.equal(metadata.version, sourceVersion.version, "release.json version must match source version.");
+    assert.equal(typeof metadata.buildStamp, "string", "release.json buildStamp must be a string.");
+    return {
+        ...sourceVersion,
+        buildStamp: metadata.buildStamp
+    };
+}
+
+function readReleaseMetadataIfAvailable() {
+    const releaseMetadataPath = join(distDir, "release.json");
+    if (!existsSync(releaseMetadataPath)) {
+        return null;
+    }
+    return JSON.parse(readFileSync(releaseMetadataPath, "utf8"));
+}
+
+function readExpectedGitCommit() {
+    const expected = process.env.MSPACMAN_RELEASE_GIT_COMMIT;
+    if (expected !== undefined && expected !== "") {
+        return expected;
+    }
+    assert.ok(releaseMetadata !== null, "Release metadata is required to infer the expected Git commit.");
+    return releaseMetadata.gitCommit;
 }
 
 function readZipEntries(archivePath) {

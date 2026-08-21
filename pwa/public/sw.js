@@ -1,6 +1,6 @@
 const VERSION = "__SERVICE_WORKER_VERSION__";
 const CACHE_SCOPE_ID = createCacheScopeId();
-const CACHE_PREFIX = `ms-pac-man-2010-pwa-${CACHE_SCOPE_ID}-`;
+const CACHE_PREFIX = `ms-pac-man-2010-pwa|${CACHE_SCOPE_ID}|`;
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 const APP_INDEX = createCacheUrl("./index.html");
 const APP_STATIC_RESOURCES = [

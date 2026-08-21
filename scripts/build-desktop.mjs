@@ -10,6 +10,7 @@ const hmacKeyHex = releaseBuild ? readEnvHmacKey() : "";
 const desktopDir = join(rootDir, "desktop");
 const sourceDir = join(desktopDir, "src");
 const libDir = join(desktopDir, "lib");
+const licensesDir = join(desktopDir, "licenses");
 const nativeDir = join(desktopDir, "natives");
 const targetDir = join(desktopDir, "target");
 const classesDir = join(targetDir, "classes");
@@ -142,6 +143,9 @@ function verifyRuntimeDependencies() {
     if (!existsSync(nativeDir)) {
         throw new Error(`Missing desktop native directory: ${nativeDir}`);
     }
+    if (!existsSync(licensesDir)) {
+        throw new Error(`Missing desktop license directory: ${licensesDir}`);
+    }
 }
 
 function copyRuntimeToTarget() {
@@ -160,6 +164,7 @@ function createDistribution() {
     copyFileSync(stableJarPath, join(distributionDir, `${distributionName}.jar`));
     cpSync(targetLibDir, join(distributionDir, "lib"), { recursive: true });
     cpSync(targetNativeDir, join(distributionDir, "natives"), { recursive: true });
+    cpSync(licensesDir, join(distributionDir, "licenses"), { recursive: true });
 
     for (const name of ["run-windows.cmd", "run-windows.ps1", "run-linux.sh", "run-macos.sh", "README.md", "RUNTIME_DEPENDENCIES.md"]) {
         copyFileSync(join(desktopDir, name), join(distributionDir, name));

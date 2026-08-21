@@ -1,8 +1,27 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, renameSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { assertProjectVersionsMatch, cleanDirectory, distDir, ensureDirectory, readVersion, rootDir } from "./build-utils.mjs";
-import { checkRotationKeys, createCacheIdentity, getHmacFingerprint, readSelectedHmacKey } from "./hmac-config.mjs";
+import {
+    assertGitWorkingTreeClean,
+    assertProjectVersionsMatch,
+    cleanDirectory,
+    distDir,
+    ensureDirectory,
+    getGitHeadCommit,
+    getGitStatusPorcelain,
+    readVersion,
+    rootDir,
+    versionPath
+} from "./build-utils.mjs";
+import {
+    assertRepositoryReleaseSecretsIgnored,
+    assertSecretAbsentFromTrackedFiles,
+    checkRotationKeys,
+    createCacheIdentity,
+    getHmacFingerprint,
+    readSelectedHmacKey,
+    SYNTHETIC_RELEASE_HMAC_KEY_HEX
+} from "./hmac-config.mjs";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const target = readOption("target", "full");
@@ -10,6 +29,9 @@ const keySource = readOption("key-source", "active");
 const canonicalDistDir = distDir;
 const buildDistDir = target === "full" ? createTemporaryFullDistDir(canonicalDistDir) : canonicalDistDir;
 let promotedFullBuild = false;
+let originalVersionJson = "";
+let stampedVersionJson = false;
+let productionCleanPreflight = false;
 
 const validTargets = new Set(["pwa", "web", "desktop", "full"]);
 if (!validTargets.has(target)) {
@@ -17,21 +39,38 @@ if (!validTargets.has(target)) {
 }
 
 try {
+    productionCleanPreflight = shouldRequireCleanSourcePreflight(keySource);
+    if (productionCleanPreflight) {
+        assertGitWorkingTreeClean();
+    }
     assertProjectVersionsMatch();
+    const hmacKeyHex = readSelectedHmacKey(keySource);
+    const releaseGitCommit = getGitHeadCommit();
+    if (productionCleanPreflight) {
+        await assertProductionHmacPreflight(hmacKeyHex);
+    } else {
+        await assertSyntheticOrEnvReleasePreflight(hmacKeyHex);
+    }
+    const releaseGitTreeState = productionCleanPreflight || getGitStatusPorcelain().trim() === "" ? "clean" : "unchecked";
     if (keySource === "next") {
         checkRotationKeys();
     }
-    const hmacKeyHex = readSelectedHmacKey(keySource);
     const initialFingerprint = getHmacFingerprint(hmacKeyHex);
     console.log(`Using ${keySource} HMAC key fingerprint: ${initialFingerprint}`);
 
+    originalVersionJson = readFileSync(versionPath, "utf8");
     runNpmScript("stamp");
+    stampedVersionJson = true;
+    maybeFailReleaseStage("after-stamp");
+
     const version = readVersion();
     const cacheIdentity = createCacheIdentity(version, hmacKeyHex);
     const releaseEnv = {
         ...process.env,
         MSPACMAN_CACHE_VERSION: cacheIdentity,
         MSPACMAN_DIST_DIR: buildDistDir,
+        MSPACMAN_RELEASE_GIT_COMMIT: releaseGitCommit,
+        MSPACMAN_RELEASE_GIT_TREE_STATE: releaseGitTreeState,
         MSPACMAN_HMAC_KEY_HEX: hmacKeyHex
     };
 
@@ -63,6 +102,8 @@ try {
         runNodeScript("write-release-checksums.mjs", [], releaseEnv);
     }
 
+    maybeFailReleaseStage("after-artifacts-before-verify");
+
     runNodeScript("verify-release.mjs", ["--key-source=env"], {
         ...releaseEnv,
         MSPACMAN_RELEASE_VERIFY_TARGET: target
@@ -76,8 +117,14 @@ try {
 
     console.log(`Release build verified with key fingerprint ${initialFingerprint}.`);
 } finally {
+    if (stampedVersionJson) {
+        writeFileSync(versionPath, originalVersionJson);
+    }
     if (target === "full" && !promotedFullBuild) {
         rmSync(buildDistDir, { recursive: true, force: true });
+    }
+    if (productionCleanPreflight) {
+        assertGitWorkingTreeClean();
     }
 }
 
@@ -121,6 +168,7 @@ function createTemporaryFullDistDir(finalDistDir) {
 function promoteFullDist(sourceDir, finalDistDir) {
     const backupDir = join(dirname(finalDistDir), `.${basename(finalDistDir)}-previous-${process.pid}-${Date.now()}`);
     let movedExistingDist = false;
+    let installedNewDist = false;
     try {
         rmSync(backupDir, { recursive: true, force: true });
         if (existsSync(finalDistDir)) {
@@ -128,12 +176,43 @@ function promoteFullDist(sourceDir, finalDistDir) {
             movedExistingDist = true;
         }
         renameSync(sourceDir, finalDistDir);
-        rmSync(backupDir, { recursive: true, force: true });
+        installedNewDist = true;
+        try {
+            rmSync(backupDir, { recursive: true, force: true });
+        } catch (error) {
+            console.warn(`Warning: release succeeded but old dist backup could not be removed: ${backupDir}`);
+            console.warn(error instanceof Error ? error.message : String(error));
+        }
     } catch (error) {
-        if (movedExistingDist && !existsSync(finalDistDir) && existsSync(backupDir)) {
+        if (!installedNewDist && movedExistingDist && !existsSync(finalDistDir) && existsSync(backupDir)) {
             renameSync(backupDir, finalDistDir);
         }
         throw error;
+    }
+}
+
+async function assertProductionHmacPreflight(hmacKeyHex) {
+    assertRepositoryReleaseSecretsIgnored();
+    await assertSecretAbsentFromTrackedFiles(hmacKeyHex);
+}
+
+async function assertSyntheticOrEnvReleasePreflight(hmacKeyHex) {
+    assertRepositoryReleaseSecretsIgnored();
+    if (hmacKeyHex !== SYNTHETIC_RELEASE_HMAC_KEY_HEX) {
+        await assertSecretAbsentFromTrackedFiles(hmacKeyHex);
+    }
+}
+
+function shouldRequireCleanSourcePreflight(keySource) {
+    if (process.env.MSPACMAN_RELEASE_ALLOW_DIRTY === "1") {
+        return false;
+    }
+    return keySource === "active" || keySource === "next";
+}
+
+function maybeFailReleaseStage(stage) {
+    if (process.env.MSPACMAN_TEST_FAIL_RELEASE_STAGE === stage) {
+        throw new Error(`Injected release failure stage: ${stage}`);
     }
 }
 

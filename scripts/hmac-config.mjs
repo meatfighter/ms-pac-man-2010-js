@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
-import { createReadStream, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, createReadStream, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
-import { rootDir } from "./build-utils.mjs";
+import { hmacNextCandidateDir, rootDir } from "./build-utils.mjs";
 
 export const HMAC_KEY_PATTERN = /^[0-9a-f]{64}$/;
 export const SYNTHETIC_RELEASE_HMAC_KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
@@ -180,7 +180,7 @@ export function checkRotationKeys() {
     };
 }
 
-export function promoteNextKey() {
+export function promoteNextKey(options = {}) {
     const paths = getReleaseSecretPaths();
     const activeKey = readKeyFile(paths.active, "Active HMAC key");
     const nextKey = readKeyFile(paths.next, "Next HMAC key");
@@ -188,30 +188,94 @@ export function promoteNextKey() {
         throw new Error("Active and next HMAC keys must be different.");
     }
 
-    if (existsSync(paths.previous)) {
-        rmSync(paths.previous, { force: true });
+    const rollbackPath = join(paths.dir, `${ACTIVE_FILE_NAME}.rollback`);
+    const nextActivePath = join(paths.dir, `${ACTIVE_FILE_NAME}.promote`);
+    const previousPath = join(paths.dir, `${PREVIOUS_FILE_NAME}.promote`);
+
+    rmSync(rollbackPath, { force: true });
+    rmSync(nextActivePath, { force: true });
+    rmSync(previousPath, { force: true });
+
+    try {
+        writeKeyFile(rollbackPath, activeKey);
+        writeKeyFile(nextActivePath, nextKey);
+        writeKeyFile(previousPath, activeKey);
+        if (options.failStage === "before-active-replace") {
+            throw new Error("Injected HMAC promotion failure: before-active-replace");
+        }
+
+        copyFileSync(nextActivePath, paths.active);
+        if (readKeyFile(paths.active, "Promoted active HMAC key") !== nextKey) {
+            throw new Error("Promoted active HMAC key did not match the staged next key.");
+        }
+        if (options.failStage === "after-active-replace") {
+            throw new Error("Injected HMAC promotion failure: after-active-replace");
+        }
+
+        copyFileSync(previousPath, paths.previous);
+        rmSync(paths.next, { force: true });
+        return {
+            activeFingerprint: getHmacFingerprint(nextKey),
+            previousFingerprint: getHmacFingerprint(activeKey)
+        };
+    } catch (error) {
+        if (existsSync(rollbackPath)) {
+            copyFileSync(rollbackPath, paths.active);
+        }
+        throw error;
+    } finally {
+        rmSync(rollbackPath, { force: true });
+        rmSync(nextActivePath, { force: true });
+        rmSync(previousPath, { force: true });
     }
-    renameSync(paths.active, paths.previous);
-    renameSync(paths.next, paths.active);
-    return {
-        activeFingerprint: getHmacFingerprint(nextKey),
-        previousFingerprint: getHmacFingerprint(activeKey)
-    };
 }
 
 export function abortRotation() {
     const paths = getReleaseSecretPaths();
     const existed = existsSync(paths.next);
     rmSync(paths.next, { force: true });
-    return existed;
+    rmSync(hmacNextCandidateDir, { recursive: true, force: true });
+    return {
+        candidateRemoved: true,
+        nextRemoved: existed
+    };
 }
 
 export async function checkActiveHmacKey() {
     const paths = getReleaseSecretPaths();
     const activeKey = readKeyFile(paths.active, "Active HMAC key");
     assertRepositoryReleaseSecretsIgnored();
-    await assertSecretAbsentFromTrackedFiles(activeKey);
+    await assertNonSyntheticSecretAbsentFromTrackedFiles(activeKey);
     return getHmacFingerprint(activeKey);
+}
+
+export async function checkHmacConfiguration() {
+    const paths = getReleaseSecretPaths();
+    const activeKey = readKeyFile(paths.active, "Active HMAC key");
+    assertRepositoryReleaseSecretsIgnored();
+    await assertNonSyntheticSecretAbsentFromTrackedFiles(activeKey);
+
+    const result = {
+        activeFingerprint: getHmacFingerprint(activeKey),
+        nextFingerprint: null,
+        rotationStaged: existsSync(paths.next)
+    };
+    if (result.rotationStaged) {
+        const nextKey = readKeyFile(paths.next, "Next HMAC key");
+        if (activeKey === nextKey) {
+            throw new Error("Active and next HMAC keys must be different.");
+        }
+        await assertNonSyntheticSecretAbsentFromTrackedFiles(nextKey);
+        result.nextFingerprint = getHmacFingerprint(nextKey);
+    }
+    return result;
+}
+
+export async function assertNonSyntheticSecretAbsentFromTrackedFiles(secret) {
+    if (secret === SYNTHETIC_RELEASE_HMAC_KEY_HEX) {
+        return;
+    }
+    await assertSecretAbsentFromTrackedFiles(secret);
 }
 
 export function assertRepositoryReleaseSecretsIgnored() {

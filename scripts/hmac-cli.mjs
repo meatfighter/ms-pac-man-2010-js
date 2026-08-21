@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import {
     abortRotation,
-    checkActiveHmacKey,
+    checkHmacConfiguration,
     checkRotationKeys,
     getHmacFingerprint,
     getReleaseSecretPaths,
@@ -73,14 +73,12 @@ async function runImport() {
 }
 
 async function runCheck() {
-    const activeFingerprint = await checkActiveHmacKey();
-    const paths = getReleaseSecretPaths();
+    const configuration = await checkHmacConfiguration();
     console.log("HMAC configuration: OK");
-    console.log(`Rotation staged: ${existsSync(paths.next) ? "yes" : "no"}`);
-    console.log(`Active key fingerprint: ${activeFingerprint}`);
-    if (existsSync(paths.next)) {
-        const fingerprints = checkRotationKeys();
-        console.log(`Next key fingerprint: ${fingerprints.nextFingerprint}`);
+    console.log(`Rotation staged: ${configuration.rotationStaged ? "yes" : "no"}`);
+    console.log(`Active key fingerprint: ${configuration.activeFingerprint}`);
+    if (configuration.nextFingerprint !== null) {
+        console.log(`Next key fingerprint: ${configuration.nextFingerprint}`);
     }
 }
 
@@ -122,9 +120,10 @@ async function runRotatePromote() {
 }
 
 async function runRotateAbort() {
-    await confirmDangerousOperation("This will delete the staged next HMAC key.", "ABORT HMAC ROTATION");
-    const removed = abortRotation();
-    console.log(removed ? "Removed next HMAC key." : "No next HMAC key was present.");
+    await confirmDangerousOperation("This will delete the staged next HMAC key and discard the next-key release candidate.", "ABORT HMAC ROTATION");
+    const result = abortRotation();
+    console.log(result.nextRemoved ? "Removed next HMAC key." : "No next HMAC key was present.");
+    console.log("Discarded next-key release candidate directory if present.");
 }
 
 async function confirmDangerousOperation(warning, confirmationText) {

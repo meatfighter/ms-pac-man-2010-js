@@ -5,6 +5,10 @@ dist/
 .env.*
 !.env.example
 .release-secrets/
+.release-candidates/
+.dist-pending-*/
+.dist-previous-*/
+.dist-active-before-hmac-finalize-*/
 desktop/build/
 desktop/dist/
 desktop/target/

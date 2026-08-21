@@ -1,0 +1,14 @@
+JOrbis / Jogg Notice
+
+The bundled JCraft Ogg/Vorbis runtime jars are:
+
+- lib/jogg-0.0.7.jar
+- lib/jorbis-0.0.17.jar
+
+The bundled jars do not include embedded license files. JOrbis Maven metadata
+and upstream source headers identify GNU Lesser/Library General Public License
+terms. The full GNU Library General Public License version 2 text is included
+in this directory as GNU-LIBRARY-GPL-2.0.txt.
+
+The jars are shipped unmodified as separate runtime libraries on the desktop
+classpath rather than merged into the game jar.
