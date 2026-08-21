@@ -868,8 +868,8 @@ async function registerServiceWorker(): Promise<void> {
         return;
     }
     try {
-        await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js?v=${encodeURIComponent(CACHE_BUST)}`, {
-            scope: import.meta.env.BASE_URL
+        await navigator.serviceWorker.register(`./sw.js?v=${encodeURIComponent(CACHE_BUST)}`, {
+            scope: "./"
         });
     } catch {
         // The game still runs without PWA registration.

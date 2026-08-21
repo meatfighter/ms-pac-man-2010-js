@@ -1,6 +1,7 @@
 const VERSION = "__SERVICE_WORKER_VERSION__";
-const CACHE_NAME = `ms-pac-man-2010-pwa-${VERSION}`;
-const CACHE_PREFIXES = ["ms-pac-man-2010-", "ms-pac-man-2010-pwa-"];
+const CACHE_SCOPE_ID = createCacheScopeId();
+const CACHE_PREFIX = `ms-pac-man-2010-pwa-${CACHE_SCOPE_ID}-`;
+const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
 const APP_INDEX = createCacheUrl("./index.html");
 const APP_STATIC_RESOURCES = [
     "./",
@@ -15,6 +16,10 @@ const APP_STATIC_RESOURCES = [
     "./icon-192.png",
     "./icon-512.png"
 ];
+
+function createCacheScopeId() {
+    return new URL(self.registration.scope).pathname.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
 
 function canUseCacheApi(request) {
     const url = new URL(request.url);
@@ -56,9 +61,7 @@ self.addEventListener("activate", (event) => {
     event.waitUntil(
         (async () => {
             const keys = await caches.keys();
-            await Promise.all(
-                keys.filter((key) => CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)) && key !== CACHE_NAME).map((key) => caches.delete(key))
-            );
+            await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map((key) => caches.delete(key)));
             await self.clients.claim();
         })()
     );

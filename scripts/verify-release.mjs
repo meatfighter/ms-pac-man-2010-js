@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -26,6 +27,25 @@ const verifierEnv = {
     MSPACMAN_CACHE_VERSION: cacheIdentity,
     MSPACMAN_HMAC_KEY_HEX: hmacKeyHex
 };
+const forbiddenDeploymentRootPatterns = [
+    {
+        label: "/pwa/",
+        pattern: /(^|[^.])\/pwa\//
+    },
+    {
+        label: "/mspacman2010/",
+        pattern: /\/mspacman2010\//
+    },
+    {
+        label: "/ms-pac-man-2010/",
+        pattern: /\/ms-pac-man-2010\//
+    },
+    {
+        label: "/ms-pac-man-2010-staging/",
+        pattern: /\/ms-pac-man-2010-staging\//
+    }
+];
+const runtimeTextExtensions = new Set([".css", ".html", ".js", ".json", ".svg", ".txt", ".webmanifest", ".xml"]);
 
 verifyDistDoesNotContainReleaseSecrets();
 
@@ -39,6 +59,11 @@ if (target === "web" || target === "full") {
 
 if (target === "desktop" || target === "full") {
     verifyDesktopRelease();
+}
+
+if (target === "web" || target === "full") {
+    verifyReleaseChecksumManifest();
+    verifyGeneratedRuntimeDoesNotContainHardcodedDeploymentRoots(distDir);
 }
 
 await verifyTrackedSourceDoesNotContainSelectedKey();
@@ -64,6 +89,7 @@ function verifyPwaRelease() {
         builtJsFiles.some((path) => readFileSync(path, "utf8").includes(hmacKeyHex)),
         "Release PWA JavaScript must embed the selected HMAC key."
     );
+    verifyGeneratedRuntimeDoesNotContainHardcodedDeploymentRoots(pwaDistDir);
 }
 
 function verifyAboutRelease() {
@@ -112,6 +138,63 @@ function verifyDistDoesNotContainReleaseSecrets() {
     for (const path of listFiles(distDir)) {
         assert.equal(relative(distDir, path).split(/[\\/]/).includes(".release-secrets"), false, "Release secrets must not be copied into dist.");
     }
+}
+
+function verifyReleaseChecksumManifest() {
+    const checksumManifestPath = join(distDir, "checksums.sha256");
+    assert.ok(existsSync(checksumManifestPath), "Release output must include dist/checksums.sha256.");
+
+    const expected = new Map();
+    for (const path of listFiles(distDir)) {
+        const relativePath = relative(distDir, path).replaceAll("\\", "/");
+        if (relativePath !== "checksums.sha256") {
+            expected.set(relativePath, sha256File(path));
+        }
+    }
+
+    const actual = new Map();
+    for (const line of readFileSync(checksumManifestPath, "utf8").split(/\r?\n/)) {
+        if (line === "") {
+            continue;
+        }
+        const match = /^([0-9a-f]{64})[ ]{2}(.+)$/.exec(line);
+        assert.ok(match !== null && match[1] !== undefined && match[2] !== undefined, `Malformed checksum manifest line: ${line}`);
+        assert.equal(actual.has(match[2]), false, `Duplicate checksum manifest entry: ${match[2]}`);
+        actual.set(match[2], match[1]);
+    }
+
+    assert.deepEqual(
+        [...actual.keys()].sort((a, b) => a.localeCompare(b)),
+        [...expected.keys()].sort((a, b) => a.localeCompare(b))
+    );
+    for (const [path, hash] of expected) {
+        assert.equal(actual.get(path), hash, `Checksum mismatch for ${path}.`);
+    }
+}
+
+function sha256File(path) {
+    return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function verifyGeneratedRuntimeDoesNotContainHardcodedDeploymentRoots(root) {
+    if (!existsSync(root)) {
+        return;
+    }
+    for (const path of listFiles(root)) {
+        if (!shouldScanRuntimeTextFile(path)) {
+            continue;
+        }
+        const content = readFileSync(path, "utf8").replaceAll("/api/ms-pac-man-2010/", "");
+        for (const { label, pattern } of forbiddenDeploymentRootPatterns) {
+            const match = pattern.exec(content);
+            assert.equal(match, null, `Generated runtime file contains hard-coded deployment root ${label}: ${relative(rootDir, path)}`);
+        }
+    }
+}
+
+function shouldScanRuntimeTextFile(path) {
+    const dot = path.lastIndexOf(".");
+    return dot >= 0 && runtimeTextExtensions.has(path.slice(dot).toLowerCase());
 }
 
 async function verifyTrackedSourceDoesNotContainSelectedKey() {

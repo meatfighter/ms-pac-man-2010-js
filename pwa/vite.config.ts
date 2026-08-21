@@ -216,7 +216,7 @@ export default defineConfig(({ command, mode }) => {
 
     return {
         root: rootDir,
-        base: command === "build" ? "/pwa/" : "/",
+        base: command === "build" ? "./" : "/",
         plugins: [versionedHtmlPlugin(highScoreBuildConfig), versionedStaticAssetsPlugin(command, highScoreBuildConfig)],
         define: {
             __APP_VERSION__: JSON.stringify(versionInfo.version),

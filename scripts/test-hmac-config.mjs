@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
     abortRotation,
+    assertNoStagedNextKey,
     checkActiveHmacKey,
     checkRotationKeys,
     createCacheIdentity,
@@ -16,6 +17,7 @@ import {
     prepareNextKey,
     promoteNextKey,
     readKeyFile,
+    readSelectedHmacKey,
     SYNTHETIC_RELEASE_HMAC_KEY_HEX,
     validateHmacKeyHex
 } from "./hmac-config.mjs";
@@ -55,12 +57,16 @@ try {
 
     await runTest("rotation prepare, check, promote, and abort use distinct keys", () => {
         const nextFingerprint = prepareNextKey();
+        assert.throws(() => assertNoStagedNextKey(), /next HMAC rotation key is staged/);
+        assert.throws(() => readSelectedHmacKey("active"), /next HMAC rotation key is staged/);
         const rotation = checkRotationKeys();
         assert.equal(rotation.activeFingerprint, getHmacFingerprint(importedKey));
         assert.equal(rotation.nextFingerprint, nextFingerprint);
+        assert.equal(readSelectedHmacKey("next"), readKeyFile(getReleaseSecretPaths().next, "Next HMAC key"));
         const promoted = promoteNextKey();
         assert.equal(promoted.previousFingerprint, getHmacFingerprint(importedKey));
         assert.notEqual(promoted.activeFingerprint, getHmacFingerprint(importedKey));
+        assert.doesNotThrow(() => assertNoStagedNextKey());
         assert.equal(abortRotation(), false);
     });
 

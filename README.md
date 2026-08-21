@@ -24,6 +24,7 @@ Useful commands:
 - `npm.cmd run build:web:unsigned` builds a local unsigned web artifact with score submissions disabled; do not upload it as a production release.
 - `npm.cmd run build:desktop` builds an unsigned legacy Java desktop jar and zip.
 - `npm.cmd run build:desktop:release` builds the legacy Java desktop jar and zip with the active local HMAC key embedded in the generated JAR.
+- `npm.cmd run preview:release -- --base=/test-location/` serves the already-built `dist/` tree under a test mount path without rebuilding or rewriting it.
 - `npm.cmd run release:desktop` refreshes the staged desktop release zip for upload.
 - `npm.cmd run release:provision` creates a new active local HMAC key and performs a complete verified full release. It does not modify the server.
 - `npm.cmd run release:rotate-hmac` creates a staged next local HMAC key and performs a complete verified candidate release with it. It does not alter active and does not promote automatically.
@@ -40,6 +41,15 @@ High-score server configuration:
 - The HMAC key is a release coordination and spam-resistance control, not a true client secret. Production PWA JavaScript and release desktop JARs are inspectable by users, so the high-score server must continue to validate every submitted score independently.
 - Automated/smoke release builds should use `node scripts/build-release.mjs --target=full --key-source=env` with a synthetic valid key such as `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f`. Do not use or print the real production key in automated review output.
 - `.release-secrets/` must never be copied into `dist/`, `releases/`, desktop ZIPs, or manually prepared source archives.
+- An ordinary active-key release refuses to run while `.release-secrets/ms-pac-man-2010-hmac.next.hex` exists. Finish the candidate release with the next key, promote the rotation, or abort it before shipping another active-key release.
+
+Relocatable web release:
+
+- The generated `dist/` tree is intended to be copied unchanged beneath any directory on `https://meatfighter.com/`, such as `/ms-pac-man-2010-staging/` or `/ms-pac-man-2010/`.
+- Static links in the generated about page and PWA are deployment-relative. Do not hard-code `/pwa/`, `/mspacman2010/`, `/ms-pac-man-2010/`, or staging paths into runtime assets.
+- The high-score API is the intentional exception: the PWA uses the root-relative `/api/ms-pac-man-2010/scores` path so any same-origin deployment directory talks to the same production API.
+- The service worker is registered relative to the current PWA page, and its Cache Storage namespace includes the service-worker scope path. This lets staging and production copies coexist on the same origin without deleting each other's caches.
+- `npm.cmd run verify:release` and the release build pipeline check generated files for accidental hard-coded deployment roots and exercise multiple synthetic PWA mount paths.
 
 Production operations:
 
@@ -55,6 +65,17 @@ npm.cmd run build
 ```
 
 The imported value must be the same existing key currently configured in `/etc/ms-pac-man-2010-server.env`. Ordinary releases do not change that server file.
+
+Deployment workflow:
+
+1. Build one canonical production `dist/` with `npm.cmd run build`.
+2. Upload that exact `dist/` content beneath `/ms-pac-man-2010-staging/`.
+3. Test the staged client against the production same-origin API at `/api/ms-pac-man-2010/` while leaving the historical `/mspacman2010/` site untouched.
+4. Promote the same release bytes beneath `/ms-pac-man-2010/`; do not rebuild or rewrite files for the final location.
+5. Verify deployed checksums against the canonical release checksum manifest.
+6. Update public links to point at `/ms-pac-man-2010/`.
+7. Only after production acceptance, configure the old `/mspacman2010/` location to redirect to `/ms-pac-man-2010/`.
+8. Separately archive or disable the old writable score CGI only after migration and historical-score review are complete.
 
 New deployment:
 

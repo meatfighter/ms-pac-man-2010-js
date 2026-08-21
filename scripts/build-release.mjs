@@ -47,6 +47,10 @@ if (target === "full") {
     runNpmScript("_assemble", releaseEnv);
 }
 
+if (target === "web" || target === "full") {
+    runNodeScript("write-release-checksums.mjs", [], releaseEnv);
+}
+
 runNodeScript("verify-release.mjs", ["--key-source=env"], {
     ...releaseEnv,
     MSPACMAN_RELEASE_VERIFY_TARGET: target

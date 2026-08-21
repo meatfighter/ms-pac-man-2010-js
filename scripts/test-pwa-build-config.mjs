@@ -33,6 +33,11 @@ try {
     await runTest("release build config accepts fixed API URL with a valid synthetic key", async () => {
         await assertReleaseConfigPasses(VALID_SYNTHETIC_KEY, FIXED_API_URL);
     });
+
+    await runTest("release build config uses a relocatable PWA base", async () => {
+        const config = await resolveReleaseConfig(VALID_SYNTHETIC_KEY, FIXED_API_URL);
+        assert.equal(config.base, "./");
+    });
 } finally {
     restoreEnv();
 }
@@ -60,22 +65,26 @@ async function assertReleaseConfigPasses(key, apiUrl) {
 }
 
 async function resolveReleaseConfigError(key, apiUrl) {
-    setEnv("MSPACMAN_HMAC_KEY_HEX", key);
-    setEnv("MSPACMAN_SCORE_API_URL", apiUrl);
-    setEnv("MSPACMAN_CACHE_VERSION", undefined);
     try {
-        await resolveConfig(
-            {
-                configFile: CONFIG_FILE,
-                logLevel: "silent"
-            },
-            "build",
-            "release"
-        );
+        await resolveReleaseConfig(key, apiUrl);
         return null;
     } catch (error) {
         return error;
     }
+}
+
+async function resolveReleaseConfig(key, apiUrl) {
+    setEnv("MSPACMAN_HMAC_KEY_HEX", key);
+    setEnv("MSPACMAN_SCORE_API_URL", apiUrl);
+    setEnv("MSPACMAN_CACHE_VERSION", undefined);
+    return await resolveConfig(
+        {
+            configFile: CONFIG_FILE,
+            logLevel: "silent"
+        },
+        "build",
+        "release"
+    );
 }
 
 function setEnv(name, value) {

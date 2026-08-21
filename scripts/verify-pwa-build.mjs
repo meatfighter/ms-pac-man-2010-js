@@ -9,6 +9,11 @@ const pwaDistDir = join(distDir, "pwa");
 const assetsDir = join(pwaDistDir, "assets");
 const serviceWorkerPath = join(pwaDistDir, "sw.js");
 const indexPath = join(pwaDistDir, "index.html");
+const relocationTestBases = [
+    "https://example.invalid/ms-pac-man-2010/pwa/",
+    "https://example.invalid/ms-pac-man-2010-staging/pwa/",
+    "https://example.invalid/foo/bar/baz/pwa/"
+];
 
 async function main() {
     assert.ok(existsSync(pwaDistDir), "dist/pwa does not exist. Run npm run build:pwa first.");
@@ -21,6 +26,8 @@ async function main() {
     const cacheBust = readExpectedCacheBust(versionInfo);
 
     const serviceWorker = readFileSync(serviceWorkerPath, "utf8");
+    const indexHtml = readFileSync(indexPath, "utf8");
+    const manifest = readFileSync(join(pwaDistDir, "manifest.webmanifest"), "utf8");
     const resources = readPrecacheResources(serviceWorker);
     assertPrecacheResourceTree(resources);
 
@@ -42,8 +49,9 @@ async function main() {
     await assertVersionedServiceWorkerCacheKeys(serviceWorker, cacheBust);
     assertServiceWorkerLifecycle(serviceWorker);
     assertImmutableServiceWorkerRuntimeCache(serviceWorker);
-    assertIndexAssetReferencesAreStamped(readFileSync(indexPath, "utf8"), cacheBust);
-    assertManifestAssetReferencesAreStamped(readFileSync(join(pwaDistDir, "manifest.webmanifest"), "utf8"), cacheBust);
+    assertIndexAssetReferencesAreStamped(indexHtml, cacheBust);
+    assertManifestAssetReferencesAreStamped(manifest, cacheBust);
+    await assertRelocatablePwaBuild(indexHtml, manifest, serviceWorker, resources, cacheBust);
 
     console.log(`PWA build verified: ${builtAssets.length} built assets are precached.`);
 }
@@ -159,7 +167,7 @@ async function assertVersionedServiceWorkerCacheKeys(serviceWorker, cacheBust) {
     assert.equal(worker.VERSION, cacheBust, "Current worker source loaded through a stale script URL must still use the embedded current version.");
     assert.equal(
         worker.CACHE_NAME,
-        `ms-pac-man-2010-pwa-${cacheBust}`,
+        createExpectedCacheName("https://example.invalid/pwa/", cacheBust),
         "Current worker source loaded through a stale script URL must still open the current cache namespace."
     );
 
@@ -172,9 +180,13 @@ async function assertVersionedServiceWorkerCacheKeys(serviceWorker, cacheBust) {
     }
 
     await dispatchServiceWorkerInstall(worker);
-    assert.deepEqual(worker.openedCacheNames, [`ms-pac-man-2010-pwa-${cacheBust}`], "Install must only open the current worker cache namespace.");
+    assert.deepEqual(
+        worker.openedCacheNames,
+        [createExpectedCacheName("https://example.invalid/pwa/", cacheBust)],
+        "Install must only open the current worker cache namespace."
+    );
     assert.equal(
-        worker.openedCacheNames.includes(`ms-pac-man-2010-pwa-${staleScriptUrlVersion}`),
+        worker.openedCacheNames.includes(createExpectedCacheName("https://example.invalid/pwa/", staleScriptUrlVersion)),
         false,
         "A stale script URL must not open the stale cache namespace."
     );
@@ -202,6 +214,7 @@ async function assertVersionedServiceWorkerCacheKeys(serviceWorker, cacheBust) {
     const queriedResource = worker.createCacheUrl("./images/example.png?palette=maze");
     assert.notEqual(queriedResource, ordinaryResource, "Unrelated query parameters must not alias ordinary precached resources.");
     assert.equal(new URL(queriedResource).searchParams.get("palette"), "maze", "Unrelated query parameters must be preserved.");
+    await assertScopeSpecificCacheIsolation(serviceWorker, cacheBust);
 }
 
 function assertServiceWorkerLifecycle(serviceWorker) {
@@ -251,21 +264,156 @@ function assertManifestAssetReferencesAreStamped(manifest, cacheBust) {
     }
 }
 
-function createServiceWorkerHarness(serviceWorker, scriptUrlVersion) {
+async function assertRelocatablePwaBuild(indexHtml, manifestText, serviceWorker, resources, cacheBust) {
+    const manifest = JSON.parse(manifestText);
+    for (const base of relocationTestBases) {
+        assertIndexReferencesResolveWithinScope(indexHtml, base, cacheBust);
+        assertManifestResolvesWithinScope(manifest, base, cacheBust);
+        assertServiceWorkerResolvesWithinScope(serviceWorker, resources, base, cacheBust);
+        await assertHighScoreApiBypassesServiceWorkerCache(serviceWorker, base);
+    }
+}
+
+function assertIndexReferencesResolveWithinScope(html, base, cacheBust) {
+    const refs = [...html.matchAll(/\b(?:src|href)="([^"]+)"/g)].map((match) => match[1]);
+    const assetRefs = refs.filter((ref) => /(?:^|\/)assets\/.+\.(?:js|css)(?:\?|$)/.test(ref));
+    assert.ok(assetRefs.length > 0, "index.html does not reference generated JS/CSS assets.");
+    assert.ok(
+        refs.some((ref) => ref.includes("manifest.webmanifest")),
+        "index.html does not reference the PWA manifest."
+    );
+
+    for (const ref of refs) {
+        assert.ok(ref !== undefined);
+        if (ref.startsWith("#") || /^[a-z][a-z0-9+.-]*:/i.test(ref)) {
+            continue;
+        }
+        assert.equal(ref.startsWith("/"), false, `index.html contains a root-relative static reference: ${ref}`);
+        const url = new URL(ref, base);
+        assert.ok(url.href.startsWith(base), `index.html reference does not resolve under ${base}: ${ref}`);
+        if (/\.(?:js|css|png|svg|webmanifest)$/.test(url.pathname)) {
+            assert.equal(url.searchParams.get("v"), cacheBust, `index.html reference is missing the release cache-bust query: ${ref}`);
+        }
+    }
+}
+
+function assertManifestResolvesWithinScope(manifest, base, cacheBust) {
+    const manifestUrl = new URL("./manifest.webmanifest", base).href;
+    const scope = new URL(manifest.scope, manifestUrl).href;
+    const startUrl = new URL(manifest.start_url, manifestUrl);
+    const idUrl = new URL(manifest.id, manifestUrl).href;
+
+    assert.equal(scope, base, `Manifest scope must resolve to the current PWA directory for ${base}.`);
+    assert.ok(startUrl.href.startsWith(scope), `Manifest start_url must remain inside scope for ${base}.`);
+    assert.equal(startUrl.searchParams.get("v"), cacheBust, `Manifest start_url is missing the release cache-bust query for ${base}.`);
+    assert.ok(idUrl.startsWith(scope), `Manifest id must resolve inside the current PWA scope for ${base}.`);
+    assert.ok(Array.isArray(manifest.icons), "PWA manifest must contain an icons array.");
+
+    for (const icon of manifest.icons) {
+        const iconUrl = new URL(icon.src, manifestUrl);
+        assert.ok(iconUrl.href.startsWith(scope), `Manifest icon must resolve inside the current PWA scope for ${base}: ${icon.src}`);
+        assert.equal(iconUrl.searchParams.get("v"), cacheBust, `Manifest icon is missing the release cache-bust query: ${icon.src}`);
+    }
+}
+
+function assertServiceWorkerResolvesWithinScope(serviceWorker, resources, base, cacheBust) {
+    const worker = createServiceWorkerHarness(serviceWorker, "1.0.0-stale-script-url", base);
+    assert.equal(worker.CACHE_NAME, createExpectedCacheName(base, cacheBust), `Cache name must include a scope-specific namespace for ${base}.`);
+    assert.equal(worker.CACHE_PREFIX, createExpectedCachePrefix(base), `Cache prefix must be scope-specific for ${base}.`);
+    assert.equal(worker.APP_INDEX, worker.createCacheUrl("./index.html"), `APP_INDEX must be resolved from the current scope for ${base}.`);
+    assert.equal(new URL(worker.APP_INDEX).href.startsWith(base), true, `APP_INDEX must resolve under ${base}.`);
+    assert.equal(new URL(worker.APP_INDEX).searchParams.get("v"), cacheBust, `APP_INDEX must use the current release cache key for ${base}.`);
+
+    const serviceWorkerUrl = new URL(`./sw.js?v=${encodeURIComponent(cacheBust)}`, base);
+    assert.equal(serviceWorkerUrl.href, `${base}sw.js?v=${encodeURIComponent(cacheBust)}`, `Service worker URL must resolve under ${base}.`);
+    assert.equal(new URL("./", serviceWorkerUrl).href, base, `Service worker default scope must be the current PWA directory for ${base}.`);
+    assert.equal(new URL("/api/ms-pac-man-2010/scores", base).href, "https://example.invalid/api/ms-pac-man-2010/scores");
+
+    for (const resource of resources) {
+        const cacheUrl = new URL(worker.createCacheUrl(resource));
+        assert.ok(cacheUrl.href.startsWith(base), `Precache resource must resolve under ${base}: ${resource}`);
+        assert.equal(cacheUrl.searchParams.get("v"), cacheBust, `Precache resource is missing the release cache key: ${resource}`);
+    }
+}
+
+async function assertHighScoreApiBypassesServiceWorkerCache(serviceWorker, base) {
+    const worker = createServiceWorkerHarness(serviceWorker, "1.0.0-current", base);
+    const event = await dispatchServiceWorkerFetch(worker, {
+        method: "GET",
+        mode: "cors",
+        url: new URL("/api/ms-pac-man-2010/scores", base).href
+    });
+    assert.equal(event.respondWithCalls, 0, "High-score API requests must bypass service-worker response handling.");
+    assert.deepEqual(worker.openedCacheNames, [], "High-score API requests must not open Cache Storage.");
+}
+
+async function assertScopeSpecificCacheIsolation(serviceWorker, cacheBust) {
+    const stageScope = "https://example.invalid/stage/pwa/";
+    const productionScope = "https://example.invalid/production/pwa/";
+    const stageWorker = createServiceWorkerHarness(serviceWorker, cacheBust, stageScope);
+    const productionWorker = createServiceWorkerHarness(serviceWorker, cacheBust, productionScope);
+
+    assert.notEqual(stageWorker.CACHE_PREFIX, productionWorker.CACHE_PREFIX, "Different PWA scopes must have different cache prefixes.");
+    assert.notEqual(stageWorker.CACHE_NAME, productionWorker.CACHE_NAME, "Different PWA scopes must have different cache names.");
+
+    const stageOldCache = `${stageWorker.CACHE_PREFIX}old`;
+    const productionOldCache = `${productionWorker.CACHE_PREFIX}old`;
+    const legacyGlobalCache = `ms-pac-man-2010-pwa-${cacheBust}`;
+
+    const stageActivationWorker = createServiceWorkerHarness(serviceWorker, cacheBust, stageScope, [
+        stageWorker.CACHE_NAME,
+        stageOldCache,
+        productionWorker.CACHE_NAME,
+        productionOldCache,
+        legacyGlobalCache
+    ]);
+    await dispatchServiceWorkerActivate(stageActivationWorker);
+    assert.deepEqual(stageActivationWorker.deletedCacheNames, [stageOldCache], "Staging activation must only delete stale caches for the staging scope.");
+
+    const productionActivationWorker = createServiceWorkerHarness(serviceWorker, cacheBust, productionScope, [
+        stageWorker.CACHE_NAME,
+        stageOldCache,
+        productionWorker.CACHE_NAME,
+        productionOldCache,
+        legacyGlobalCache
+    ]);
+    await dispatchServiceWorkerActivate(productionActivationWorker);
+    assert.deepEqual(
+        productionActivationWorker.deletedCacheNames,
+        [productionOldCache],
+        "Production activation must only delete stale caches for the production scope."
+    );
+}
+
+function createExpectedCacheName(scope, version) {
+    return `${createExpectedCachePrefix(scope)}${version}`;
+}
+
+function createExpectedCachePrefix(scope) {
+    return `ms-pac-man-2010-pwa-${createExpectedCacheScopeId(scope)}-`;
+}
+
+function createExpectedCacheScopeId(scope) {
+    return new URL(scope).pathname.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+function createServiceWorkerHarness(serviceWorker, scriptUrlVersion, scope = "https://example.invalid/pwa/", cacheKeys = []) {
     const listeners = new Map();
     const openedCacheNames = [];
     const addAllUrls = [];
+    const deletedCacheNames = [];
     const runtimeState = {
         skipWaitingCalls: 0
     };
     const context = {
         URL,
         caches: {
-            delete() {
+            delete(cacheName) {
+                deletedCacheNames.push(cacheName);
                 return Promise.resolve(true);
             },
             keys() {
-                return Promise.resolve([]);
+                return Promise.resolve([...cacheKeys]);
             },
             open(cacheName) {
                 openedCacheNames.push(cacheName);
@@ -284,9 +432,9 @@ function createServiceWorkerHarness(serviceWorker, scriptUrlVersion) {
             return Promise.reject(new Error("Service worker verifier network should not be used."));
         },
         self: {
-            location: new URL(`https://example.invalid/pwa/sw.js?v=${encodeURIComponent(scriptUrlVersion)}`),
+            location: new URL(`./sw.js?v=${encodeURIComponent(scriptUrlVersion)}`, scope),
             registration: {
-                scope: "https://example.invalid/pwa/"
+                scope
             },
             clients: {
                 claim() {
@@ -311,7 +459,9 @@ function createServiceWorkerHarness(serviceWorker, scriptUrlVersion) {
 self.__pwaVerifier = {
     APP_INDEX,
     APP_STATIC_RESOURCES,
+    CACHE_PREFIX,
     CACHE_NAME,
+    CACHE_SCOPE_ID,
     VERSION,
     createCacheUrl
 };`,
@@ -321,6 +471,7 @@ self.__pwaVerifier = {
     return {
         ...context.self.__pwaVerifier,
         addAllUrls,
+        deletedCacheNames,
         eventListeners: listeners,
         openedCacheNames,
         get skipWaitingCalls() {
@@ -340,6 +491,38 @@ async function dispatchServiceWorkerInstall(worker) {
         });
         await Promise.all(waitUntilPromises);
     }
+}
+
+async function dispatchServiceWorkerActivate(worker) {
+    const listeners = worker.eventListeners.get("activate") ?? [];
+    for (const listener of listeners) {
+        const waitUntilPromises = [];
+        listener({
+            waitUntil(promise) {
+                waitUntilPromises.push(Promise.resolve(promise));
+            }
+        });
+        await Promise.all(waitUntilPromises);
+    }
+}
+
+async function dispatchServiceWorkerFetch(worker, request) {
+    const listeners = worker.eventListeners.get("fetch") ?? [];
+    const result = {
+        respondWithCalls: 0
+    };
+    const responsePromises = [];
+    for (const listener of listeners) {
+        listener({
+            request,
+            respondWith(promise) {
+                result.respondWithCalls++;
+                responsePromises.push(Promise.resolve(promise).catch(() => undefined));
+            }
+        });
+    }
+    await Promise.all(responsePromises);
+    return result;
 }
 
 function replaceEmbeddedServiceWorkerVersion(serviceWorker, version) {

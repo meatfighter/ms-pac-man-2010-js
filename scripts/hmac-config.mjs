@@ -62,6 +62,7 @@ export function readSelectedHmacKey(keySource) {
     const paths = getReleaseSecretPaths();
     switch (keySource) {
         case "active":
+            assertNoStagedNextKey();
             return readKeyFile(paths.active, "Active HMAC key");
         case "next":
             return readKeyFile(paths.next, "Next HMAC key");
@@ -69,6 +70,15 @@ export function readSelectedHmacKey(keySource) {
             return readEnvHmacKey();
         default:
             throw new Error(`Unknown HMAC key source: ${keySource}`);
+    }
+}
+
+export function assertNoStagedNextKey() {
+    const paths = getReleaseSecretPaths();
+    if (existsSync(paths.next)) {
+        throw new Error(
+            `A next HMAC rotation key is staged at ${paths.next}. Use --key-source=next for the candidate release or abort/promote rotation first.`
+        );
     }
 }
 
