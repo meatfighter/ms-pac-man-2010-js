@@ -5,55 +5,78 @@ import java.io.*;
 import java.math.*;
 import java.net.*;
 import java.nio.charset.*;
+import java.security.*;
 import java.util.*;
+import java.util.regex.*;
 import javax.crypto.*;
 import javax.crypto.spec.*;
 
 public class HighScoreService {
 
-  private static final int PROTOCOL_VERSION = 1;
-  private static final int WORLD_COUNT = 4;
-  private static final int ROWS_PER_WORLD = 5;
-  private static final int MAX_SCORE = Integer.MAX_VALUE;
+  public static final int PROTOCOL_VERSION = 1;
+  public static final int WORLD_COUNT = 4;
+  public static final int ROWS_PER_WORLD = 5;
+  public static final int MAX_SCORE = Integer.MAX_VALUE;
+  public static final String HMAC_KEY_PATTERN_TEXT = "^[0-9a-f]{64}$";
   private static final int MAX_RESPONSE_BYTES = 8192;
   private static final int TIMEOUT_MS = 5000;
   private static final String DEFAULT_URL =
       "https://meatfighter.com/api/ms-pac-man-2010/scores";
+  private static final String RELEASE_PROPERTIES_RESOURCE =
+      "mspacman/high-score-release.properties";
+  private static final Pattern HMAC_KEY_PATTERN =
+      Pattern.compile(HMAC_KEY_PATTERN_TEXT);
 
-  public boolean downloadScores(HighScore[][] highScores) {
-    ArrayList<RemoteHighScore> scores = requestScores("GET", null);
-    if (scores == null) {
-      return false;
-    }
-    applyScores(highScores, scores);
-    return true;
+  private final Configuration configuration;
+
+  public HighScoreService() {
+    this(new DefaultConfiguration());
   }
 
-  public boolean submitScore(
-      HighScore[][] highScores, int world, int score, String initials) {
+  HighScoreService(Configuration configuration) {
+    this.configuration = configuration;
+  }
+
+  public ArrayList<RemoteHighScore> downloadScores() {
+    return requestScores("GET", null);
+  }
+
+  public ArrayList<RemoteHighScore> submitScore(
+      int world, int score, String initials) {
 
     if (!isWorld(world) || !isPlausibleScore(score)
         || !isAllowedInitials(initials)) {
-      return false;
+      return null;
     }
 
     byte[] key = getHmacKey();
     if (key == null) {
-      return false;
+      return null;
     }
 
-    String checksum = calculateChecksum(key, world, score, initials);
+    String checksum;
+    try {
+      checksum = calculateChecksum(key, world, score, initials);
+    } catch(GeneralSecurityException e) {
+      return null;
+    }
+
     String body = "{\"protocolVersion\":" + PROTOCOL_VERSION
         + ",\"world\":" + world
         + ",\"score\":" + score
         + ",\"initials\":\"" + initials + "\""
         + ",\"checksum\":\"" + checksum + "\"}";
-    ArrayList<RemoteHighScore> scores = requestScores("POST", body);
-    if (scores == null) {
-      return false;
+    return requestScores("POST", body);
+  }
+
+  static String calculateChecksumForTesting(
+      String keyHex, int world, int score, String initials)
+      throws GeneralSecurityException {
+
+    if (!HMAC_KEY_PATTERN.matcher(keyHex).matches()) {
+      return null;
     }
-    applyScores(highScores, scores);
-    return true;
+    return calculateChecksum(hexToBytes(keyHex), world, score, initials);
   }
 
   private ArrayList<RemoteHighScore> requestScores(String method, String body) {
@@ -93,7 +116,19 @@ public class HighScoreService {
       }
       String text = readBounded(connection.getInputStream());
       return parseScoresResponse(text);
-    } catch(Throwable t) {
+    } catch(MalformedURLException e) {
+      return null;
+    } catch(ProtocolException e) {
+      return null;
+    } catch(SocketTimeoutException e) {
+      return null;
+    } catch(IOException e) {
+      return null;
+    } catch(JsonParseException e) {
+      return null;
+    } catch(IllegalArgumentException e) {
+      return null;
+    } catch(IllegalStateException e) {
       return null;
     } finally {
       if (connection != null) {
@@ -134,7 +169,8 @@ public class HighScoreService {
       return null;
     }
     Integer protocolVersion = readInt(object.get("protocolVersion"));
-    if (protocolVersion == null || protocolVersion.intValue() != PROTOCOL_VERSION) {
+    if (protocolVersion == null
+        || protocolVersion.intValue() != PROTOCOL_VERSION) {
       return null;
     }
     JsonElement scoresElement = object.get("scores");
@@ -215,7 +251,9 @@ public class HighScoreService {
     try {
       BigDecimal value = primitive.getAsBigDecimal();
       return Integer.valueOf(value.intValueExact());
-    } catch(Throwable t) {
+    } catch(ArithmeticException e) {
+      return null;
+    } catch(NumberFormatException e) {
       return null;
     }
   }
@@ -244,25 +282,6 @@ public class HighScoreService {
         && object.has(c);
   }
 
-  private void applyScores(
-      HighScore[][] highScores, ArrayList<RemoteHighScore> remoteScores) {
-
-    for(int world = 0; world < WORLD_COUNT; world++) {
-      for(int row = 0; row < ROWS_PER_WORLD; row++) {
-        highScores[world][row] = new HighScore();
-      }
-    }
-
-    int[] indexes = new int[WORLD_COUNT];
-    for(RemoteHighScore remoteScore : remoteScores) {
-      int row = indexes[remoteScore.world]++;
-      HighScore highScore = new HighScore();
-      highScore.score = remoteScore.score;
-      highScore.initials = remoteScore.initials;
-      highScores[remoteScore.world][row] = highScore;
-    }
-  }
-
   private boolean isWorld(int value) {
     return value >= 0 && value < WORLD_COUNT;
   }
@@ -285,9 +304,9 @@ public class HighScoreService {
   }
 
   private String getApiUrl() {
-    String value = System.getProperty("mspacman.scoreApiUrl");
+    String value = configuration.getSystemProperty("mspacman.scoreApiUrl");
     if (value == null || value.length() == 0) {
-      value = System.getenv("MSPACMAN_SCORE_API_URL");
+      value = configuration.getEnvironment("MSPACMAN_SCORE_API_URL");
     }
     if (value == null || value.length() == 0) {
       value = DEFAULT_URL;
@@ -305,44 +324,53 @@ public class HighScoreService {
   }
 
   private byte[] getHmacKey() {
-    String value = System.getProperty("mspacman.hmacKeyHex");
-    if (value == null || value.length() == 0) {
-      value = System.getenv("MSPACMAN_HMAC_KEY_HEX");
+    String property = configuration.getSystemProperty("mspacman.hmacKeyHex");
+    if (property != null) {
+      return parseConfiguredHmacKey(property);
     }
-    if (value == null || value.length() != 64) {
+
+    String environment = configuration.getEnvironment("MSPACMAN_HMAC_KEY_HEX");
+    if (environment != null) {
+      return parseConfiguredHmacKey(environment);
+    }
+
+    String embedded = configuration.getEmbeddedHmacKeyHex();
+    if (embedded != null) {
+      return parseConfiguredHmacKey(embedded);
+    }
+
+    return null;
+  }
+
+  private byte[] parseConfiguredHmacKey(String value) {
+    if (!HMAC_KEY_PATTERN.matcher(value).matches()) {
       return null;
     }
     return hexToBytes(value);
   }
 
-  private String calculateChecksum(
-      byte[] key, int world, int score, String initials) {
+  private static String calculateChecksum(
+      byte[] key, int world, int score, String initials)
+      throws GeneralSecurityException {
 
-    try {
-      Mac mac = Mac.getInstance("HmacSHA256");
-      mac.init(new SecretKeySpec(key, "HmacSHA256"));
-      String message = "mspacman-score|" + PROTOCOL_VERSION + "|"
-          + world + "|" + score + "|" + initials;
-      return bytesToHex(mac.doFinal(message.getBytes(StandardCharsets.UTF_8)));
-    } catch(Throwable t) {
-      return "";
-    }
+    Mac mac = Mac.getInstance("HmacSHA256");
+    mac.init(new SecretKeySpec(key, "HmacSHA256"));
+    String message = "mspacman-score|" + PROTOCOL_VERSION + "|"
+        + world + "|" + score + "|" + initials;
+    return bytesToHex(mac.doFinal(message.getBytes(StandardCharsets.UTF_8)));
   }
 
-  private byte[] hexToBytes(String hex) {
+  private static byte[] hexToBytes(String hex) {
     byte[] bytes = new byte[hex.length() / 2];
     for(int i = 0; i < bytes.length; i++) {
       int high = hexValue(hex.charAt(i * 2));
       int low = hexValue(hex.charAt(i * 2 + 1));
-      if (high < 0 || low < 0) {
-        return null;
-      }
       bytes[i] = (byte) ((high << 4) | low);
     }
     return bytes;
   }
 
-  private int hexValue(char c) {
+  private static int hexValue(char c) {
     if (c >= '0' && c <= '9') {
       return c - '0';
     }
@@ -352,7 +380,7 @@ public class HighScoreService {
     return -1;
   }
 
-  private String bytesToHex(byte[] bytes) {
+  private static String bytesToHex(byte[] bytes) {
     char[] hex = new char[bytes.length * 2];
     char[] digits = "0123456789abcdef".toCharArray();
     for(int i = 0; i < bytes.length; i++) {
@@ -363,7 +391,50 @@ public class HighScoreService {
     return new String(hex);
   }
 
-  private static class RemoteHighScore {
+  interface Configuration {
+
+    String getSystemProperty(String name);
+
+    String getEnvironment(String name);
+
+    String getEmbeddedHmacKeyHex();
+  }
+
+  private static class DefaultConfiguration implements Configuration {
+
+    public String getSystemProperty(String name) {
+      return System.getProperty(name);
+    }
+
+    public String getEnvironment(String name) {
+      return System.getenv(name);
+    }
+
+    public String getEmbeddedHmacKeyHex() {
+      InputStream input = HighScoreService.class.getClassLoader()
+          .getResourceAsStream(RELEASE_PROPERTIES_RESOURCE);
+      if (input == null) {
+        return null;
+      }
+
+      try {
+        Properties properties = new Properties();
+        properties.load(input);
+        return properties.getProperty("hmacKeyHex");
+      } catch(IOException e) {
+        return null;
+      } catch(IllegalArgumentException e) {
+        return null;
+      } finally {
+        try {
+          input.close();
+        } catch(IOException e) {
+        }
+      }
+    }
+  }
+
+  public static class RemoteHighScore {
     public final int world;
     public final int score;
     public final String initials;

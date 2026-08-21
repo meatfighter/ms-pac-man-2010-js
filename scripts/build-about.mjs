@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const version = readVersion();
-const cacheBust = `${version.version}-${version.buildStamp}`;
+const cacheBust = process.env.MSPACMAN_CACHE_VERSION ?? `${version.version}-${version.buildStamp}-unsigned`;
 const encodedBuildStamp = encodeURIComponent(version.buildStamp);
 const encodedCacheBust = encodeURIComponent(cacheBust);
 const replacements = {

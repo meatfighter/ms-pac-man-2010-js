@@ -3,13 +3,13 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { distDir, ensureDirectory, rootDir, versionPath } from "./build-utils.mjs";
+import { createCacheIdentity, SYNTHETIC_RELEASE_HMAC_KEY_HEX } from "./hmac-config.mjs";
 
 const packageJson = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 const originalVersionJson = readFileSync(versionPath, "utf8");
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const syntheticEnv = {
     ...process.env,
-    MSPACMAN_HMAC_KEY_HEX: "0".repeat(64)
+    MSPACMAN_HMAC_KEY_HEX: SYNTHETIC_RELEASE_HMAC_KEY_HEX
 };
 
 try {
@@ -19,8 +19,8 @@ try {
 
     assert.notEqual(first.version.buildStamp, second.version.buildStamp, "Standalone release PWA builds must stamp a fresh buildStamp.");
     assert.notEqual(first.workerVersion, second.workerVersion, "Standalone release PWA builds must produce distinct service-worker VERSION values.");
-    assert.equal(first.workerVersion, `${first.version.version}-${first.version.buildStamp}`);
-    assert.equal(second.workerVersion, `${second.version.version}-${second.version.buildStamp}`);
+    assert.equal(first.workerVersion, createCacheIdentity(first.version, SYNTHETIC_RELEASE_HMAC_KEY_HEX));
+    assert.equal(second.workerVersion, createCacheIdentity(second.version, SYNTHETIC_RELEASE_HMAC_KEY_HEX));
     console.log("ok - standalone release PWA builds stamp distinct service-worker versions");
 } finally {
     writeFileSync(versionPath, originalVersionJson);
@@ -33,19 +33,26 @@ function assertReleaseScriptStructure() {
     assert.equal(scripts["build:pwa"], "npm run build:pwa:release", "build:pwa must delegate to the release PWA build.");
     assert.equal(
         scripts["build:pwa:release"],
-        "npm run stamp && npm run _build:pwa:release",
-        "build:pwa:release must stamp exactly once before the internal release implementation."
+        "node scripts/build-release.mjs --target=pwa --key-source=active",
+        "build:pwa:release must use the release orchestrator with the active key."
     );
     assert.ok(scripts["_build:pwa:release"].includes("vite build --mode release"), "_build:pwa:release must perform the release-mode Vite build.");
     assert.equal(scripts["_build:pwa:release"].includes("npm run stamp"), false, "_build:pwa:release must not stamp internally.");
-    assert.equal(scripts["build:web"].includes("npm run stamp"), false, "build:web must not stamp separately from build:pwa:release.");
-    assert.equal(scripts["build"].includes("npm run stamp"), false, "build must not stamp separately from build:pwa:release.");
-    assert.equal(scripts["build:web"].includes("npm run build:pwa:release"), true, "build:web must use the release PWA build.");
-    assert.equal(scripts["build"].includes("npm run build:pwa:release"), true, "build must use the release PWA build.");
+    assert.equal(scripts["build:web"], "npm run build:web:release", "build:web must delegate to the release web build.");
+    assert.equal(
+        scripts["build:web:release"],
+        "node scripts/build-release.mjs --target=web --key-source=active",
+        "build:web:release must use the release orchestrator with the active key."
+    );
+    assert.equal(
+        scripts["build"],
+        "node scripts/build-release.mjs --target=full --key-source=active",
+        "build must use the release orchestrator with the active key."
+    );
 }
 
 function runStandaloneReleasePwaBuild() {
-    const result = spawnNpmRun("build:pwa:release", {
+    const result = spawnNodeScript("scripts/build-release.mjs", ["--target=pwa", "--key-source=env"], {
         cwd: rootDir,
         encoding: "utf8",
         env: syntheticEnv,
@@ -68,11 +75,8 @@ function runStandaloneReleasePwaBuild() {
     };
 }
 
-function spawnNpmRun(scriptName, options) {
-    if (process.platform === "win32") {
-        return spawnSync(process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", `${npmCommand} run ${scriptName}`], options);
-    }
-    return spawnSync(npmCommand, ["run", scriptName], options);
+function spawnNodeScript(scriptName, args, options) {
+    return spawnSync(process.execPath, [scriptName, ...args], options);
 }
 
 function readEmbeddedServiceWorkerVersion(serviceWorker) {

@@ -11,9 +11,13 @@ const pwaRoot = resolve(rootDir, "pwa");
 const originalFetch = globalThis.fetch;
 const originalWindow = globalThis.window;
 const originalCrypto = globalThis.crypto;
+const originalApiUrl = process.env.MSPACMAN_SCORE_API_URL;
+const originalHmacKey = process.env.MSPACMAN_HMAC_KEY_HEX;
+const originalCacheVersion = process.env.MSPACMAN_CACHE_VERSION;
 
 process.env.MSPACMAN_SCORE_API_URL = API_URL;
 process.env.MSPACMAN_HMAC_KEY_HEX = KEY_HEX;
+delete process.env.MSPACMAN_CACHE_VERSION;
 globalThis.window = {
     setTimeout: globalThis.setTimeout.bind(globalThis),
     clearTimeout: globalThis.clearTimeout.bind(globalThis)
@@ -377,6 +381,9 @@ try {
 } finally {
     globalThis.fetch = originalFetch;
     globalThis.window = originalWindow;
+    restoreEnv("MSPACMAN_SCORE_API_URL", originalApiUrl);
+    restoreEnv("MSPACMAN_HMAC_KEY_HEX", originalHmacKey);
+    restoreEnv("MSPACMAN_CACHE_VERSION", originalCacheVersion);
     restoreCrypto();
     await server.close();
 }
@@ -489,4 +496,12 @@ function restoreCrypto() {
         configurable: true,
         value: originalCrypto
     });
+}
+
+function restoreEnv(name, value) {
+    if (value === undefined) {
+        delete process.env[name];
+    } else {
+        process.env[name] = value;
+    }
 }

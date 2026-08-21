@@ -4,6 +4,7 @@ dist/
 .env
 .env.*
 !.env.example
+.release-secrets/
 desktop/build/
 desktop/dist/
 desktop/target/

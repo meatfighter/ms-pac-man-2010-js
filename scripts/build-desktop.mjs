@@ -2,8 +2,11 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, rmSync, statS
 import { dirname, join, relative } from "node:path";
 import { spawnSync } from "node:child_process";
 import { distDir, readVersion, rootDir } from "./build-utils.mjs";
+import { getHmacFingerprint, readEnvHmacKey } from "./hmac-config.mjs";
 
 const version = readVersion();
+const releaseBuild = process.argv.includes("--release");
+const hmacKeyHex = releaseBuild ? readEnvHmacKey() : "";
 const desktopDir = join(rootDir, "desktop");
 const sourceDir = join(desktopDir, "src");
 const libDir = join(desktopDir, "lib");
@@ -21,6 +24,7 @@ const versionedZipPath = join(targetDir, `${distributionName}-${version.version}
 const stableZipPath = join(targetDir, `${distributionName}.zip`);
 const sourcesFile = join(targetDir, "sources.txt");
 const manifestPath = join(targetDir, "MANIFEST.MF");
+const releaseHighScorePropertiesPath = join(classesDir, "mspacman", "high-score-release.properties");
 const runtimeJars = ["slick.jar", "lwjgl.jar", "lwjgl_util.jar", "jinput.jar", "jogg-0.0.7.jar", "jorbis-0.0.17.jar", "gson-2.11.0.jar"];
 
 function commandExists(command) {
@@ -119,6 +123,15 @@ function writeManifest() {
     writeFileSync(manifestPath, manifest);
 }
 
+function writeHighScoreReleaseProperties() {
+    if (!releaseBuild) {
+        return;
+    }
+
+    const properties = [`hmacKeyHex=${hmacKeyHex}`, `hmacKeyFingerprint=${getHmacFingerprint(hmacKeyHex)}`, `buildStamp=${version.buildStamp}`, ""].join("\n");
+    writeFileSync(releaseHighScorePropertiesPath, properties);
+}
+
 function verifyRuntimeDependencies() {
     for (const jar of runtimeJars) {
         const path = join(libDir, jar);
@@ -183,6 +196,7 @@ const releaseArgs = javacVersion !== null && javacVersion >= 9 ? ["--release", "
 run("javac", ["-encoding", "UTF-8", "-Xlint:-options", ...releaseArgs, "-cp", classpath, "-d", classesDir, `@${sourcesFile}`]);
 
 copyResources(sourceDir, classesDir);
+writeHighScoreReleaseProperties();
 writeManifest();
 run("jar", ["cfm", versionedJarPath, manifestPath, "-C", classesDir, "."]);
 copyFileSync(versionedJarPath, stableJarPath);

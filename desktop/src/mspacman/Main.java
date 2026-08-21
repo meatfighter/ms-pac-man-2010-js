@@ -91,10 +91,16 @@ public class Main extends BasicGame {
   public boolean paused = false;
   public boolean fullscreenFallbackActive = false;
   public HighScore[][] highScores = new HighScore[4][5];
-  private HighScoreService highScoreService = new HighScoreService();
+  HighScoreService highScoreService = new HighScoreService();
+  private final Object remoteScoresLock = new Object();
+  private ArrayList<PendingRemoteScores> pendingRemoteScores =
+      new ArrayList<PendingRemoteScores>();
+  private int leaderboardRevision;
+  private boolean initialScoresDownloadStarted;
   public float musicVolume = 1f;
   public float musicVolumeFadeStep = 1f / 91f;
   public boolean fadeMusic = false;
+  public volatile boolean scoresDownloadComplete = true;
   public volatile boolean uploadComplete;
   public RobotInput[] robotInputs = new RobotInput[4];
   public int demoIndex;
@@ -162,6 +168,7 @@ public class Main extends BasicGame {
   }
 
   public void update(GameContainer gc, int delta) throws SlickException {
+    applyPendingRemoteScores();
     updateMouseCursorAutoHide();
     if (fadeMusic) {
       musicVolume -= musicVolumeFadeStep;
@@ -937,11 +944,32 @@ public class Main extends BasicGame {
   }
 
   public boolean isHighScore() {
-    return score > 0 && highScores[worldIndex][4].score <= score;
+    return score > 0 && highScores[worldIndex][4].score < score;
   }
 
   public void downloadScores() {
-    highScoreService.downloadScores(highScores);
+    if (initialScoresDownloadStarted) {
+      return;
+    }
+
+    initialScoresDownloadStarted = true;
+    scoresDownloadComplete = false;
+    final int revision = leaderboardRevision;
+    Thread thread = new Thread(new Runnable() {
+      public void run() {
+        try {
+          ArrayList<HighScoreService.RemoteHighScore> scores =
+              highScoreService.downloadScores();
+          if (scores != null) {
+            queueRemoteScores(scores, revision);
+          }
+        } finally {
+          scoresDownloadComplete = true;
+        }
+      }
+    }, "mspacman-high-score-download");
+    thread.setDaemon(true);
+    thread.start();
   }
 
   public void accessScoresDatabaseAsync(final boolean update,
@@ -949,14 +977,25 @@ public class Main extends BasicGame {
 
     uploadComplete = false;
     final String normalizedInitials = normalizeHighScoreInitials(initials);
-    accessScoresDatabase(update, world, score, normalizedInitials);
+    final HighScoreService.RemoteHighScore submittedScore =
+        accessScoresDatabase(update, world, score, normalizedInitials);
+    if (submittedScore == null) {
+      uploadComplete = true;
+      return;
+    }
+    final int revision = leaderboardRevision;
 
     Thread thread = new Thread(new Runnable() {
       public void run() {
         try {
           if (update) {
-            highScoreService.submitScore(
-                highScores, world, score, normalizedInitials);
+            ArrayList<HighScoreService.RemoteHighScore> scores =
+                highScoreService.submitScore(
+                submittedScore.world, submittedScore.score,
+                submittedScore.initials);
+            if (scores != null) {
+              queueRemoteScores(scores, revision);
+            }
           }
         } finally {
           uploadComplete = true;
@@ -967,27 +1006,41 @@ public class Main extends BasicGame {
     thread.start();
   }
 
-  public void accessScoresDatabase(
+  public HighScoreService.RemoteHighScore accessScoresDatabase(
       boolean update, int world, int score, String initials) {
 
-    if (!update || world < 0 || world >= highScores.length) {
-      return;
+    String normalizedInitials = normalizeHighScoreInitials(initials);
+    if (!update || world < 0 || world >= highScores.length
+        || !isPlausibleScore(score) || !isAllowedInitials(normalizedInitials)) {
+      return null;
     }
 
     HighScore highScore = new HighScore();
     highScore.score = score;
-    highScore.initials = normalizeHighScoreInitials(initials);
+    highScore.initials = normalizedInitials;
 
     HighScore[] rows = highScores[world];
+    for(int i = 0; i < rows.length; i++) {
+      if (rows[i].score == score
+          && rows[i].initials.equals(normalizedInitials)) {
+        leaderboardRevision++;
+        return new HighScoreService.RemoteHighScore(
+            world, score, normalizedInitials);
+      }
+    }
+
     for(int i = 0; i < rows.length; i++) {
       if (score > rows[i].score) {
         for(int j = rows.length - 1; j > i; j--) {
           rows[j] = rows[j - 1];
         }
         rows[i] = highScore;
-        break;
+        leaderboardRevision++;
+        return new HighScoreService.RemoteHighScore(
+            world, score, normalizedInitials);
       }
     }
+    return null;
   }
 
   private String normalizeHighScoreInitials(String initials) {
@@ -999,6 +1052,106 @@ public class Main extends BasicGame {
       value = value.substring(0, 3);
     }
     return value;
+  }
+
+  private boolean isPlausibleScore(int value) {
+    return value > 0 && value <= Integer.MAX_VALUE && value % 10 == 0;
+  }
+
+  private boolean isAllowedInitials(String value) {
+    if (value == null || value.length() != 3) {
+      return false;
+    }
+    for(int i = 0; i < value.length(); i++) {
+      char c = value.charAt(i);
+      if (c != ' ' && (c < 'A' || c > 'Z')) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private void queueRemoteScores(
+      ArrayList<HighScoreService.RemoteHighScore> scores, int revision) {
+
+    ArrayList<HighScoreService.RemoteHighScore> snapshot =
+        new ArrayList<HighScoreService.RemoteHighScore>(scores);
+    synchronized(remoteScoresLock) {
+      pendingRemoteScores.add(new PendingRemoteScores(snapshot, revision));
+    }
+  }
+
+  private void applyPendingRemoteScores() {
+    ArrayList<PendingRemoteScores> updates = null;
+    synchronized(remoteScoresLock) {
+      if (!pendingRemoteScores.isEmpty()) {
+        updates = pendingRemoteScores;
+        pendingRemoteScores = new ArrayList<PendingRemoteScores>();
+      }
+    }
+
+    if (updates == null) {
+      return;
+    }
+
+    for(PendingRemoteScores update : updates) {
+      applyRemoteScoresIfCurrent(update.scores, update.revision);
+    }
+  }
+
+  void applyPendingRemoteScoresForTesting() {
+    applyPendingRemoteScores();
+  }
+
+  int getLeaderboardRevisionForTesting() {
+    return leaderboardRevision;
+  }
+
+  private void applyRemoteScoresIfCurrent(
+      ArrayList<HighScoreService.RemoteHighScore> scores, int revision) {
+
+    if (revision != leaderboardRevision) {
+      return;
+    }
+    applyRemoteScores(scores);
+    leaderboardRevision++;
+  }
+
+  private void applyRemoteScores(
+      ArrayList<HighScoreService.RemoteHighScore> scores) {
+
+    for(int world = 0; world < highScores.length; world++) {
+      for(int row = 0; row < highScores[world].length; row++) {
+        highScores[world][row] = new HighScore();
+      }
+    }
+
+    int[] indexes = new int[highScores.length];
+    for(HighScoreService.RemoteHighScore remoteScore : scores) {
+      if (remoteScore.world < 0 || remoteScore.world >= highScores.length) {
+        continue;
+      }
+      int row = indexes[remoteScore.world]++;
+      if (row >= highScores[remoteScore.world].length) {
+        continue;
+      }
+      HighScore highScore = new HighScore();
+      highScore.score = remoteScore.score;
+      highScore.initials = remoteScore.initials;
+      highScores[remoteScore.world][row] = highScore;
+    }
+  }
+
+  private static class PendingRemoteScores {
+    public final ArrayList<HighScoreService.RemoteHighScore> scores;
+    public final int revision;
+
+    public PendingRemoteScores(
+        ArrayList<HighScoreService.RemoteHighScore> scores, int revision) {
+
+      this.scores = scores;
+      this.revision = revision;
+    }
   }
 
   @Override

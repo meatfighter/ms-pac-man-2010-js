@@ -7,6 +7,13 @@ const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const pwaRoot = resolve(rootDir, "pwa");
 const STORAGE_KEY = "ms-pac-man-2010.game-state";
 const APP_VERSION = "test-version";
+const originalApiUrl = process.env.MSPACMAN_SCORE_API_URL;
+const originalCacheVersion = process.env.MSPACMAN_CACHE_VERSION;
+const originalHmacKey = process.env.MSPACMAN_HMAC_KEY_HEX;
+
+delete process.env.MSPACMAN_SCORE_API_URL;
+delete process.env.MSPACMAN_CACHE_VERSION;
+delete process.env.MSPACMAN_HMAC_KEY_HEX;
 
 const MAIN_FIELDS = [
     "worldIndex",
@@ -342,6 +349,9 @@ try {
         assert.deepEqual(target.scoreAccessCalls, [{ upload: true, world: 1, score: 12340, initials: "CAT" }]);
     });
 } finally {
+    restoreEnv("MSPACMAN_SCORE_API_URL", originalApiUrl);
+    restoreEnv("MSPACMAN_CACHE_VERSION", originalCacheVersion);
+    restoreEnv("MSPACMAN_HMAC_KEY_HEX", originalHmacKey);
     await server.close();
 }
 
@@ -752,4 +762,12 @@ function pickFields(source, fields) {
 
 function clone(value) {
     return JSON.parse(JSON.stringify(value));
+}
+
+function restoreEnv(name, value) {
+    if (value === undefined) {
+        delete process.env[name];
+    } else {
+        process.env[name] = value;
+    }
 }

@@ -7,6 +7,7 @@ const FIXED_API_URL = "/api/ms-pac-man-2010/scores";
 const VALID_SYNTHETIC_KEY = "0".repeat(64);
 const ORIGINAL_KEY = process.env.MSPACMAN_HMAC_KEY_HEX;
 const ORIGINAL_API_URL = process.env.MSPACMAN_SCORE_API_URL;
+const ORIGINAL_CACHE_VERSION = process.env.MSPACMAN_CACHE_VERSION;
 
 try {
     await runTest("release build config rejects missing and empty HMAC keys", async () => {
@@ -61,6 +62,7 @@ async function assertReleaseConfigPasses(key, apiUrl) {
 async function resolveReleaseConfigError(key, apiUrl) {
     setEnv("MSPACMAN_HMAC_KEY_HEX", key);
     setEnv("MSPACMAN_SCORE_API_URL", apiUrl);
+    setEnv("MSPACMAN_CACHE_VERSION", undefined);
     try {
         await resolveConfig(
             {
@@ -87,4 +89,5 @@ function setEnv(name, value) {
 function restoreEnv() {
     setEnv("MSPACMAN_HMAC_KEY_HEX", ORIGINAL_KEY);
     setEnv("MSPACMAN_SCORE_API_URL", ORIGINAL_API_URL);
+    setEnv("MSPACMAN_CACHE_VERSION", ORIGINAL_CACHE_VERSION);
 }

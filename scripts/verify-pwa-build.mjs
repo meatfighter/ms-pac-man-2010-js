@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
+import { createCacheIdentity, readEnvHmacKey } from "./hmac-config.mjs";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const pwaDistDir = join(rootDir, "dist", "pwa");
@@ -17,9 +18,9 @@ async function main() {
     assert.ok(existsSync(indexPath), "dist/pwa/index.html was not generated.");
 
     const versionInfo = JSON.parse(readFileSync(versionPath, "utf8"));
-    const cacheBust = `${versionInfo.version}-${versionInfo.buildStamp}`;
     assert.equal(typeof versionInfo.version, "string", "version.json must contain a version string.");
     assert.equal(typeof versionInfo.buildStamp, "string", "version.json must contain a buildStamp string.");
+    const cacheBust = readExpectedCacheBust(versionInfo);
 
     const serviceWorker = readFileSync(serviceWorkerPath, "utf8");
     const resources = readPrecacheResources(serviceWorker);
@@ -47,6 +48,16 @@ async function main() {
     assertManifestAssetReferencesAreStamped(readFileSync(join(pwaDistDir, "manifest.webmanifest"), "utf8"), cacheBust);
 
     console.log(`PWA build verified: ${builtAssets.length} built assets are precached.`);
+}
+
+function readExpectedCacheBust(versionInfo) {
+    const cacheVersionOverride = process.env.MSPACMAN_CACHE_VERSION;
+    if (cacheVersionOverride !== undefined && cacheVersionOverride !== "") {
+        return cacheVersionOverride;
+    }
+
+    const hmacKeyHex = process.env.MSPACMAN_HMAC_KEY_HEX === undefined || process.env.MSPACMAN_HMAC_KEY_HEX === "" ? "" : readEnvHmacKey();
+    return createCacheIdentity(versionInfo, hmacKeyHex);
 }
 
 function readPrecacheResources(serviceWorker) {

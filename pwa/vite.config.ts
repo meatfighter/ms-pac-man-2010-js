@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,8 +12,6 @@ interface VersionInfo {
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const versionInfo = JSON.parse(readFileSync(new URL("../version.json", import.meta.url), "utf8")) as VersionInfo;
 const encodedBuildStamp = encodeURIComponent(versionInfo.buildStamp);
-const cacheBust = `${versionInfo.version}-${versionInfo.buildStamp}`;
-const encodedCacheBust = encodeURIComponent(cacheBust);
 const SERVICE_WORKER_VERSION_TOKEN = "__SERVICE_WORKER_VERSION__";
 const SERVICE_WORKER_VERSION_PLACEHOLDER = JSON.stringify(SERVICE_WORKER_VERSION_TOKEN);
 const DEFAULT_HIGH_SCORE_API_URL = "/api/ms-pac-man-2010/scores";
@@ -21,6 +20,8 @@ const HMAC_KEY_PATTERN = /^[0-9a-f]{64}$/;
 
 interface HighScoreBuildConfig {
     readonly apiUrl: string;
+    readonly cacheBust: string;
+    readonly encodedCacheBust: string;
     readonly hmacKeyHex: string;
 }
 
@@ -31,9 +32,16 @@ function resolveHighScoreBuildConfig(command: string, mode: string): HighScoreBu
 
     validateHighScoreApiUrl(apiUrl, releaseBuild);
     validateHighScoreHmacKey(hmacKeyHex, releaseBuild);
+    const cacheBust = createCacheBust(hmacKeyHex);
+    const expectedCacheBust = process.env.MSPACMAN_CACHE_VERSION;
+    if (expectedCacheBust !== undefined && expectedCacheBust !== "" && expectedCacheBust !== cacheBust) {
+        throw new Error("MSPACMAN_CACHE_VERSION does not match the selected PWA HMAC key and build stamp.");
+    }
 
     return {
         apiUrl,
+        cacheBust,
+        encodedCacheBust: encodeURIComponent(cacheBust),
         hmacKeyHex
     };
 }
@@ -60,21 +68,30 @@ function validateHighScoreHmacKey(hmacKeyHex: string, releaseBuild: boolean): vo
     }
 }
 
-function renderVersionPlaceholders(text: string): string {
+function createCacheBust(hmacKeyHex: string): string {
+    const suffix = hmacKeyHex === "" ? "unsigned" : `k${createHmacFingerprint(hmacKeyHex)}`;
+    return `${versionInfo.version}-${versionInfo.buildStamp}-${suffix}`;
+}
+
+function createHmacFingerprint(hmacKeyHex: string): string {
+    return createHash("sha256").update(Buffer.from(hmacKeyHex, "hex")).digest("hex").slice(0, 12);
+}
+
+function renderVersionPlaceholders(text: string, encodedCacheBust: string): string {
     return text.replaceAll("%APP_VERSION%", versionInfo.version).replaceAll("%BUILD_STAMP%", encodedBuildStamp).replaceAll("%CACHE_VERSION%", encodedCacheBust);
 }
 
-function appendCacheBustQuery(url: string): string {
+function appendCacheBustQuery(url: string, encodedCacheBust: string): string {
     if (/[?&]v=/.test(url)) {
         return url;
     }
     return `${url}${url.includes("?") ? "&" : "?"}v=${encodedCacheBust}`;
 }
 
-function versionBuiltAssetReferences(html: string): string {
+function versionBuiltAssetReferences(html: string, encodedCacheBust: string): string {
     return html.replace(
         /\b(src|href)="([^"]*\/assets\/[^"]+\.(?:js|css)(?:\?[^"]*)?)"/g,
-        (_match, attribute: string, url: string) => `${attribute}="${appendCacheBustQuery(url)}"`
+        (_match, attribute: string, url: string) => `${attribute}="${appendCacheBustQuery(url, encodedCacheBust)}"`
     );
 }
 
@@ -107,8 +124,8 @@ function placeInitialStylesheetsBeforeModuleScripts(html: string): string {
     return `${head}\n${initialAssetTags}\n    ${headCloseTag}${html.slice(headCloseIndex + headCloseTag.length)}`;
 }
 
-function renderVersionedHtml(html: string): string {
-    return placeInitialStylesheetsBeforeModuleScripts(versionBuiltAssetReferences(renderVersionPlaceholders(html)));
+function renderVersionedHtml(html: string, encodedCacheBust: string): string {
+    return placeInitialStylesheetsBeforeModuleScripts(versionBuiltAssetReferences(renderVersionPlaceholders(html, encodedCacheBust), encodedCacheBust));
 }
 
 function collectPrecacheResources(dir: string, baseDir = dir): string[] {
@@ -130,26 +147,26 @@ function collectPrecacheResources(dir: string, baseDir = dir): string[] {
     return resources;
 }
 
-function renderServiceWorker(sw: string, pwaDistDir: string): string {
+function renderServiceWorker(sw: string, pwaDistDir: string, cacheBust: string): string {
     const resources = Array.from(new Set(["./", ...collectPrecacheResources(pwaDistDir)]));
     return sw
         .replaceAll(SERVICE_WORKER_VERSION_PLACEHOLDER, JSON.stringify(cacheBust))
         .replace(/const APP_STATIC_RESOURCES = \[[^\]]*\];/, `const APP_STATIC_RESOURCES = ${JSON.stringify(resources, null, 4)};`);
 }
 
-function versionedHtmlPlugin(): PluginOption {
+function versionedHtmlPlugin(config: HighScoreBuildConfig): PluginOption {
     return {
         name: "versioned-html",
         transformIndexHtml: {
             order: "post",
             handler(html: string): string {
-                return renderVersionedHtml(html);
+                return renderVersionedHtml(html, config.encodedCacheBust);
             }
         }
     };
 }
 
-function versionedStaticAssetsPlugin(command: string): PluginOption {
+function versionedStaticAssetsPlugin(command: string, config: HighScoreBuildConfig): PluginOption {
     return {
         name: "versioned-static-assets",
         generateBundle(_options, bundle): void {
@@ -158,7 +175,7 @@ function versionedStaticAssetsPlugin(command: string): PluginOption {
                     continue;
                 }
 
-                asset.source = renderVersionPlaceholders(asset.source);
+                asset.source = renderVersionPlaceholders(asset.source, config.encodedCacheBust);
             }
         },
         closeBundle(): void {
@@ -169,17 +186,24 @@ function versionedStaticAssetsPlugin(command: string): PluginOption {
             const pwaDistDir = join(rootDir, "..", "dist", "pwa");
             const manifestPath = join(rootDir, "..", "dist", "pwa", "manifest.webmanifest");
             if (existsSync(manifestPath)) {
-                writeFileSync(manifestPath, renderVersionPlaceholders(readFileSync(manifestPath, "utf8")));
+                writeFileSync(manifestPath, renderVersionPlaceholders(readFileSync(manifestPath, "utf8"), config.encodedCacheBust));
             }
 
             const indexPath = join(rootDir, "..", "dist", "pwa", "index.html");
             if (existsSync(indexPath)) {
-                writeFileSync(indexPath, renderVersionedHtml(readFileSync(indexPath, "utf8")));
+                writeFileSync(indexPath, renderVersionedHtml(readFileSync(indexPath, "utf8"), config.encodedCacheBust));
             }
 
             const serviceWorkerPath = join(rootDir, "..", "dist", "pwa", "sw.js");
             if (existsSync(serviceWorkerPath)) {
-                writeFileSync(serviceWorkerPath, renderServiceWorker(renderVersionPlaceholders(readFileSync(serviceWorkerPath, "utf8")), pwaDistDir));
+                writeFileSync(
+                    serviceWorkerPath,
+                    renderServiceWorker(
+                        renderVersionPlaceholders(readFileSync(serviceWorkerPath, "utf8"), config.encodedCacheBust),
+                        pwaDistDir,
+                        config.cacheBust
+                    )
+                );
             }
         }
     };
@@ -191,10 +215,11 @@ export default defineConfig(({ command, mode }) => {
     return {
         root: rootDir,
         base: command === "build" ? "/pwa/" : "/",
-        plugins: [versionedHtmlPlugin(), versionedStaticAssetsPlugin(command)],
+        plugins: [versionedHtmlPlugin(highScoreBuildConfig), versionedStaticAssetsPlugin(command, highScoreBuildConfig)],
         define: {
             __APP_VERSION__: JSON.stringify(versionInfo.version),
             __BUILD_STAMP__: JSON.stringify(versionInfo.buildStamp),
+            __CACHE_BUST__: JSON.stringify(highScoreBuildConfig.cacheBust),
             __HIGH_SCORE_API_URL__: JSON.stringify(highScoreBuildConfig.apiUrl),
             __HIGH_SCORE_HMAC_KEY_HEX__: JSON.stringify(highScoreBuildConfig.hmacKeyHex)
         },
