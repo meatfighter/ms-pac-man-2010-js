@@ -208,11 +208,17 @@ export function promoteNextKey(options = {}) {
         if (readKeyFile(paths.active, "Promoted active HMAC key") !== nextKey) {
             throw new Error("Promoted active HMAC key did not match the staged next key.");
         }
+        if (options.exitStage === "after-active-replace") {
+            process.exit(97);
+        }
         if (options.failStage === "after-active-replace") {
             throw new Error("Injected HMAC promotion failure: after-active-replace");
         }
 
         copyFileSync(previousPath, paths.previous);
+        if (options.exitStage === "after-previous-write") {
+            process.exit(97);
+        }
         rmSync(paths.next, { force: true });
         return {
             activeFingerprint: getHmacFingerprint(nextKey),
@@ -232,9 +238,10 @@ export function promoteNextKey(options = {}) {
 
 export function abortRotation() {
     const paths = getReleaseSecretPaths();
+    const hmacNextCandidateDir = getHmacNextCandidateDir();
     const existed = existsSync(paths.next);
     rmSync(paths.next, { force: true });
-    rmSync(getHmacNextCandidateDir(), { recursive: true, force: true });
+    rmSync(hmacNextCandidateDir, { recursive: true, force: true });
     return {
         candidateRemoved: true,
         nextRemoved: existed

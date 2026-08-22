@@ -1,24 +1,30 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const repositoryDistDir = join(rootDir, "dist");
+export const canonicalReleaseCandidatesDir = join(rootDir, ".release-candidates");
+export const canonicalHmacNextCandidateDir = join(canonicalReleaseCandidatesDir, "hmac-next");
+export const canonicalReleaseComponentsDir = join(rootDir, ".release-components");
+export const canonicalReleaseSecretsDir = join(rootDir, ".release-secrets");
 export const distDir =
     process.env.MSPACMAN_DIST_DIR !== undefined && process.env.MSPACMAN_DIST_DIR !== "" ? resolve(process.env.MSPACMAN_DIST_DIR) : repositoryDistDir;
 export const releaseComponentsDir =
     process.env.MSPACMAN_RELEASE_COMPONENTS_DIR !== undefined && process.env.MSPACMAN_RELEASE_COMPONENTS_DIR !== ""
-        ? resolve(process.env.MSPACMAN_RELEASE_COMPONENTS_DIR)
-        : join(rootDir, ".release-components");
+        ? assertSafeReleaseStateOutputPath(resolve(process.env.MSPACMAN_RELEASE_COMPONENTS_DIR), "MSPACMAN_RELEASE_COMPONENTS_DIR")
+        : canonicalReleaseComponentsDir;
 export const versionPath = join(rootDir, "version.json");
 export const packageJsonPath = join(rootDir, "package.json");
 export const desktopPomPath = join(rootDir, "desktop", "pom.xml");
 
 export function getHmacNextCandidateDir() {
-    return process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR !== undefined && process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR !== ""
-        ? resolve(process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR)
-        : join(rootDir, ".release-candidates", "hmac-next");
+    const path =
+        process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR !== undefined && process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR !== ""
+            ? resolve(process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR)
+            : canonicalHmacNextCandidateDir;
+    return assertSafeHmacNextCandidateDir(path);
 }
 
 export function readVersion() {
@@ -120,4 +126,104 @@ export function renderTemplate(template, replacements) {
         rendered = rendered.replaceAll(key, value);
     }
     return rendered;
+}
+
+export function assertSafeGeneratedOutputPath(path, description) {
+    const resolvedPath = resolve(path);
+    assertExistingPathIsDirectoryOrAbsent(resolvedPath, description);
+    assertNotRepositoryRootOrAncestor(resolvedPath, description);
+    assertDoesNotOverlapAny(
+        resolvedPath,
+        [
+            [join(rootDir, ".git"), ".git"],
+            [join(rootDir, "about"), "about/"],
+            [join(rootDir, "desktop"), "desktop/"],
+            [join(rootDir, "pwa"), "pwa/"],
+            [join(rootDir, "scripts"), "scripts/"],
+            [canonicalReleaseSecretsDir, ".release-secrets/"],
+            [canonicalReleaseCandidatesDir, ".release-candidates/"],
+            [repositoryDistDir, "dist/"]
+        ],
+        description
+    );
+    return resolvedPath;
+}
+
+export function assertSafeReleaseStateOutputPath(path, description) {
+    const resolvedPath = resolve(path);
+    assertExistingPathIsDirectoryOrAbsent(resolvedPath, description);
+    assertNotRepositoryRootOrAncestor(resolvedPath, description);
+    assertDoesNotOverlapAny(
+        resolvedPath,
+        [
+            [join(rootDir, ".git"), ".git"],
+            [join(rootDir, "about"), "about/"],
+            [join(rootDir, "desktop"), "desktop/"],
+            [join(rootDir, "pwa"), "pwa/"],
+            [join(rootDir, "scripts"), "scripts/"],
+            [canonicalReleaseSecretsDir, ".release-secrets/"],
+            [canonicalReleaseCandidatesDir, ".release-candidates/"],
+            [repositoryDistDir, "dist/"]
+        ],
+        description
+    );
+    return resolvedPath;
+}
+
+export function assertSafeHmacNextCandidateDir(path) {
+    const resolvedPath = resolve(path);
+    if (pathsEqual(resolvedPath, canonicalHmacNextCandidateDir)) {
+        return resolvedPath;
+    }
+    assertSafeReleaseStateOutputPath(resolvedPath, "MSPACMAN_HMAC_NEXT_CANDIDATE_DIR");
+    return resolvedPath;
+}
+
+export function pathsEqual(left, right) {
+    const normalizedLeft = resolve(left);
+    const normalizedRight = resolve(right);
+    if (process.platform === "win32") {
+        return normalizedLeft.toLowerCase() === normalizedRight.toLowerCase();
+    }
+    return normalizedLeft === normalizedRight;
+}
+
+export function pathsOverlap(left, right) {
+    return pathsEqual(left, right) || isPathInside(left, right) || isPathInside(right, left);
+}
+
+export function isPathInside(path, parent) {
+    const normalizedPath = resolve(path);
+    const normalizedParent = resolve(parent);
+    if (pathsEqual(normalizedPath, normalizedParent)) {
+        return false;
+    }
+    const prefix =
+        normalizedParent.endsWith("\\") || normalizedParent.endsWith("/")
+            ? normalizedParent
+            : `${normalizedParent}${process.platform === "win32" ? "\\" : "/"}`;
+    if (process.platform === "win32") {
+        return normalizedPath.toLowerCase().startsWith(prefix.toLowerCase());
+    }
+    return normalizedPath.startsWith(prefix);
+}
+
+function assertExistingPathIsDirectoryOrAbsent(path, description) {
+    if (existsSync(path) && !statSync(path).isDirectory()) {
+        throw new Error(`${description} must be a directory or an absent path: ${path}`);
+    }
+}
+
+function assertNotRepositoryRootOrAncestor(path, description) {
+    if (pathsEqual(path, rootDir) || isPathInside(rootDir, path)) {
+        throw new Error(`${description} must not be the repository root or one of its ancestors: ${path}`);
+    }
+}
+
+function assertDoesNotOverlapAny(path, forbiddenPaths, description) {
+    for (const [forbiddenPath, label] of forbiddenPaths) {
+        if (pathsOverlap(path, forbiddenPath)) {
+            throw new Error(`${description} must not overlap ${label}: ${path}`);
+        }
+    }
 }

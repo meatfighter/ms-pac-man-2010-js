@@ -9,6 +9,8 @@ import {
     getGitHeadCommit,
     getGitStatusPorcelain,
     getHmacNextCandidateDir,
+    isPathInside,
+    pathsEqual,
     readVersion,
     releaseComponentsDir,
     repositoryDistDir,
@@ -52,7 +54,7 @@ const buildDistDir = releasePlan.buildDistDir;
 
 try {
     productionCleanPreflight = shouldRequireCleanSourcePreflight(keySource);
-    if (productionCleanPreflight) {
+    if (shouldRequireFinalCleanSourceCheck()) {
         assertGitWorkingTreeClean();
     }
     assertProjectVersionsMatch();
@@ -119,10 +121,24 @@ try {
 
     maybeFailReleaseStage("after-artifacts-before-verify");
 
-    runNodeScript("verify-release.mjs", ["--key-source=env"], {
-        ...releaseEnv,
-        MSPACMAN_RELEASE_VERIFY_TARGET: target
-    });
+    runNodeScript(
+        "verify-release.mjs",
+        ["--key-source=env", `--expected-release-kind=${releasePlan.releaseKind}`, `--expected-hmac-key-source=${releasePlan.hmacKeySource}`],
+        {
+            ...releaseEnv,
+            MSPACMAN_RELEASE_VERIFY_TARGET: target
+        }
+    );
+
+    maybeMutateTrackedFileAfterVerify();
+
+    if (stampedVersionJson) {
+        writeFileSync(versionPath, originalVersionJson);
+        stampedVersionJson = false;
+    }
+    if (shouldRequireFinalCleanSourceCheck()) {
+        assertGitWorkingTreeClean();
+    }
 
     if (releasePlan.shouldPromoteFullBuild) {
         promoteFullDist(buildDistDir, releasePlan.finalDistDir);
@@ -137,9 +153,6 @@ try {
     }
     if (releasePlan.shouldPromoteFullBuild && !promotedFullBuild) {
         rmSync(buildDistDir, { recursive: true, force: true });
-    }
-    if (productionCleanPreflight) {
-        assertGitWorkingTreeClean();
     }
 }
 
@@ -225,10 +238,26 @@ function shouldRequireCleanSourcePreflight(keySource) {
     return keySource === "active" || keySource === "next";
 }
 
+function shouldRequireFinalCleanSourceCheck() {
+    return productionCleanPreflight || process.env.MSPACMAN_TEST_REQUIRE_FINAL_CLEAN_CHECK === "1";
+}
+
 function maybeFailReleaseStage(stage) {
     if (process.env.MSPACMAN_TEST_FAIL_RELEASE_STAGE === stage) {
         throw new Error(`Injected release failure stage: ${stage}`);
     }
+}
+
+function maybeMutateTrackedFileAfterVerify() {
+    const path = process.env.MSPACMAN_TEST_MUTATE_TRACKED_FILE_AFTER_VERIFY;
+    if (path === undefined || path === "") {
+        return;
+    }
+    const resolvedPath = join(rootDir, path);
+    if (!pathsEqual(resolvedPath, rootDir) && !isPathInside(resolvedPath, rootDir)) {
+        throw new Error("MSPACMAN_TEST_MUTATE_TRACKED_FILE_AFTER_VERIFY must resolve inside the repository.");
+    }
+    writeFileSync(resolvedPath, `mutated after verify ${new Date().toISOString()}\n`);
 }
 
 function runNpmScript(scriptName, env = process.env) {

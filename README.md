@@ -31,7 +31,7 @@ Useful commands:
 - `npm.cmd run release:provision` creates a new active local HMAC key and performs a complete verified full release. It does not modify the server.
 - `npm.cmd run release:rotate-hmac` creates a staged next local HMAC key and performs a complete verified candidate release into `.release-candidates/hmac-next/`. It does not alter active, rebuild `dist/`, or promote automatically.
 - `npm.cmd run release:finalize-hmac` verifies the already-tested `.release-candidates/hmac-next/` bytes, promotes those exact bytes to `dist/`, and promotes the staged next HMAC key to active.
-- `npm.cmd run smoke:production-api -- --confirm-production` performs a non-mutating production API smoke test using the active local HMAC key fingerprint. It duplicates an existing leaderboard entry and refuses to POST if the production table is empty.
+- `npm.cmd run smoke:production-api -- --confirm-production` performs a non-mutating production API smoke test using the active local HMAC key fingerprint and `dist/release.json`. It duplicates an existing leaderboard entry and refuses to POST if the production table is empty.
 - `npm.cmd run build` builds the canonical full production-site bundle using the active local HMAC key, stamps exactly once, assembles a temporary release tree, verifies it, and atomically promotes it to `dist/`.
 - `npm.cmd run run:desktop` launches the built desktop jar with the local native libraries.
 
@@ -61,7 +61,7 @@ Relocatable web release:
 
 Generated release artifacts:
 
-- `dist/release.json` contains the app version, build stamp, pre-build Git commit, pre-build Git tree state, release kind, HMAC key source, PWA cache identity, and HMAC fingerprint. It never contains the full HMAC key.
+- `dist/release.json` contains the app version, build stamp, pre-build Git commit, pre-build Git tree state, release kind, HMAC key source, PWA cache identity, and HMAC fingerprint. It never contains the full HMAC key. The production API smoke test verifies this fingerprint and provenance before contacting the server.
 - `dist/checksums.sha256` covers every generated release file except itself.
 - `dist/downloads/ms-pac-man-2010-js-source.zip` and the matching versioned source ZIP are generated with `git archive` from the exact `release.json` commit. They contain committed source only, never arbitrary untracked checkout files.
 - `dist/downloads/ms-pac-man-2010-desktop.zip` and the matching versioned desktop ZIP are copied from the exact release desktop artifact. They include the runnable JAR, separate runtime libraries, native libraries, license texts, runtime notes, and LGPL corresponding-source artifacts.
@@ -128,11 +128,11 @@ After `release:rotate-hmac`, verify the candidate artifacts in `.release-candida
 2. Stage the exact candidate bytes from `.release-candidates/hmac-next/`.
 3. Test everything possible before key cutover.
 4. Manually replace `MSPACMAN_HMAC_KEY_HEX` on the server from active A to next B, then restart `ms-pac-man-2010.service`.
-5. Immediately perform the final valid B-key public API test, including `npm.cmd run smoke:production-api -- --confirm-production` after the local active key is B.
+5. Immediately perform the final valid B-key public API test before local finalization with `npm.cmd run smoke:production-api -- --confirm-production --key-source=next`.
 6. Run `npm.cmd run release:finalize-hmac` locally.
 7. Promote the exact finalized bytes to the final static location.
 
-Finalize promotes the exact tested candidate bytes to canonical `dist/` and promotes the next key to active without rebuilding the client. Old PWA/Java clients using the previous key can no longer submit after a single-key server rotation.
+Finalize promotes the exact tested candidate bytes to canonical `dist/` and promotes the next key to active without rebuilding the client. If the process is interrupted mid-finalization, rerun `npm.cmd run release:finalize-hmac`; it uses a non-secret journal in `.release-secrets/` to complete or clean up the interrupted promotion. Old PWA/Java clients using the previous key can no longer submit after a single-key server rotation.
 
 Before server cutover, `npm.cmd run hmac:rotate:abort` is allowed if the staged next key and candidate should be discarded.
 

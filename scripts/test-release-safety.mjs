@@ -398,6 +398,38 @@ try {
         }
     });
 
+    await runTest("rotation abort rejects unsafe candidate overrides before removing the staged next key", () => {
+        const tempSecretsDir = mkdtempSync(join(tmpdir(), "mspacman-hmac-abort-unsafe-"));
+        const previousSecretsDir = process.env.MSPACMAN_RELEASE_SECRETS_DIR;
+        const previousCandidateDir = process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR;
+        try {
+            process.env.MSPACMAN_RELEASE_SECRETS_DIR = tempSecretsDir;
+            process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR = join(rootDir, "dist");
+            const activeKey = createHmacKeyHex();
+            let nextKey = createHmacKeyHex();
+            while (nextKey === activeKey) {
+                nextKey = createHmacKeyHex();
+            }
+            writeKeyFile(join(tempSecretsDir, "ms-pac-man-2010-hmac.hex"), activeKey);
+            writeKeyFile(join(tempSecretsDir, "ms-pac-man-2010-hmac.next.hex"), nextKey);
+
+            assert.throws(() => abortRotation(), /MSPACMAN_HMAC_NEXT_CANDIDATE_DIR|dist/);
+            assert.equal(readKeyFile(join(tempSecretsDir, "ms-pac-man-2010-hmac.next.hex"), "Next HMAC key"), nextKey);
+        } finally {
+            if (previousSecretsDir === undefined) {
+                delete process.env.MSPACMAN_RELEASE_SECRETS_DIR;
+            } else {
+                process.env.MSPACMAN_RELEASE_SECRETS_DIR = previousSecretsDir;
+            }
+            if (previousCandidateDir === undefined) {
+                delete process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR;
+            } else {
+                process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR = previousCandidateDir;
+            }
+            rmSync(tempSecretsDir, { recursive: true, force: true });
+        }
+    });
+
     await runTest("source archive contains committed source only", () => {
         const tempDistDir = mkdtempSync(join(tmpdir(), "mspacman-source-archive-dist-"));
         const untrackedFileName = "MSPACMAN_UNTRACKED_SOURCE_ARCHIVE_TEST.txt";
@@ -482,6 +514,43 @@ try {
             assert.equal(readFileSync(versionPath, "utf8"), originalVersionJson, "Late failed release build must restore version.json.");
             assert.equal(readGitStatus(), beforeStatus, "Late failed release build must leave the Git source state unchanged.");
         } finally {
+            rmSync(tempRoot, { recursive: true, force: true });
+        }
+    });
+
+    await runTest("final clean-source rejection happens before full release promotion", () => {
+        writeFileSync(versionPath, originalVersionJson);
+        const tempRoot = mkdtempSync(join(tmpdir(), "mspacman-final-clean-release-"));
+        const tempDistDir = join(tempRoot, "dist");
+        const trackedMutationFile = "README.md";
+        const trackedMutationPath = join(rootDir, trackedMutationFile);
+        const originalTrackedMutationText = readFileSync(trackedMutationPath, "utf8");
+        try {
+            mkdirSync(tempDistDir, { recursive: true });
+            writeFileSync(join(tempDistDir, "sentinel.txt"), "known good\n");
+            const beforeTree = snapshotDirectory(tempDistDir);
+
+            const result = spawnNodeScript(
+                "scripts/build-release.mjs",
+                {
+                    ...process.env,
+                    MSPACMAN_HMAC_KEY_HEX: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+                    MSPACMAN_TEST_MUTATE_TRACKED_FILE_AFTER_VERIFY: trackedMutationFile,
+                    MSPACMAN_TEST_REQUIRE_FINAL_CLEAN_CHECK: "1"
+                },
+                ["--target=full", "--key-source=env", `--output-dir=${tempDistDir}`]
+            );
+            assert.notEqual(result.status, 0, "Final clean-source rejection should fail the release build.");
+            assertOutputIncludes(result, "Git working tree is not clean.");
+            assert.deepEqual(snapshotDirectory(tempDistDir), beforeTree, "Existing dist must survive final clean-source rejection byte-for-byte.");
+            assert.equal(readFileSync(versionPath, "utf8"), originalVersionJson, "Final clean-source rejection must restore version.json.");
+            assert.equal(
+                readdirSync(tempRoot).some((entry) => entry.startsWith(".dist-pending-")),
+                false,
+                "Rejected pending release directory must be cleaned up."
+            );
+        } finally {
+            writeFileSync(trackedMutationPath, originalTrackedMutationText);
             rmSync(tempRoot, { recursive: true, force: true });
         }
     });

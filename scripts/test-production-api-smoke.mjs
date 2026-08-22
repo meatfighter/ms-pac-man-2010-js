@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHmacKeyHex, getHmacFingerprint, writeKeyFile } from "./hmac-config.mjs";
@@ -10,10 +10,18 @@ import { rootDir } from "./build-utils.mjs";
 
 const PROTOCOL_VERSION = 1;
 const tempSecretsDir = mkdtempSync(join(tmpdir(), "mspacman-smoke-api-secrets-"));
+const tempDistDir = mkdtempSync(join(tmpdir(), "mspacman-smoke-api-dist-"));
+const tempCandidateDir = mkdtempSync(join(tmpdir(), "mspacman-smoke-api-candidate-"));
 const activeKey = createHmacKeyHex();
+let nextKey = createHmacKeyHex();
+while (nextKey === activeKey) {
+    nextKey = createHmacKeyHex();
+}
 
 try {
     writeKeyFile(join(tempSecretsDir, "ms-pac-man-2010-hmac.hex"), activeKey);
+    writeReleaseMetadata(tempDistDir, "production", "active", getHmacFingerprint(activeKey));
+    writeReleaseMetadata(tempCandidateDir, "rotation-candidate", "next", getHmacFingerprint(nextKey));
 
     await runTest("production API smoke test performs non-mutating duplicate POST", async () => {
         const table = [
@@ -45,6 +53,35 @@ try {
         }
     });
 
+    await runTest("production API smoke test can use the staged next HMAC key", async () => {
+        const nextKeyPath = join(tempSecretsDir, "ms-pac-man-2010-hmac.next.hex");
+        writeKeyFile(nextKeyPath, nextKey);
+        const table = [{ world: 0, score: 543210, initials: "ROT" }];
+        let postCount = 0;
+        const server = await startScoreServer({
+            table,
+            onPost: (payload) => {
+                postCount++;
+                assert.deepEqual(payload, {
+                    protocolVersion: PROTOCOL_VERSION,
+                    ...table[0],
+                    checksum: calculateChecksum(nextKey, table[0])
+                });
+            }
+        });
+        try {
+            const result = await runSmoke(server.url, ["--key-source=next"]);
+            assert.equal(result.status, 0, formatFailure("Expected next-key production API smoke test to pass.", result));
+            assert.equal(postCount, 1, "Next-key smoke test must perform exactly one duplicate POST.");
+            assertOutputIncludes(result, getHmacFingerprint(nextKey));
+            assertOutputDoesNotExposeKey(result, nextKey);
+            assertOutputIncludes(result, "Using next HMAC key fingerprint");
+        } finally {
+            await server.close();
+            rmSync(nextKeyPath, { force: true });
+        }
+    });
+
     await runTest("production API smoke test refuses to POST into an empty leaderboard", async () => {
         let postCount = 0;
         const server = await startScoreServer({
@@ -72,6 +109,8 @@ try {
     });
 } finally {
     rmSync(tempSecretsDir, { recursive: true, force: true });
+    rmSync(tempDistDir, { recursive: true, force: true });
+    rmSync(tempCandidateDir, { recursive: true, force: true });
 }
 
 async function startScoreServer({ onPost, table }) {
@@ -129,8 +168,8 @@ function readRequestBody(request) {
     });
 }
 
-function runSmoke(url) {
-    return runNodeScript(["scripts/smoke-production-api.mjs", `--url=${url}`, "--confirm-production"]);
+function runSmoke(url, extraArgs = []) {
+    return runNodeScript(["scripts/smoke-production-api.mjs", `--url=${url}`, "--confirm-production", ...extraArgs]);
 }
 
 function runNodeScript(args) {
@@ -139,6 +178,8 @@ function runNodeScript(args) {
             cwd: rootDir,
             env: {
                 ...process.env,
+                MSPACMAN_DIST_DIR: tempDistDir,
+                MSPACMAN_HMAC_NEXT_CANDIDATE_DIR: tempCandidateDir,
                 MSPACMAN_RELEASE_SECRETS_DIR: tempSecretsDir
             },
             windowsHide: true
@@ -167,6 +208,22 @@ function calculateChecksum(keyHex, candidate) {
     return createHmac("sha256", Buffer.from(keyHex, "hex"))
         .update(`mspacman-score|${PROTOCOL_VERSION}|${candidate.world}|${candidate.score}|${candidate.initials}`)
         .digest("hex");
+}
+
+function writeReleaseMetadata(releaseDir, releaseKind, hmacKeySource, hmacKeyFingerprint) {
+    mkdirSync(releaseDir, { recursive: true });
+    writeFileSync(
+        join(releaseDir, "release.json"),
+        `${JSON.stringify(
+            {
+                hmacKeyFingerprint,
+                hmacKeySource,
+                releaseKind
+            },
+            null,
+            4
+        )}\n`
+    );
 }
 
 function assertOutputIncludes(result, text) {

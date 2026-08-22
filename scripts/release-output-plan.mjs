@@ -1,4 +1,5 @@
 import { join, resolve } from "node:path";
+import { assertSafeGeneratedOutputPath, pathsEqual } from "./build-utils.mjs";
 
 export function resolveReleaseOutputPlan({
     createTemporaryFullDistDir,
@@ -22,6 +23,7 @@ export function resolveReleaseOutputPlan({
     if (target === "pwa" || target === "web") {
         const finalDistDir = requestedOutputDir ?? join(releaseComponentsDir, target);
         assertNotRepositoryDist(finalDistDir, repositoryDistDir, `${target} component release builds may not write canonical repository dist/.`);
+        assertSafeGeneratedOutputPath(finalDistDir, `${target} component release output`);
         return {
             buildDistDir: finalDistDir,
             finalDistDir,
@@ -47,15 +49,6 @@ export function normalizeRequestedOutputDir(rootDir, value) {
     return resolve(rootDir, value);
 }
 
-export function pathsEqual(left, right) {
-    const normalizedLeft = resolve(left);
-    const normalizedRight = resolve(right);
-    if (process.platform === "win32") {
-        return normalizedLeft.toLowerCase() === normalizedRight.toLowerCase();
-    }
-    return normalizedLeft === normalizedRight;
-}
-
 function resolveFullReleaseOutputPlan({ createTemporaryFullDistDir, hmacNextCandidateDir, keySource, repositoryDistDir, requestedOutputDir }) {
     if (keySource === "active") {
         if (requestedOutputDir !== null) {
@@ -69,6 +62,7 @@ function resolveFullReleaseOutputPlan({ createTemporaryFullDistDir, hmacNextCand
             throw new Error("Synthetic HMAC full builds require --output-dir with an explicit non-production directory.");
         }
         assertNotRepositoryDist(requestedOutputDir, repositoryDistDir, "Synthetic HMAC full builds may not write canonical repository dist/.");
+        assertSafeGeneratedOutputPath(requestedOutputDir, "Synthetic HMAC full build output");
         return createFullReleasePlan(requestedOutputDir, "synthetic-test", "env", createTemporaryFullDistDir);
     }
 
@@ -76,6 +70,7 @@ function resolveFullReleaseOutputPlan({ createTemporaryFullDistDir, hmacNextCand
         if (requestedOutputDir !== null) {
             throw new Error("Next-key rotation candidate releases write to the staged candidate directory. Do not pass --output-dir.");
         }
+        assertNotRepositoryDist(hmacNextCandidateDir, repositoryDistDir, "Next-key rotation candidate releases may not write canonical repository dist/.");
         return createFullReleasePlan(hmacNextCandidateDir, "rotation-candidate", "next", createTemporaryFullDistDir);
     }
 

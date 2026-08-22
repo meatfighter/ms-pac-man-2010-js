@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { distDir, getHmacNextCandidateDir } from "./build-utils.mjs";
 import { getHmacFingerprint, readSelectedHmacKey } from "./hmac-config.mjs";
+import { assertReleaseProvenance } from "./release-provenance.mjs";
 
 const PROTOCOL_VERSION = 1;
 const WORLD_COUNT = 4;
@@ -11,14 +15,17 @@ const REQUEST_TIMEOUT_MS = 5000;
 const DEFAULT_PRODUCTION_URL = "https://meatfighter.com/api/ms-pac-man-2010/scores";
 
 const url = readOption("url", process.env.MSPACMAN_PRODUCTION_SCORE_API_URL ?? DEFAULT_PRODUCTION_URL);
+const keySource = readOption("key-source", "active");
+assert.ok(keySource === "active" || keySource === "next", "--key-source must be active or next.");
 
 if (!process.argv.includes("--confirm-production")) {
     throw new Error("Refusing to run production API smoke test without --confirm-production.");
 }
 
-const keyHex = readSelectedHmacKey("active");
+const keyHex = readSelectedHmacKey(keySource);
 const fingerprint = getHmacFingerprint(keyHex);
-console.log(`Using active HMAC key fingerprint: ${fingerprint}`);
+verifyReleaseArtifact(fingerprint, keySource);
+console.log(`Using ${keySource} HMAC key fingerprint: ${fingerprint}`);
 
 const initialScores = await requestScores("GET");
 if (initialScores.length === 0) {
@@ -203,6 +210,26 @@ function calculateChecksum(keyHex, candidate) {
     return createHmac("sha256", Buffer.from(keyHex, "hex"))
         .update(`mspacman-score|${PROTOCOL_VERSION}|${candidate.world}|${candidate.score}|${candidate.initials}`)
         .digest("hex");
+}
+
+function verifyReleaseArtifact(fingerprint, keySource) {
+    const releaseDir = keySource === "next" ? getHmacNextCandidateDir() : distDir;
+    const releaseMetadataPath = join(releaseDir, "release.json");
+    if (!existsSync(releaseMetadataPath)) {
+        throw new Error(`Release metadata is required before production API smoke testing: ${releaseMetadataPath}`);
+    }
+
+    const metadata = JSON.parse(readFileSync(releaseMetadataPath, "utf8"));
+    assert.equal(metadata.hmacKeyFingerprint, fingerprint, "Release artifact HMAC fingerprint must match the selected local key.");
+    assertReleaseProvenance(
+        metadata,
+        keySource === "next"
+            ? { expectedHmacKeySource: "next", expectedReleaseKind: "rotation-candidate" }
+            : {
+                  expectedHmacKeySource: "active",
+                  expectedReleaseKind: "production"
+              }
+    );
 }
 
 function isJsonContentType(value) {

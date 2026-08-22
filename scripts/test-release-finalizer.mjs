@@ -28,6 +28,17 @@ try {
         assert.equal(result.status, 0, formatFailure("Expected candidate verification to succeed without desktop/target.", result));
     });
 
+    await runTest("verifier accepts production provenance when selected key is transported through env", () => {
+        const candidateDir = copyCandidate("production-active-env-transport");
+        const metadata = readReleaseMetadata(candidateDir);
+        metadata.hmacKeySource = "active";
+        metadata.releaseKind = "production";
+        writeReleaseMetadata(candidateDir, metadata);
+        rewriteChecksums(candidateDir);
+        const result = verifyCandidate(candidateDir, ["--expected-release-kind=production", "--expected-hmac-key-source=active"]);
+        assert.equal(result.status, 0, formatFailure("Expected verifier to accept production/active provenance with env key transport.", result));
+    });
+
     await runTest("candidate Java ZIP with wrong embedded HMAC fails verification", () => {
         const candidateDir = copyCandidate("wrong-desktop-hmac");
         mutateDesktopZip(candidateDir, (distributionDir) => {
@@ -118,6 +129,36 @@ try {
         });
     });
 
+    await runTest("finalize recovers after abrupt exit following candidate installation", () => {
+        withFinalizeFixture((fixture) => {
+            const beforeCandidate = snapshotDirectory(fixture.candidateDir);
+            const beforeActive = readKeyFile(fixture.activePath, "Active HMAC key");
+            const beforeNext = readKeyFile(fixture.nextPath, "Next HMAC key");
+            const first = runFinalize(fixture, {
+                MSPACMAN_TEST_EXIT_HMAC_FINALIZE_STAGE: "after-candidate-install"
+            });
+            assert.equal(first.status, 97, formatFailure("Expected abrupt candidate-install exit.", first));
+            const recovery = runFinalize(fixture);
+            assert.equal(recovery.status, 0, formatFailure("Expected finalizer recovery to succeed.", recovery));
+            assertFinalizedState(fixture, beforeCandidate, beforeActive, beforeNext);
+        });
+    });
+
+    await runTest("finalize recovers after abrupt exit following active-key replacement", () => {
+        withFinalizeFixture((fixture) => {
+            const beforeCandidate = snapshotDirectory(fixture.candidateDir);
+            const beforeActive = readKeyFile(fixture.activePath, "Active HMAC key");
+            const beforeNext = readKeyFile(fixture.nextPath, "Next HMAC key");
+            const first = runFinalize(fixture, {
+                MSPACMAN_TEST_EXIT_HMAC_FINALIZE_STAGE: "after-active-replace"
+            });
+            assert.equal(first.status, 97, formatFailure("Expected abrupt active-key replacement exit.", first));
+            const recovery = runFinalize(fixture);
+            assert.equal(recovery.status, 0, formatFailure("Expected finalizer recovery to succeed.", recovery));
+            assertFinalizedState(fixture, beforeCandidate, beforeActive, beforeNext);
+        });
+    });
+
     await runTest("successful finalize promotes exact candidate bytes and staged next key", () => {
         withFinalizeFixture((fixture) => {
             rmSync(join(fixture.fixtureRoot, "desktop", "target"), { recursive: true, force: true });
@@ -126,11 +167,7 @@ try {
             const beforeNext = readKeyFile(fixture.nextPath, "Next HMAC key");
             const result = runFinalize(fixture);
             assert.equal(result.status, 0, formatFailure("Expected HMAC finalization to succeed.", result));
-            assert.deepEqual(snapshotDirectory(fixture.distDir), beforeCandidate, "Canonical dist must become the exact candidate bytes.");
-            assert.equal(readKeyFile(fixture.activePath, "Active HMAC key"), beforeNext, "Next key must become active.");
-            assert.equal(readKeyFile(join(fixture.secretsDir, "ms-pac-man-2010-hmac.previous.hex"), "Previous HMAC key"), beforeActive);
-            assert.equal(existsSync(fixture.nextPath), false, "Next key file must be removed after successful finalization.");
-            assert.equal(existsSync(fixture.candidateDir), false, "Candidate directory must be removed after successful finalization.");
+            assertFinalizedState(fixture, beforeCandidate, beforeActive, beforeNext);
         });
     });
 } finally {
@@ -147,7 +184,7 @@ function buildSyntheticFullCandidate() {
     assert.equal(result.status, 0, formatFailure("Synthetic full release candidate build failed.", result));
 }
 
-function verifyCandidate(candidateDir) {
+function verifyCandidate(candidateDir, extraArgs = []) {
     return spawnNodeScript(
         rootDir,
         "scripts/verify-release.mjs",
@@ -157,7 +194,7 @@ function verifyCandidate(candidateDir) {
             MSPACMAN_HMAC_KEY_HEX: SYNTHETIC_RELEASE_HMAC_KEY_HEX,
             MSPACMAN_RELEASE_VERIFY_TARGET: "full"
         },
-        ["--key-source=env"]
+        ["--key-source=env", ...extraArgs]
     );
 }
 
@@ -219,6 +256,14 @@ function prepareCandidateForFixture(fixtureRoot, candidateDir, gitCommit) {
     assert.equal(result.status, 0, formatFailure("Fixture checksum rewrite failed.", result));
 }
 
+function rewriteChecksums(candidateDir) {
+    const result = spawnNodeScript(rootDir, "scripts/write-release-checksums.mjs", {
+        ...process.env,
+        MSPACMAN_DIST_DIR: candidateDir
+    });
+    assert.equal(result.status, 0, formatFailure("Candidate checksum rewrite failed.", result));
+}
+
 function assertFinalizeFailsWithoutStateChange(fixture, expectedText) {
     const beforeDist = snapshotDirectory(fixture.distDir);
     const beforeCandidate = snapshotDirectory(fixture.candidateDir);
@@ -231,6 +276,20 @@ function assertFinalizeFailsWithoutStateChange(fixture, expectedText) {
     assert.deepEqual(snapshotDirectory(fixture.candidateDir), beforeCandidate, "Candidate directory must remain unchanged.");
     assert.equal(readKeyFile(fixture.activePath, "Active HMAC key"), beforeActive, "Active key must remain unchanged.");
     assert.equal(readKeyFile(fixture.nextPath, "Next HMAC key"), beforeNext, "Next key must remain unchanged.");
+}
+
+function assertFinalizedState(fixture, beforeCandidate, beforeActive, beforeNext) {
+    assert.deepEqual(snapshotDirectory(fixture.distDir), beforeCandidate, "Canonical dist must become the exact candidate bytes.");
+    assert.equal(readKeyFile(fixture.activePath, "Active HMAC key"), beforeNext, "Next key must become active.");
+    assert.equal(readKeyFile(join(fixture.secretsDir, "ms-pac-man-2010-hmac.previous.hex"), "Previous HMAC key"), beforeActive);
+    assert.equal(existsSync(fixture.nextPath), false, "Next key file must be removed after successful finalization.");
+    assert.equal(existsSync(fixture.candidateDir), false, "Candidate directory must be removed after successful finalization.");
+    assert.equal(existsSync(join(fixture.secretsDir, "hmac-finalize-transaction.json")), false, "Finalize transaction journal must be removed.");
+    assert.equal(
+        listFiles(fixture.secretsDir).some((path) => path.endsWith(".promote") || path.endsWith(".rollback")),
+        false,
+        "Temporary HMAC promotion files must be removed."
+    );
 }
 
 function runFinalize(fixture, extraEnv = {}) {

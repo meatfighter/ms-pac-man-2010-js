@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
-import { rootDir } from "./build-utils.mjs";
-import { normalizeRequestedOutputDir, pathsEqual, resolveReleaseOutputPlan } from "./release-output-plan.mjs";
+import { pathsEqual, rootDir } from "./build-utils.mjs";
+import { normalizeRequestedOutputDir, resolveReleaseOutputPlan } from "./release-output-plan.mjs";
+import { assertReleaseProvenance } from "./release-provenance.mjs";
 
 const repositoryDistDir = join(rootDir, "dist");
 const releaseComponentsDir = join(rootDir, ".release-components");
@@ -105,6 +106,37 @@ try {
         );
     });
 
+    await runTest("next-key full release rejects a staged candidate path that overlaps canonical dist", () => {
+        assert.throws(
+            () =>
+                resolveReleaseOutputPlan({
+                    createTemporaryFullDistDir: (finalDistDir) => `${finalDistDir}.pending-test`,
+                    hmacNextCandidateDir: repositoryDistDir,
+                    keySource: "next",
+                    releaseComponentsDir,
+                    repositoryDistDir,
+                    requestedOutputDir: null,
+                    target: "full"
+                }),
+            /Next-key rotation candidate releases may not write canonical repository dist/
+        );
+    });
+
+    await runTest("explicit output rejects destructive repository paths", () => {
+        for (const output of ["", ".", ".git", "pwa", "desktop", "scripts", ".release-secrets", ".release-candidates", "dist", "dist/nested"]) {
+            const requestedOutputDir = output === "" ? rootDir : normalizeRequestedOutputDir(rootDir, output);
+            assert.throws(
+                () =>
+                    createPlan({
+                        keySource: "env",
+                        requestedOutputDir,
+                        target: "full"
+                    }),
+                /must not|may not/
+            );
+        }
+    });
+
     await runTest("PWA and web component release outputs cannot target repository dist", () => {
         for (const target of ["pwa", "web"]) {
             assert.throws(
@@ -125,6 +157,41 @@ try {
             assert.equal(plan.releaseKind, "component");
             assert.equal(plan.shouldPromoteFullBuild, false);
         }
+    });
+
+    await runTest("release provenance accepts every supported artifact/key-source combination", () => {
+        for (const [releaseKind, hmacKeySource] of [
+            ["production", "active"],
+            ["synthetic-test", "env"],
+            ["rotation-candidate", "next"],
+            ["component", "active"],
+            ["component", "env"],
+            ["component", "next"]
+        ]) {
+            assertReleaseProvenance(
+                {
+                    hmacKeySource,
+                    releaseKind
+                },
+                {
+                    expectedHmacKeySource: hmacKeySource,
+                    expectedReleaseKind: releaseKind
+                }
+            );
+        }
+    });
+
+    await runTest("release provenance does not infer artifact provenance from verifier key transport", () => {
+        assertReleaseProvenance(
+            {
+                hmacKeySource: "active",
+                releaseKind: "production"
+            },
+            {
+                expectedHmacKeySource: "active",
+                expectedReleaseKind: "production"
+            }
+        );
     });
 } finally {
     if (originalDistEnv === undefined) {
