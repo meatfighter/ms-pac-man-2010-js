@@ -6,10 +6,19 @@ import { fileURLToPath } from "node:url";
 export const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const distDir =
     process.env.MSPACMAN_DIST_DIR !== undefined && process.env.MSPACMAN_DIST_DIR !== "" ? resolve(process.env.MSPACMAN_DIST_DIR) : join(rootDir, "dist");
+export const releaseComponentsDir =
+    process.env.MSPACMAN_RELEASE_COMPONENTS_DIR !== undefined && process.env.MSPACMAN_RELEASE_COMPONENTS_DIR !== ""
+        ? resolve(process.env.MSPACMAN_RELEASE_COMPONENTS_DIR)
+        : join(rootDir, ".release-components");
 export const versionPath = join(rootDir, "version.json");
 export const packageJsonPath = join(rootDir, "package.json");
 export const desktopPomPath = join(rootDir, "desktop", "pom.xml");
-export const hmacNextCandidateDir = join(rootDir, ".release-candidates", "hmac-next");
+
+export function getHmacNextCandidateDir() {
+    return process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR !== undefined && process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR !== ""
+        ? resolve(process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR)
+        : join(rootDir, ".release-candidates", "hmac-next");
+}
 
 export function readVersion() {
     return JSON.parse(readFileSync(versionPath, "utf8").replace(/^\uFEFF/, ""));

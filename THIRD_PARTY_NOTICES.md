@@ -2,7 +2,7 @@
 
 This project depends on slick2d-ts for the browser runtime. slick2d-ts is distributed under the BSD 3-Clause License and includes attribution for selected Slick2D API behavior.
 
-Desktop Java runtime dependencies are documented separately in `desktop/RUNTIME_DEPENDENCIES.md` and `desktop/licenses/`. The downloadable desktop package bundles legacy jars and native libraries; keep this notice file and the `licenses/` directory with that package.
+Desktop Java runtime dependencies are documented separately in `desktop/RUNTIME_DEPENDENCIES.md`, `desktop/licenses/`, and `desktop/third-party-sources/`. The downloadable desktop package bundles legacy jars, native libraries, license texts, and corresponding-source artifacts; keep this notice file with that package.
 
 ## Bundled Desktop Runtime Summary
 
@@ -125,6 +125,11 @@ JInput is distributed under a BSD-style license. The desktop package includes th
 
 JOrbis and Jogg are used only as unmodified, separately bundled Java runtime jars on the desktop classpath. JOrbis Maven metadata identifies "GNU Lesser General Public License"; source headers identify the GNU Library General Public License, version 2 or later. Re-linking remains possible because the jars are shipped as separate files in `lib/` rather than merged into the game jar. The desktop package includes the GNU Library GPL v2 text in `licenses/GNU-LIBRARY-GPL-2.0.txt`.
 
+The desktop package also includes corresponding source artifacts:
+
+- `third-party-sources/jogg-0.0.7-jcraft-jorbis-28592f3-source.zip`
+- `third-party-sources/jorbis-0.0.17-sources.jar`
+
 Upstream/source reference: `http://www.jcraft.com/jorbis/`
 
 ## Gson 2.11.0
@@ -133,4 +138,4 @@ Gson is distributed under the Apache License 2.0. The bundled jar includes Maven
 
 ## OpenAL Soft
 
-The bundled OpenAL native libraries identify themselves as OpenAL Soft 1.14. They are documented separately from LWJGL in `desktop/licenses/README.md`; the desktop package includes the GNU Library GPL v2 text in `licenses/GNU-LIBRARY-GPL-2.0.txt`.
+The bundled OpenAL native libraries identify themselves as OpenAL Soft 1.14. They are documented separately from LWJGL in `desktop/licenses/README.md`; the desktop package includes the GNU Library GPL v2 text in `licenses/GNU-LIBRARY-GPL-2.0.txt` and the corresponding source archive in `third-party-sources/openal-soft-1.14.tar.bz2`.

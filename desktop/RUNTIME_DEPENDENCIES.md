@@ -42,4 +42,12 @@ The included run scripts do this automatically for the copied runtime layout. Th
 
 This dependency copy does not modernize Slick2D itself and does not upgrade the game code. It only vendors a better-matched legacy runtime set for desktop build work.
 
-Before publishing a release, keep third-party license notices for the bundled runtime jars and native libraries with the downloadable desktop package. The canonical desktop license bundle is `desktop/licenses/`, and the root `THIRD_PARTY_NOTICES.md` summarizes the same dependencies. If a jar or native library changes, update the hashes and license/provenance notes in both places before publishing.
+The desktop ZIP includes `third-party-sources/` for LGPL corresponding-source artifacts:
+
+| Source artifact                               | Component covered                  | SHA-256                                                            |
+| --------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------ |
+| `jogg-0.0.7-jcraft-jorbis-28592f3-source.zip` | JCraft Jogg source material        | `0c814790741d14debc4a88214bdf8d0369a521a652e4d9a375b0cdfdbc21597a` |
+| `jorbis-0.0.17-sources.jar`                   | `org.jcraft:jorbis:0.0.17` sources | `1643dd368b9c160276caf8d1f6a8c0aae43ca5bf49b53348a2a01623641708e5` |
+| `openal-soft-1.14.tar.bz2`                    | OpenAL Soft 1.14 sources           | `87bd8d61d5943387898c92b6a2bbbb26118e745dec57550c817526a70fad0914` |
+
+Before publishing a release, keep third-party license notices and corresponding-source artifacts for the bundled runtime jars and native libraries with the downloadable desktop package. The canonical desktop license bundle is `desktop/licenses/`, the source bundle is `desktop/third-party-sources/`, and the root `THIRD_PARTY_NOTICES.md` summarizes the same dependencies. If a jar or native library changes, update the hashes and license/provenance notes in all three places before publishing.

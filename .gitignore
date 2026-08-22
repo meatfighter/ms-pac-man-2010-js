@@ -6,6 +6,7 @@ dist/
 !.env.example
 .release-secrets/
 .release-candidates/
+.release-components/
 .dist-pending-*/
 .dist-previous-*/
 .dist-active-before-hmac-finalize-*/

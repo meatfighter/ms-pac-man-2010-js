@@ -24,12 +24,15 @@ import {
 } from "./hmac-config.mjs";
 
 const originalSecretsDir = process.env.MSPACMAN_RELEASE_SECRETS_DIR;
+const originalCandidateDir = process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR;
 const tempDir = mkdtempSync(join(tmpdir(), "mspacman-hmac-test-"));
+const tempCandidateDir = mkdtempSync(join(tmpdir(), "mspacman-hmac-candidate-test-"));
 const importedKey = SYNTHETIC_RELEASE_HMAC_KEY_HEX;
 const secondKey = "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f";
 
 try {
     process.env.MSPACMAN_RELEASE_SECRETS_DIR = tempDir;
+    process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR = tempCandidateDir;
 
     await runTest("validates strict lowercase 32-byte hex keys", () => {
         assert.equal(validateHmacKeyHex(importedKey), importedKey);
@@ -107,7 +110,9 @@ try {
     });
 } finally {
     restoreEnv("MSPACMAN_RELEASE_SECRETS_DIR", originalSecretsDir);
+    restoreEnv("MSPACMAN_HMAC_NEXT_CANDIDATE_DIR", originalCandidateDir);
     rmSync(tempDir, { recursive: true, force: true });
+    rmSync(tempCandidateDir, { recursive: true, force: true });
 }
 
 function restoreEnv(name, value) {

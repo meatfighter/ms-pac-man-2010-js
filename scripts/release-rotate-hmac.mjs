@@ -1,12 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { assertSecretAbsentFromTrackedFiles, checkActiveHmacKey, checkRotationKeys, ensureNextKey, readSelectedHmacKey } from "./hmac-config.mjs";
-import { assertGitWorkingTreeClean, hmacNextCandidateDir, rootDir } from "./build-utils.mjs";
+import { assertGitWorkingTreeClean, getHmacNextCandidateDir, rootDir } from "./build-utils.mjs";
 
 let nextFingerprint = "";
 try {
-    if (process.env.MSPACMAN_RELEASE_ALLOW_DIRTY !== "1") {
-        assertGitWorkingTreeClean();
-    }
+    assertGitWorkingTreeClean();
     const activeFingerprint = await checkActiveHmacKey();
     const next = ensureNextKey();
     nextFingerprint = next.fingerprint;
@@ -20,7 +18,7 @@ try {
     runBuildRelease();
     console.log(`Verified candidate release with active key fingerprint: ${activeFingerprint}`);
     console.log(`Verified candidate release with next key fingerprint: ${rotation.nextFingerprint}`);
-    console.log(`Candidate release written to: ${hmacNextCandidateDir}`);
+    console.log(`Candidate release written to: ${getHmacNextCandidateDir()}`);
 } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     if (nextFingerprint !== "") {
@@ -35,7 +33,7 @@ function runBuildRelease() {
         cwd: rootDir,
         env: {
             ...process.env,
-            MSPACMAN_DIST_DIR: hmacNextCandidateDir
+            MSPACMAN_DIST_DIR: getHmacNextCandidateDir()
         },
         stdio: "inherit",
         windowsHide: true

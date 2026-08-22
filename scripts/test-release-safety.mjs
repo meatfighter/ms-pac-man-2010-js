@@ -1,33 +1,47 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { spawnSync } from "node:child_process";
-import { abortRotation, createHmacKeyHex, getHmacFingerprint, promoteNextKey, readKeyFile, writeKeyFile } from "./hmac-config.mjs";
-import { hmacNextCandidateDir, rootDir, versionPath } from "./build-utils.mjs";
+import {
+    abortRotation,
+    createHmacKeyHex,
+    getHmacFingerprint,
+    promoteNextKey,
+    readKeyFile,
+    SYNTHETIC_RELEASE_HMAC_KEY_HEX,
+    writeKeyFile
+} from "./hmac-config.mjs";
+import { getHmacNextCandidateDir, rootDir, versionPath } from "./build-utils.mjs";
 
 const originalVersionJson = readFileSync(versionPath, "utf8");
 const originalGitStatus = readGitStatus();
 
 try {
     await runTest("release provisioning preserves generated active key when build fails", () => {
-        withMismatchedVersionJson(() => {
+        withCleanGitFixture((fixtureRoot) => {
             const tempSecretsDir = mkdtempSync(join(tmpdir(), "mspacman-provision-secrets-"));
             const tempDistDir = mkdtempSync(join(tmpdir(), "mspacman-provision-dist-"));
             try {
-                const result = spawnNodeScript("scripts/release-provision.mjs", {
-                    ...process.env,
-                    MSPACMAN_RELEASE_ALLOW_DIRTY: "1",
-                    MSPACMAN_DIST_DIR: tempDistDir,
-                    MSPACMAN_RELEASE_SECRETS_DIR: tempSecretsDir
-                });
-                assert.notEqual(result.status, 0, "Provisioning should fail with mismatched release versions.");
+                const result = spawnNodeScript(
+                    "scripts/release-provision.mjs",
+                    {
+                        ...process.env,
+                        MSPACMAN_DIST_DIR: tempDistDir,
+                        MSPACMAN_RELEASE_SECRETS_DIR: tempSecretsDir,
+                        MSPACMAN_TEST_FAIL_RELEASE_STAGE: "after-stamp"
+                    },
+                    [],
+                    fixtureRoot
+                );
+                assert.notEqual(result.status, 0, "Provisioning should fail at the injected release stage.");
                 const activePath = join(tempSecretsDir, "ms-pac-man-2010-hmac.hex");
                 assert.equal(existsSync(activePath), true, "Failed provisioning must preserve the generated active key.");
                 const activeKey = readKeyFile(activePath, "Active HMAC key");
                 assertOutputDoesNotExposeKey(result, activeKey);
                 assertOutputIncludes(result, getHmacFingerprint(activeKey));
+                assertOutputIncludes(result, "Injected release failure stage: after-stamp");
                 assertOutputIncludes(result, "The active HMAC key was preserved.");
             } finally {
                 rmSync(tempSecretsDir, { recursive: true, force: true });
@@ -37,7 +51,7 @@ try {
     });
 
     await runTest("release rotation preserves and reuses staged next key when build fails", () => {
-        withMismatchedVersionJson(() => {
+        withCleanGitFixture((fixtureRoot) => {
             const tempSecretsDir = mkdtempSync(join(tmpdir(), "mspacman-rotation-secrets-"));
             const tempDistDir = mkdtempSync(join(tmpdir(), "mspacman-rotation-dist-"));
             try {
@@ -46,27 +60,38 @@ try {
                 const nextPath = join(tempSecretsDir, "ms-pac-man-2010-hmac.next.hex");
                 writeKeyFile(activePath, activeKey);
 
-                const first = spawnNodeScript("scripts/release-rotate-hmac.mjs", {
-                    ...process.env,
-                    MSPACMAN_RELEASE_ALLOW_DIRTY: "1",
-                    MSPACMAN_DIST_DIR: tempDistDir,
-                    MSPACMAN_RELEASE_SECRETS_DIR: tempSecretsDir
-                });
-                assert.notEqual(first.status, 0, "Rotation candidate should fail with mismatched release versions.");
+                const first = spawnNodeScript(
+                    "scripts/release-rotate-hmac.mjs",
+                    {
+                        ...process.env,
+                        MSPACMAN_DIST_DIR: tempDistDir,
+                        MSPACMAN_RELEASE_SECRETS_DIR: tempSecretsDir,
+                        MSPACMAN_TEST_FAIL_RELEASE_STAGE: "after-stamp"
+                    },
+                    [],
+                    fixtureRoot
+                );
+                assert.notEqual(first.status, 0, "Rotation candidate should fail at the injected release stage.");
                 assert.equal(existsSync(nextPath), true, "Failed rotation must preserve the staged next key.");
                 const firstNextKey = readKeyFile(nextPath, "Next HMAC key");
                 assertOutputDoesNotExposeKey(first, activeKey);
                 assertOutputDoesNotExposeKey(first, firstNextKey);
                 assertOutputIncludes(first, getHmacFingerprint(firstNextKey));
+                assertOutputIncludes(first, "Injected release failure stage: after-stamp");
                 assertOutputIncludes(first, "The staged next HMAC key was preserved.");
 
-                const second = spawnNodeScript("scripts/release-rotate-hmac.mjs", {
-                    ...process.env,
-                    MSPACMAN_RELEASE_ALLOW_DIRTY: "1",
-                    MSPACMAN_DIST_DIR: tempDistDir,
-                    MSPACMAN_RELEASE_SECRETS_DIR: tempSecretsDir
-                });
-                assert.notEqual(second.status, 0, "Second rotation candidate should also fail with mismatched release versions.");
+                const second = spawnNodeScript(
+                    "scripts/release-rotate-hmac.mjs",
+                    {
+                        ...process.env,
+                        MSPACMAN_DIST_DIR: tempDistDir,
+                        MSPACMAN_RELEASE_SECRETS_DIR: tempSecretsDir,
+                        MSPACMAN_TEST_FAIL_RELEASE_STAGE: "after-stamp"
+                    },
+                    [],
+                    fixtureRoot
+                );
+                assert.notEqual(second.status, 0, "Second rotation candidate should also fail at the injected release stage.");
                 assert.equal(readKeyFile(nextPath, "Next HMAC key"), firstNextKey, "Rotation reruns must reuse an existing staged next key.");
                 assertOutputIncludes(second, "Reusing next HMAC key.");
             } finally {
@@ -89,12 +114,13 @@ try {
                 "scripts/build-release.mjs",
                 {
                     ...process.env,
+                    MSPACMAN_RELEASE_ALLOW_DIRTY: "1",
                     MSPACMAN_DIST_DIR: tempDistDir,
                     MSPACMAN_RELEASE_SECRETS_DIR: tempSecretsDir
                 },
                 ["--target=pwa", "--key-source=active"]
             );
-            assert.notEqual(result.status, 0, "Active-key release must reject a non-ignored untracked file.");
+            assert.notEqual(result.status, 0, "Active-key release must reject a non-ignored untracked file even when the obsolete dirty bypass is set.");
             assertOutputIncludes(result, "Git working tree is not clean.");
             assertOutputDoesNotExposeKey(result, activeKey);
             assert.equal(readFileSync(versionPath, "utf8"), originalVersionJson, "Dirty-source rejection must not modify version.json.");
@@ -123,6 +149,36 @@ try {
             rmSync(untrackedPath, { force: true });
             rmSync(tempSecretsDir, { recursive: true, force: true });
             rmSync(tempDistDir, { recursive: true, force: true });
+        }
+    });
+
+    await runTest("component release builds leave canonical dist unchanged", () => {
+        const tempComponentsDir = mkdtempSync(join(tmpdir(), "mspacman-release-components-"));
+        const distPath = join(rootDir, "dist");
+        const beforeDist = snapshotDirectory(distPath);
+        try {
+            for (const target of ["pwa", "web"]) {
+                const result = spawnNodeScript(
+                    "scripts/build-release.mjs",
+                    {
+                        ...process.env,
+                        MSPACMAN_HMAC_KEY_HEX: SYNTHETIC_RELEASE_HMAC_KEY_HEX,
+                        MSPACMAN_RELEASE_COMPONENTS_DIR: tempComponentsDir
+                    },
+                    [`--target=${target}`, "--key-source=env"]
+                );
+                assert.equal(result.status, 0, formatFailure(`Component ${target} release build failed.`, result));
+                assert.deepEqual(snapshotDirectory(distPath), beforeDist, `Component ${target} release build must not modify canonical dist/.`);
+                assert.equal(existsSync(join(tempComponentsDir, target, "pwa", "sw.js")), true, `Component ${target} release build must write PWA output.`);
+            }
+            assert.equal(existsSync(join(tempComponentsDir, "web", "index.html")), true, "Component web release build must write about-page output.");
+            assert.equal(
+                existsSync(join(tempComponentsDir, "web", "downloads", "ms-pac-man-2010-js-source.zip")),
+                true,
+                "Component web release build must write source artifacts."
+            );
+        } finally {
+            rmSync(tempComponentsDir, { recursive: true, force: true });
         }
     });
 
@@ -225,9 +281,12 @@ try {
 
     await runTest("rotation abort removes staged next key and local candidate release", () => {
         const tempSecretsDir = mkdtempSync(join(tmpdir(), "mspacman-hmac-abort-"));
+        const tempCandidateDir = mkdtempSync(join(tmpdir(), "mspacman-hmac-abort-candidate-"));
         const previousSecretsDir = process.env.MSPACMAN_RELEASE_SECRETS_DIR;
+        const previousCandidateDir = process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR;
         try {
             process.env.MSPACMAN_RELEASE_SECRETS_DIR = tempSecretsDir;
+            process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR = tempCandidateDir;
             const activeKey = createHmacKeyHex();
             let nextKey = createHmacKeyHex();
             while (nextKey === activeKey) {
@@ -235,6 +294,7 @@ try {
             }
             writeKeyFile(join(tempSecretsDir, "ms-pac-man-2010-hmac.hex"), activeKey);
             writeKeyFile(join(tempSecretsDir, "ms-pac-man-2010-hmac.next.hex"), nextKey);
+            const hmacNextCandidateDir = getHmacNextCandidateDir();
             mkdirSync(hmacNextCandidateDir, { recursive: true });
             writeFileSync(join(hmacNextCandidateDir, "candidate-sentinel.txt"), "candidate\n");
 
@@ -248,8 +308,57 @@ try {
             } else {
                 process.env.MSPACMAN_RELEASE_SECRETS_DIR = previousSecretsDir;
             }
+            if (previousCandidateDir === undefined) {
+                delete process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR;
+            } else {
+                process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR = previousCandidateDir;
+            }
             rmSync(tempSecretsDir, { recursive: true, force: true });
-            rmSync(hmacNextCandidateDir, { recursive: true, force: true });
+            rmSync(tempCandidateDir, { recursive: true, force: true });
+        }
+    });
+
+    await runTest("release-state tests cannot delete a protected staged candidate sentinel", () => {
+        const protectedRoot = mkdtempSync(join(tmpdir(), "mspacman-protected-release-state-"));
+        const protectedCandidateDir = join(protectedRoot, ".release-candidates", "hmac-next");
+        const tempStateRoot = mkdtempSync(join(tmpdir(), "mspacman-isolated-release-state-"));
+        const tempSecretsDir = join(tempStateRoot, ".release-secrets");
+        const tempCandidateDir = join(tempStateRoot, ".release-candidates", "hmac-next");
+        const protectedSentinel = join(protectedCandidateDir, "protected-sentinel.txt");
+        const previousSecretsDir = process.env.MSPACMAN_RELEASE_SECRETS_DIR;
+        const previousCandidateDir = process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR;
+        try {
+            mkdirSync(protectedCandidateDir, { recursive: true });
+            writeFileSync(protectedSentinel, "protected candidate\n");
+            process.env.MSPACMAN_RELEASE_SECRETS_DIR = tempSecretsDir;
+            process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR = tempCandidateDir;
+
+            const activeKey = createHmacKeyHex();
+            let nextKey = createHmacKeyHex();
+            while (nextKey === activeKey) {
+                nextKey = createHmacKeyHex();
+            }
+            writeKeyFile(join(tempSecretsDir, "ms-pac-man-2010-hmac.hex"), activeKey);
+            writeKeyFile(join(tempSecretsDir, "ms-pac-man-2010-hmac.next.hex"), nextKey);
+            mkdirSync(tempCandidateDir, { recursive: true });
+            writeFileSync(join(tempCandidateDir, "candidate-sentinel.txt"), "isolated candidate\n");
+
+            abortRotation();
+            assert.equal(readFileSync(protectedSentinel, "utf8"), "protected candidate\n", "Protected candidate sentinel must remain untouched.");
+            assert.equal(existsSync(tempCandidateDir), false, "Isolated test candidate should be removed by abort.");
+        } finally {
+            if (previousSecretsDir === undefined) {
+                delete process.env.MSPACMAN_RELEASE_SECRETS_DIR;
+            } else {
+                process.env.MSPACMAN_RELEASE_SECRETS_DIR = previousSecretsDir;
+            }
+            if (previousCandidateDir === undefined) {
+                delete process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR;
+            } else {
+                process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR = previousCandidateDir;
+            }
+            rmSync(protectedRoot, { recursive: true, force: true });
+            rmSync(tempStateRoot, { recursive: true, force: true });
         }
     });
 
@@ -345,28 +454,56 @@ try {
     assert.equal(readGitStatus(), originalGitStatus, "Release safety tests must restore the original Git status.");
 }
 
-function withMismatchedVersionJson(fn) {
-    writeFileSync(
-        versionPath,
-        `${JSON.stringify(
-            {
-                buildStamp: "2026-08-21T00:00:00.000Z",
-                version: "0.0.0"
-            },
-            null,
-            4
-        )}\n`
-    );
+function withCleanGitFixture(fn) {
+    const fixtureRoot = mkdtempSync(join(tmpdir(), "mspacman-clean-release-fixture-"));
     try {
-        fn();
+        copyWorkingSourceToFixture(fixtureRoot);
+        runGit(fixtureRoot, ["init"]);
+        runGit(fixtureRoot, ["add", "."]);
+        runGit(fixtureRoot, ["-c", "user.name=Ms Pac-Man Release Test", "-c", "user.email=release-test@example.invalid", "commit", "-m", "fixture"]);
+        fn(fixtureRoot);
     } finally {
-        writeFileSync(versionPath, originalVersionJson);
+        rmSync(fixtureRoot, { recursive: true, force: true });
     }
 }
 
-function spawnNodeScript(scriptName, env, args = []) {
-    return spawnSync(process.execPath, [scriptName, ...args], {
+function copyWorkingSourceToFixture(fixtureRoot) {
+    for (const file of listGitFixtureFiles()) {
+        const sourcePath = join(rootDir, file);
+        if (!existsSync(sourcePath) || statSync(sourcePath).isDirectory()) {
+            continue;
+        }
+        const targetPath = join(fixtureRoot, file);
+        mkdirSync(dirname(targetPath), { recursive: true });
+        copyFileSync(sourcePath, targetPath);
+    }
+}
+
+function listGitFixtureFiles() {
+    const result = spawnSync("git", ["ls-files", "--cached", "--others", "--exclude-standard", "-z"], {
         cwd: rootDir,
+        encoding: "utf8",
+        maxBuffer: 64 * 1024 * 1024,
+        windowsHide: true
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.split("\0").filter(Boolean);
+}
+
+function runGit(cwd, args) {
+    const result = spawnSync("git", args, {
+        cwd,
+        encoding: "utf8",
+        maxBuffer: 64 * 1024 * 1024,
+        windowsHide: true
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result;
+}
+
+function spawnNodeScript(scriptName, env, args = [], cwd = rootDir) {
+    return spawnSync(process.execPath, [scriptName, ...args], {
+        cwd,
         encoding: "utf8",
         env,
         maxBuffer: 64 * 1024 * 1024,
@@ -457,6 +594,10 @@ function assertOutputIncludes(result, text) {
 function assertOutputDoesNotExposeKey(result, keyHex) {
     assert.equal(result.stdout.includes(keyHex), false, "stdout must not expose full HMAC keys.");
     assert.equal(result.stderr.includes(keyHex), false, "stderr must not expose full HMAC keys.");
+}
+
+function formatFailure(message, result) {
+    return [message, "stdout:", result.stdout, "stderr:", result.stderr, "error:", result.error?.message ?? ""].join("\n");
 }
 
 async function runTest(name, fn) {

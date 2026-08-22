@@ -4,9 +4,7 @@ import { assertGitWorkingTreeClean, rootDir } from "./build-utils.mjs";
 
 let activeFingerprint = "";
 try {
-    if (process.env.MSPACMAN_RELEASE_ALLOW_DIRTY !== "1") {
-        assertGitWorkingTreeClean();
-    }
+    assertGitWorkingTreeClean();
     const active = createNewActiveKey();
     activeFingerprint = active.fingerprint;
     await checkActiveHmacKey();

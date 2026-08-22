@@ -89,6 +89,8 @@ function assertReleaseScriptStructure() {
         "node scripts/build-release.mjs --target=full --key-source=active",
         "build must use the release orchestrator with the active key."
     );
+    assert.equal(scripts.assemble, undefined, "assemble must not be exposed as a public package script.");
+    assert.equal(scripts["_assemble"], "node scripts/assemble.mjs", "_assemble must remain available for the internal full release pipeline.");
     assert.equal(scripts["release:provision"], "node scripts/release-provision.mjs", "release:provision must run the full provision workflow.");
     assert.equal(scripts["release:rotate-hmac"], "node scripts/release-rotate-hmac.mjs", "release:rotate-hmac must run the candidate rotation workflow.");
     assert.equal(

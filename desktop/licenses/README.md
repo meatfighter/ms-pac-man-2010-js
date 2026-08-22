@@ -38,11 +38,19 @@ distribution. Keep it in sync with `desktop/lib/`, `desktop/natives/`,
 | `natives/macosx/libjinput-osx.jnilib` | `d155c29cfa7d7b49cab0821d5ba00a8fdc8b386c8bf5669f0313a62e44ba70d6` | JInput macOS native runtime.                                                                                         | `JINPUT-BSD.txt`                                         |
 | `natives/macosx/openal.dylib`         | `ff5e52380b5ef5255654c4e61397822cf57598fce5ed5e6d3cde0762b5c837c8` | OpenAL Soft macOS native runtime; binary strings identify `OpenAL Soft`, `OpenAL Community`, and `1.1 ALSOFT 1.14`.  | `OPENAL-SOFT-LGPL-NOTICE.txt`, `GNU-LIBRARY-GPL-2.0.txt` |
 
-## LGPL Source Availability
+## LGPL Corresponding Source
 
 JOrbis/Jogg and the bundled OpenAL Soft native libraries are shipped
-unmodified as separate runtime dependencies. When publishing the desktop ZIP,
-also make corresponding source available from the same release location or a
-clearly linked source location. If any binary is replaced, re-identify the
-exact component/version from the new artifact and update this directory before
-publishing.
+unmodified as separate runtime dependencies. The desktop distribution includes
+the corresponding-source bundle in `third-party-sources/` so the release does
+not depend on live network downloads.
+
+| File                                                              | SHA-256                                                            | Component covered                                                                                                                                                     |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `third-party-sources/jogg-0.0.7-jcraft-jorbis-28592f3-source.zip` | `0c814790741d14debc4a88214bdf8d0369a521a652e4d9a375b0cdfdbc21597a` | JCraft `com.jcraft.jogg` source material from upstream `ymnk/jorbis` commit `28592f3dde5134871165470e7390d66ed5f1dce5`, used for the legacy `jogg-0.0.7.jar` runtime. |
+| `third-party-sources/jorbis-0.0.17-sources.jar`                   | `1643dd368b9c160276caf8d1f6a8c0aae43ca5bf49b53348a2a01623641708e5` | Maven Central `org.jcraft:jorbis:0.0.17` source jar.                                                                                                                  |
+| `third-party-sources/openal-soft-1.14.tar.bz2`                    | `87bd8d61d5943387898c92b6a2bbbb26118e745dec57550c817526a70fad0914` | Official OpenAL Soft 1.14 source archive.                                                                                                                             |
+
+If any bundled jar or native library is replaced, re-identify the exact
+component/version from the new artifact, replace the corresponding-source
+artifact as needed, and update this README before publishing.

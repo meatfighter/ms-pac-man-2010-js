@@ -50,7 +50,7 @@ const forbiddenDeploymentRootPatterns = [
 ];
 const runtimeTextExtensions = new Set([".css", ".html", ".js", ".json", ".svg", ".txt", ".webmanifest", ".xml"]);
 
-verifyDistDoesNotContainReleaseSecrets();
+verifyDistDoesNotContainLocalReleaseState();
 
 if (target === "pwa" || target === "web" || target === "full") {
     verifyPwaRelease();
@@ -117,22 +117,62 @@ function verifyAboutRelease() {
 }
 
 function verifyDesktopRelease() {
-    runNpmScript("test:desktop-high-score");
-
-    const desktopTargetDir = join(rootDir, "desktop", "target");
     const distributionName = "ms-pac-man-2010-desktop";
-    const stableJarPath = join(desktopTargetDir, `${distributionName}.jar`);
-    const versionedJarPath = join(desktopTargetDir, `${distributionName}-${version.version}.jar`);
-    const versionedZipPath = join(desktopTargetDir, `${distributionName}-${version.version}.zip`);
+    const desktopReleaseDir = target === "full" ? join(distDir, "downloads") : join(rootDir, "desktop", "target");
+    const stableZipPath = join(desktopReleaseDir, `${distributionName}.zip`);
+    const versionedZipPath = join(desktopReleaseDir, `${distributionName}-${version.version}.zip`);
+    assert.ok(existsSync(stableZipPath), `Desktop release ZIP must exist: ${stableZipPath}`);
+    assert.ok(existsSync(versionedZipPath), `Desktop versioned release ZIP must exist: ${versionedZipPath}`);
+    assert.equal(sha256File(stableZipPath), sha256File(versionedZipPath), "Stable and versioned desktop release ZIPs must be byte-for-byte identical.");
 
-    verifyJarReleaseProperties(stableJarPath);
-    verifyJarReleaseProperties(versionedJarPath);
-
-    const zipEntries = listArchiveEntries(versionedZipPath);
-    assert.ok(zipEntries.includes(`${distributionName}/${distributionName}.jar`), "Desktop release ZIP must contain the runnable desktop JAR.");
-    assert.ok(zipEntries.includes(`${distributionName}/LICENSE`), "Desktop release ZIP must contain the project LICENSE.");
-    assert.ok(zipEntries.includes(`${distributionName}/THIRD_PARTY_NOTICES.md`), "Desktop release ZIP must contain third-party notices.");
-    assert.ok(zipEntries.includes(`${distributionName}/RUNTIME_DEPENDENCIES.md`), "Desktop release ZIP must contain runtime dependency notes.");
+    const desktopZip = readFileSync(versionedZipPath);
+    const zipEntries = readZipEntriesFromBuffer(desktopZip);
+    const zipEntryNames = zipEntries.map((entry) => entry.name);
+    assert.equal(zipEntryNames.includes("META-INF/MANIFEST.MF"), false, "Desktop release ZIP must not contain an outer ZIP manifest.");
+    assert.equal(zipEntryNames.includes(`${distributionName}/META-INF/MANIFEST.MF`), false, "Desktop release ZIP must not contain an outer ZIP manifest.");
+    assert.ok(zipEntryNames.includes(`${distributionName}/${distributionName}.jar`), "Desktop release ZIP must contain the runnable desktop JAR.");
+    verifyZipEntryMode(zipEntries, `${distributionName}/run-linux.sh`, 0o755);
+    verifyZipEntryMode(zipEntries, `${distributionName}/run-macos.sh`, 0o755);
+    verifyZipEntryMode(zipEntries, `${distributionName}/run-windows.cmd`, 0o644);
+    verifyZipEntryMode(zipEntries, `${distributionName}/run-windows.ps1`, 0o644);
+    verifyZipEntryMode(zipEntries, `${distributionName}/README.md`, 0o644);
+    for (const requiredEntry of [`${distributionName}/LICENSE`, `${distributionName}/THIRD_PARTY_NOTICES.md`, `${distributionName}/RUNTIME_DEPENDENCIES.md`]) {
+        assert.ok(zipEntryNames.includes(requiredEntry), `Desktop release ZIP must contain ${requiredEntry}.`);
+    }
+    for (const [runtimeEntry, expectedHash] of Object.entries({
+        "lib/slick.jar": "02f7a1f0c48847a32fcc1a3330b12b869e73ad7658c7708174d9f1f2ec75847b",
+        "lib/lwjgl.jar": "a31267bf348e564217d833cb0b334cfe4062aab12b015c126f323882949d1c1d",
+        "lib/lwjgl_util.jar": "2432cbacfcec9cd78165f44f45d045bafff9da122276ed288157699eeee688de",
+        "lib/jinput.jar": "36b6fbede7a2d2f00949a87b9de83007a1c6b4ce5a96978279c0cc612a9adef5",
+        "lib/jogg-0.0.7.jar": "2e2744b9bfada5e62ba274d6b3089656676599afacc095647234ae383b991ecc",
+        "lib/jorbis-0.0.17.jar": "7096b7eef82228c7aea0260fac4884aec416b332dfaac8182dea8c28ba35b45f",
+        "lib/gson-2.11.0.jar": "57928d6e5a6edeb2abd3770a8f95ba44dce45f3b23b7a9dc2b309c581552a78b",
+        "natives/windows/lwjgl.dll": "60377a953f707aab277410c5fec00224ffa1b861838b657e5916247cfb151453",
+        "natives/windows/lwjgl64.dll": "5520eab49c484495a46f04974ee8815477a1c46f0c7b01739eb3a93d863d541a",
+        "natives/windows/jinput-dx8.dll": "f6ee33701bfbba481870f4a370d707b87001fb3213efcc60bff325013b4e219c",
+        "natives/windows/jinput-dx8_64.dll": "511dc50c2001d3e25845dd479ca82fdfc9d42403f9aa69c6493257c66ddf0266",
+        "natives/windows/jinput-raw.dll": "0fcd33e00ba5c51f3fdf3613d89c6e9e00381fef03b550412ea73bc837237dcf",
+        "natives/windows/jinput-raw_64.dll": "74cd74d55ea20e8fcea7aed8b97c2cf096da1fcde3faf183f815a4dce9364ec3",
+        "natives/windows/OpenAL32.dll": "af7fbb5f60b3e63577d4567ba58df6ede48a7705658c9de6a322d02dde0759b8",
+        "natives/windows/OpenAL64.dll": "3ebc1009680b0e04f4b99b54a0e7b768c14603bf5e8080255aa82a01a269b92b",
+        "natives/linux/liblwjgl.so": "e0de8f9c34e777578dea80d43ca0b61b16f4edb9d3b2ba8ce52c4d4dd2325f33",
+        "natives/linux/liblwjgl64.so": "a448d44fc012e20bef022ece083070ead143fa37daedbc570872d42da11e4189",
+        "natives/linux/libjinput-linux.so": "ff7af7a1306451428c98e3f50c5bf2f19bb6cbc5835730917cdd755b8cc626d0",
+        "natives/linux/libjinput-linux64.so": "86e650f47790e789696a7a5809461eb4b503f5f841e17488aa7ee5a1bedc05a6",
+        "natives/linux/libopenal.so": "0d6511ac012104c470c1fee7311f1459379d1201c796918eb50ae2acecb5801b",
+        "natives/linux/libopenal64.so": "2a0ee434b0113a61ea98e583787df0de7e082385613d1d94d7c0515a9e301687",
+        "natives/macosx/liblwjgl.jnilib": "ed4800ba1920a4b4bcf74cf78206e662ccfb0d0bc271f85b7e2c8f80336d43d8",
+        "natives/macosx/libjinput-osx.jnilib": "d155c29cfa7d7b49cab0821d5ba00a8fdc8b386c8bf5669f0313a62e44ba70d6",
+        "natives/macosx/openal.dylib": "ff5e52380b5ef5255654c4e61397822cf57598fce5ed5e6d3cde0762b5c837c8"
+    })) {
+        const entryName = `${distributionName}/${runtimeEntry}`;
+        assert.ok(zipEntryNames.includes(entryName), `Desktop release ZIP must contain ${runtimeEntry}.`);
+        assert.equal(
+            sha256Buffer(readRequiredZipEntryData(desktopZip, zipEntries, entryName)),
+            expectedHash,
+            `Desktop runtime artifact hash mismatch: ${runtimeEntry}.`
+        );
+    }
     for (const licenseEntry of [
         "licenses/README.md",
         "licenses/APACHE-2.0.txt",
@@ -143,13 +183,28 @@ function verifyDesktopRelease() {
         "licenses/OPENAL-SOFT-LGPL-NOTICE.txt",
         "licenses/SLICK2D-BSD-3-CLAUSE.txt"
     ]) {
-        assert.ok(zipEntries.includes(`${distributionName}/${licenseEntry}`), `Desktop release ZIP must contain ${licenseEntry}.`);
+        assert.ok(zipEntryNames.includes(`${distributionName}/${licenseEntry}`), `Desktop release ZIP must contain ${licenseEntry}.`);
+    }
+    for (const [sourceEntry, expectedHash] of Object.entries({
+        "third-party-sources/jogg-0.0.7-jcraft-jorbis-28592f3-source.zip": "0c814790741d14debc4a88214bdf8d0369a521a652e4d9a375b0cdfdbc21597a",
+        "third-party-sources/jorbis-0.0.17-sources.jar": "1643dd368b9c160276caf8d1f6a8c0aae43ca5bf49b53348a2a01623641708e5",
+        "third-party-sources/openal-soft-1.14.tar.bz2": "87bd8d61d5943387898c92b6a2bbbb26118e745dec57550c817526a70fad0914"
+    })) {
+        const entryName = `${distributionName}/${sourceEntry}`;
+        assert.ok(zipEntryNames.includes(entryName), `Desktop release ZIP must contain ${sourceEntry}.`);
+        assert.equal(
+            sha256Buffer(readRequiredZipEntryData(desktopZip, zipEntries, entryName)),
+            expectedHash,
+            `Desktop source artifact hash mismatch: ${sourceEntry}.`
+        );
     }
     assert.equal(
-        zipEntries.some((entry) => entry.split("/").includes(".release-secrets")),
+        zipEntryNames.some((entry) => entry.split("/").includes(".release-secrets")),
         false,
         "Desktop release ZIP must not contain .release-secrets."
     );
+    const runnableJar = readRequiredZipEntryData(desktopZip, zipEntries, `${distributionName}/${distributionName}.jar`);
+    verifyJarReleasePropertiesFromBuffer(runnableJar, `${distributionName}/${distributionName}.jar`);
 }
 
 function verifyReleaseMetadata() {
@@ -179,6 +234,7 @@ function verifySourceRelease() {
     const versionedSourcePath = join(downloadsDir, `ms-pac-man-2010-js-source-${version.version}.zip`);
     assert.ok(existsSync(stableSourcePath), "Release output must include the stable source archive.");
     assert.ok(existsSync(versionedSourcePath), "Release output must include the versioned source archive.");
+    assert.equal(sha256File(stableSourcePath), sha256File(versionedSourcePath), "Stable and versioned source ZIPs must be byte-for-byte identical.");
 
     const archiveRoot = `ms-pac-man-2010-js-source-${version.version}/`;
     const entries = listArchiveEntries(stableSourcePath);
@@ -193,11 +249,7 @@ function verifySourceRelease() {
     ]) {
         assert.ok(entries.includes(requiredEntry), `Source archive is missing ${requiredEntry}.`);
     }
-    assert.equal(
-        entries.some((entry) => entry.split("/").includes(".release-secrets")),
-        false,
-        "Source archive must not contain .release-secrets."
-    );
+    assertArchiveEntriesDoNotContainLocalReleaseState(entries, archiveRoot, "Source archive");
     assert.equal(
         entries.some((entry) => entry.startsWith(`${archiveRoot}dist/`)),
         false,
@@ -207,25 +259,22 @@ function verifySourceRelease() {
     assertSourceArchiveMatchesGitCommit(stableSourcePath, archiveRoot, readExpectedGitCommit());
 }
 
-function verifyJarReleaseProperties(jarPath) {
-    const tempDir = mkdtempSync(join(tmpdir(), "mspacman-release-"));
-    try {
-        run("jar", ["xf", jarPath, "mspacman/high-score-release.properties"], tempDir);
-        const properties = readJavaProperties(join(tempDir, "mspacman", "high-score-release.properties"));
-        assert.equal(properties.hmacKeyHex, hmacKeyHex, "Desktop JAR must embed the selected HMAC key.");
-        assert.equal(properties.hmacKeyFingerprint, fingerprint, "Desktop JAR must embed the selected HMAC fingerprint.");
-        assert.equal(properties.buildStamp, version.buildStamp, "Desktop JAR must embed the current build stamp.");
-    } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-    }
+function verifyJarReleasePropertiesFromBuffer(jar, description) {
+    const jarEntries = readZipEntriesFromBuffer(jar);
+    const propertiesText = readRequiredZipEntryData(jar, jarEntries, "mspacman/high-score-release.properties").toString("utf8");
+    const properties = readJavaProperties(propertiesText);
+    assert.equal(properties.hmacKeyHex, hmacKeyHex, `${description} must embed the selected HMAC key.`);
+    assert.equal(properties.hmacKeyFingerprint, fingerprint, `${description} must embed the selected HMAC fingerprint.`);
+    assert.equal(properties.buildStamp, version.buildStamp, `${description} must embed the current build stamp.`);
 }
 
-function verifyDistDoesNotContainReleaseSecrets() {
+function verifyDistDoesNotContainLocalReleaseState() {
     if (!existsSync(distDir)) {
         return;
     }
     for (const path of listFiles(distDir)) {
-        assert.equal(relative(distDir, path).split(/[\\/]/).includes(".release-secrets"), false, "Release secrets must not be copied into dist.");
+        const relativePath = relative(distDir, path).replaceAll("\\", "/");
+        assert.equal(isLocalReleaseStateRelativePath(relativePath), false, "Local release-state paths must not be copied into dist.");
     }
 }
 
@@ -263,6 +312,10 @@ function verifyReleaseChecksumManifest() {
 
 function sha256File(path) {
     return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function sha256Buffer(buffer) {
+    return createHash("sha256").update(buffer).digest("hex");
 }
 
 function verifyGeneratedRuntimeDoesNotContainHardcodedDeploymentRoots(root) {
@@ -374,6 +427,7 @@ function readZipEntriesFromBuffer(archive) {
         entries.push({
             compressedSize,
             compressionMethod,
+            externalFileAttributes: archive.readUInt32LE(offset + 38),
             localHeaderOffset,
             name,
             uncompressedSize
@@ -401,6 +455,40 @@ function readZipEntryData(archive, entry) {
     }
 }
 
+function readRequiredZipEntryData(archive, entries, name) {
+    const entry = entries.find((candidate) => candidate.name === name);
+    assert.ok(entry !== undefined, `ZIP archive is missing ${name}.`);
+    return readZipEntryData(archive, entry);
+}
+
+function verifyZipEntryMode(entries, name, expectedMode) {
+    const entry = entries.find((candidate) => candidate.name === name);
+    assert.ok(entry !== undefined, `ZIP archive is missing ${name}.`);
+    const actualMode = (entry.externalFileAttributes >>> 16) & 0o777;
+    assert.equal(actualMode, expectedMode, `${name} must have ZIP Unix mode ${expectedMode.toString(8)}.`);
+}
+
+function assertArchiveEntriesDoNotContainLocalReleaseState(entries, archiveRoot, description) {
+    for (const entry of entries) {
+        const relativeEntry = entry.startsWith(archiveRoot) ? entry.slice(archiveRoot.length) : entry;
+        assert.equal(isLocalReleaseStateRelativePath(relativeEntry), false, `${description} must not contain local release-state path: ${entry}`);
+    }
+}
+
+function isLocalReleaseStateRelativePath(path) {
+    return (
+        path === ".release-secrets" ||
+        path.startsWith(".release-secrets/") ||
+        path === ".release-candidates" ||
+        path.startsWith(".release-candidates/") ||
+        path === ".release-components" ||
+        path.startsWith(".release-components/") ||
+        path.startsWith(".dist-pending-") ||
+        path.startsWith(".dist-previous-") ||
+        path.startsWith(".dist-active-before-hmac-finalize-")
+    );
+}
+
 function findEndOfCentralDirectory(archive) {
     const minimumOffset = Math.max(0, archive.length - 65557);
     for (let offset = archive.length - 22; offset >= minimumOffset; offset--) {
@@ -411,9 +499,9 @@ function findEndOfCentralDirectory(archive) {
     throw new Error("Could not find ZIP end-of-central-directory record.");
 }
 
-function readJavaProperties(path) {
+function readJavaProperties(text) {
     const properties = {};
-    for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
+    for (const line of text.split(/\r?\n/)) {
         const trimmed = line.trim();
         if (trimmed === "" || trimmed.startsWith("#")) {
             continue;
@@ -463,17 +551,6 @@ function runNpmScript(scriptName) {
               });
     if (result.status !== 0 || result.error) {
         throw result.error ?? new Error(`npm run ${scriptName} failed.`);
-    }
-}
-
-function run(command, args, cwd) {
-    const result = spawnSync(command, args, {
-        cwd,
-        stdio: "inherit",
-        windowsHide: true
-    });
-    if (result.status !== 0 || result.error) {
-        throw result.error ?? new Error(`${command} failed.`);
     }
 }
 

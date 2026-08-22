@@ -9,6 +9,7 @@ Included desktop materials:
 - `lib/` vendored legacy Java dependencies.
 - `licenses/` third-party license texts and binary provenance notes.
 - `natives/` bundled LWJGL/JInput native libraries.
+- `third-party-sources/` corresponding-source artifacts for LGPL desktop dependencies.
 - platform launch scripts that set the required native library paths.
 
 Generated build outputs are intentionally ignored:
@@ -36,7 +37,7 @@ Build from the repository root:
 npm.cmd run build:desktop
 ```
 
-Build the release desktop archive from the repository root:
+Build the release desktop component archive from the repository root:
 
 ```text
 npm.cmd run build:desktop:release
@@ -48,10 +49,12 @@ If Maven is installed, this should also be buildable from this directory:
 mvn package
 ```
 
+The Maven package is an unsigned/development-compatible desktop archive unless it has explicitly been integrated into the top-level release orchestration. The canonical production Java desktop release comes from `npm.cmd run build`, which injects the selected deployment HMAC key, assembles the complete web and desktop release candidate, verifies the desktop ZIP from that exact candidate, and then promotes the full bundle to `dist/`.
+
 Launch after building:
 
 ```text
 npm.cmd run run:desktop
 ```
 
-See `RUNTIME_DEPENDENCIES.md` and `licenses/` for the bundled legacy Slick2D/LWJGL runtime notes and third-party license material.
+See `RUNTIME_DEPENDENCIES.md`, `licenses/`, and `third-party-sources/` for the bundled legacy Slick2D/LWJGL runtime notes, third-party license material, and corresponding source artifacts.

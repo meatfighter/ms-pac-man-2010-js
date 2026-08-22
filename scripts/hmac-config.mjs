@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { copyFileSync, createReadStream, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
-import { hmacNextCandidateDir, rootDir } from "./build-utils.mjs";
+import { getHmacNextCandidateDir, rootDir } from "./build-utils.mjs";
 
 export const HMAC_KEY_PATTERN = /^[0-9a-f]{64}$/;
 export const SYNTHETIC_RELEASE_HMAC_KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
@@ -234,7 +234,7 @@ export function abortRotation() {
     const paths = getReleaseSecretPaths();
     const existed = existsSync(paths.next);
     rmSync(paths.next, { force: true });
-    rmSync(hmacNextCandidateDir, { recursive: true, force: true });
+    rmSync(getHmacNextCandidateDir(), { recursive: true, force: true });
     return {
         candidateRemoved: true,
         nextRemoved: existed
@@ -279,16 +279,38 @@ export async function assertNonSyntheticSecretAbsentFromTrackedFiles(secret) {
 }
 
 export function assertRepositoryReleaseSecretsIgnored() {
-    const ignoredPath = ".release-secrets/ms-pac-man-2010-hmac.hex";
-    const checkIgnored = spawnGit(["check-ignore", "-q", "--", ignoredPath]);
-    if (checkIgnored.status !== 0) {
-        throw new Error(".release-secrets/ is not ignored by Git.");
+    for (const ignoredPath of [
+        ".release-secrets/ms-pac-man-2010-hmac.hex",
+        ".release-candidates/hmac-next/release.json",
+        ".release-components/pwa/pwa/sw.js",
+        ".dist-pending-test/sentinel.txt",
+        ".dist-previous-test/sentinel.txt",
+        ".dist-active-before-hmac-finalize-test/sentinel.txt"
+    ]) {
+        const checkIgnored = spawnGit(["check-ignore", "-q", "--", ignoredPath]);
+        if (checkIgnored.status !== 0) {
+            throw new Error(`Local release-state path is not ignored by Git: ${ignoredPath}`);
+        }
     }
 
-    const trackedSecrets = spawnGit(["ls-files", "-z", "--", ".release-secrets"]);
-    if (trackedSecrets.stdout.length > 0) {
-        throw new Error(".release-secrets contains tracked Git entries.");
+    const trackedReleaseState = listTrackedFiles().filter(isLocalReleaseStatePath);
+    if (trackedReleaseState.length > 0) {
+        throw new Error(`Local release-state paths must not be tracked by Git:\n${trackedReleaseState.join("\n")}`);
     }
+}
+
+function isLocalReleaseStatePath(path) {
+    return (
+        path === ".release-secrets" ||
+        path.startsWith(".release-secrets/") ||
+        path === ".release-candidates" ||
+        path.startsWith(".release-candidates/") ||
+        path === ".release-components" ||
+        path.startsWith(".release-components/") ||
+        path.startsWith(".dist-pending-") ||
+        path.startsWith(".dist-previous-") ||
+        path.startsWith(".dist-active-before-hmac-finalize-")
+    );
 }
 
 export async function assertSecretAbsentFromTrackedFiles(secret) {

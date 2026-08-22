@@ -10,7 +10,6 @@ import {
     importActiveKey,
     initActiveKey,
     prepareNextKey,
-    promoteNextKey,
     readKeyFile
 } from "./hmac-config.mjs";
 
@@ -39,16 +38,11 @@ try {
         case "rotate:show-next":
             await runRotateShowNext();
             break;
-        case "rotate:promote":
-            await runRotatePromote();
-            break;
         case "rotate:abort":
             await runRotateAbort();
             break;
         default:
-            throw new Error(
-                "Usage: node scripts/hmac-cli.mjs <init|import|check|show|rotate:prepare|rotate:check|rotate:show-next|rotate:promote|rotate:abort>"
-            );
+            throw new Error("Usage: node scripts/hmac-cli.mjs <init|import|check|show|rotate:prepare|rotate:check|rotate:show-next|rotate:abort>");
     }
 } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
@@ -111,16 +105,15 @@ async function runRotateShowNext() {
     console.log(`Next key fingerprint: ${getHmacFingerprint(keyHex)}`);
 }
 
-async function runRotatePromote() {
-    await confirmDangerousOperation("This will promote the next HMAC key and archive the current active key.", "PROMOTE NEXT HMAC KEY");
-    const fingerprints = promoteNextKey();
-    console.log("Promoted next HMAC key.");
-    console.log(`Previous key fingerprint: ${fingerprints.previousFingerprint}`);
-    console.log(`Active key fingerprint: ${fingerprints.activeFingerprint}`);
-}
-
 async function runRotateAbort() {
-    await confirmDangerousOperation("This will delete the staged next HMAC key and discard the next-key release candidate.", "ABORT HMAC ROTATION");
+    await confirmDangerousOperation(
+        [
+            "This will delete the staged next HMAC key and discard the next-key release candidate.",
+            "DO NOT use ordinary abort after MSPACMAN_HMAC_KEY_HEX on the production server has been changed to the next key.",
+            "After server cutover, use the documented rotation recovery/rollback procedure."
+        ].join("\n"),
+        "ABORT HMAC ROTATION"
+    );
     const result = abortRotation();
     console.log(result.nextRemoved ? "Removed next HMAC key." : "No next HMAC key was present.");
     console.log("Discarded next-key release candidate directory if present.");

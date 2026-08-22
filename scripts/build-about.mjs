@@ -1,8 +1,10 @@
-import { copyDirectory, distDir, ensureDirectory, readVersion, renderTemplate, rootDir } from "./build-utils.mjs";
+import { copyDirectory, distDir, ensureDirectory, readVersion, releaseComponentsDir, renderTemplate, rootDir } from "./build-utils.mjs";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const version = readVersion();
+const explicitDistDir = process.env.MSPACMAN_DIST_DIR !== undefined && process.env.MSPACMAN_DIST_DIR !== "";
+const outputDir = explicitDistDir ? distDir : join(releaseComponentsDir, "about");
 const cacheBust = process.env.MSPACMAN_CACHE_VERSION ?? `${version.version}-${version.buildStamp}-unsigned`;
 const encodedBuildStamp = encodeURIComponent(version.buildStamp);
 const encodedCacheBust = encodeURIComponent(cacheBust);
@@ -17,8 +19,8 @@ const replacements = {
 
 const aboutDir = join(rootDir, "about");
 
-ensureDirectory(distDir);
-writeFileSync(join(distDir, "index.html"), renderTemplate(readFileSync(join(aboutDir, "index.html"), "utf8"), replacements));
-writeFileSync(join(distDir, "styles.css"), renderTemplate(readFileSync(join(aboutDir, "styles.css"), "utf8"), replacements));
-copyDirectory(join(aboutDir, "assets"), join(distDir, "assets"));
-console.log("Built about page");
+ensureDirectory(outputDir);
+writeFileSync(join(outputDir, "index.html"), renderTemplate(readFileSync(join(aboutDir, "index.html"), "utf8"), replacements));
+writeFileSync(join(outputDir, "styles.css"), renderTemplate(readFileSync(join(aboutDir, "styles.css"), "utf8"), replacements));
+copyDirectory(join(aboutDir, "assets"), join(outputDir, "assets"));
+console.log(`Built about page in ${outputDir}`);

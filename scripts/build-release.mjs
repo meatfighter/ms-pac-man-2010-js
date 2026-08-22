@@ -10,6 +10,7 @@ import {
     getGitHeadCommit,
     getGitStatusPorcelain,
     readVersion,
+    releaseComponentsDir,
     rootDir,
     versionPath
 } from "./build-utils.mjs";
@@ -27,7 +28,8 @@ const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const target = readOption("target", "full");
 const keySource = readOption("key-source", "active");
 const canonicalDistDir = distDir;
-const buildDistDir = target === "full" ? createTemporaryFullDistDir(canonicalDistDir) : canonicalDistDir;
+const explicitDistDir = process.env.MSPACMAN_DIST_DIR !== undefined && process.env.MSPACMAN_DIST_DIR !== "";
+const buildDistDir = resolveBuildDistDir(target, canonicalDistDir, explicitDistDir);
 let promotedFullBuild = false;
 let originalVersionJson = "";
 let stampedVersionJson = false;
@@ -59,8 +61,8 @@ try {
     console.log(`Using ${keySource} HMAC key fingerprint: ${initialFingerprint}`);
 
     originalVersionJson = readFileSync(versionPath, "utf8");
-    runNpmScript("stamp");
     stampedVersionJson = true;
+    runNpmScript("stamp");
     maybeFailReleaseStage("after-stamp");
 
     const version = readVersion();
@@ -87,6 +89,7 @@ try {
     if (target === "desktop" || target === "full") {
         cleanDesktopTarget();
         runNpmScript("_build:desktop:release", releaseEnv);
+        runNpmScript("test:desktop-high-score", releaseEnv);
     }
 
     if (target === "full") {
@@ -147,9 +150,12 @@ function prepareOutputTarget(target, outputDir) {
             ensureDirectory(outputDir);
             cleanDirectory(join(outputDir, "pwa"));
             cleanDirectory(join(outputDir, "assets"));
+            cleanDirectory(join(outputDir, "downloads"));
             rmSync(join(outputDir, "index.html"), { force: true });
             rmSync(join(outputDir, "styles.css"), { force: true });
-            console.log("Building web-only release artifacts; use npm run build for the canonical full production bundle.");
+            rmSync(join(outputDir, "release.json"), { force: true });
+            rmSync(join(outputDir, "checksums.sha256"), { force: true });
+            console.log(`Building noncanonical web component artifacts in ${outputDir}. Use npm run build for canonical production dist/.`);
             break;
         case "desktop":
             break;
@@ -163,6 +169,19 @@ function cleanDesktopTarget() {
 function createTemporaryFullDistDir(finalDistDir) {
     ensureDirectory(dirname(finalDistDir));
     return mkdtempSync(join(dirname(finalDistDir), `.${basename(finalDistDir)}-pending-`));
+}
+
+function resolveBuildDistDir(target, finalDistDir, explicitDistDir) {
+    if (target === "full") {
+        return createTemporaryFullDistDir(finalDistDir);
+    }
+    if (explicitDistDir) {
+        return finalDistDir;
+    }
+    if (target === "pwa" || target === "web") {
+        return join(releaseComponentsDir, target);
+    }
+    return finalDistDir;
 }
 
 function promoteFullDist(sourceDir, finalDistDir) {
@@ -204,9 +223,6 @@ async function assertSyntheticOrEnvReleasePreflight(hmacKeyHex) {
 }
 
 function shouldRequireCleanSourcePreflight(keySource) {
-    if (process.env.MSPACMAN_RELEASE_ALLOW_DIRTY === "1") {
-        return false;
-    }
     return keySource === "active" || keySource === "next";
 }
 

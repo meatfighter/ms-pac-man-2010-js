@@ -2,15 +2,14 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, renameSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { assertGitWorkingTreeClean, distDir, getGitHeadCommit, hmacNextCandidateDir, rootDir } from "./build-utils.mjs";
+import { assertGitWorkingTreeClean, distDir, getGitHeadCommit, getHmacNextCandidateDir, rootDir } from "./build-utils.mjs";
 import { checkRotationKeys, promoteNextKey } from "./hmac-config.mjs";
 
 try {
-    if (process.env.MSPACMAN_RELEASE_ALLOW_DIRTY !== "1") {
-        assertGitWorkingTreeClean();
-    }
+    assertGitWorkingTreeClean();
 
     const fingerprints = checkRotationKeys();
+    const hmacNextCandidateDir = getHmacNextCandidateDir();
     const releaseMetadataPath = join(hmacNextCandidateDir, "release.json");
     assert.ok(existsSync(releaseMetadataPath), `Next-key release candidate is missing release.json: ${releaseMetadataPath}`);
 
@@ -20,8 +19,8 @@ try {
     assert.equal(metadata.gitTreeState, "clean", "Candidate release must have been built from clean committed source.");
     assert.equal(metadata.source?.archiveIncludesCommittedSourceOnly, true, "Candidate release must use a committed-source-only source archive.");
 
-    runVerifyCandidate();
-    promoteCandidateAndKey();
+    runVerifyCandidate(hmacNextCandidateDir);
+    promoteCandidateAndKey(hmacNextCandidateDir);
     console.log(`Finalized HMAC rotation.`);
     console.log(`Previous key fingerprint: ${fingerprints.activeFingerprint}`);
     console.log(`Active key fingerprint: ${fingerprints.nextFingerprint}`);
@@ -31,7 +30,7 @@ try {
     process.exitCode = 1;
 }
 
-function runVerifyCandidate() {
+function runVerifyCandidate(hmacNextCandidateDir) {
     const result = spawnSync(process.execPath, ["scripts/verify-release.mjs", "--key-source=next"], {
         cwd: rootDir,
         env: {
@@ -47,7 +46,7 @@ function runVerifyCandidate() {
     }
 }
 
-function promoteCandidateAndKey() {
+function promoteCandidateAndKey(hmacNextCandidateDir) {
     const backupDir = join(dirname(distDir), `.${basename(distDir)}-active-before-hmac-finalize-${process.pid}-${Date.now()}`);
     let movedExistingDist = false;
     let installedCandidate = false;
