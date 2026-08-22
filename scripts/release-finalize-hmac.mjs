@@ -15,6 +15,8 @@ try {
 
     const metadata = JSON.parse(readFileSync(releaseMetadataPath, "utf8"));
     assert.equal(metadata.hmacKeyFingerprint, fingerprints.nextFingerprint, "Candidate release fingerprint must match the staged next HMAC key.");
+    assert.equal(metadata.hmacKeySource, "next", "Candidate release key source must be next.");
+    assert.equal(metadata.releaseKind, "rotation-candidate", "Candidate release kind must be rotation-candidate.");
     assert.equal(metadata.gitCommit, getGitHeadCommit(), "Candidate release commit must match the current clean checkout.");
     assert.equal(metadata.gitTreeState, "clean", "Candidate release must have been built from clean committed source.");
     assert.equal(metadata.source?.archiveIncludesCommittedSourceOnly, true, "Candidate release must use a committed-source-only source archive.");

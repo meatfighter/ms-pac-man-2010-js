@@ -10,13 +10,17 @@ const cacheIdentity = createCacheIdentity(version, hmacKeyHex);
 const serviceWorkerVersion = readServiceWorkerVersion();
 const gitCommit = readRequiredEnv("MSPACMAN_RELEASE_GIT_COMMIT");
 const gitTreeState = readRequiredEnv("MSPACMAN_RELEASE_GIT_TREE_STATE");
+const releaseKind = readRequiredEnv("MSPACMAN_RELEASE_KIND");
+const hmacKeySource = readRequiredEnv("MSPACMAN_RELEASE_HMAC_KEY_SOURCE");
 const release = {
     app: "Ms. Pac-Man 2010",
     version: version.version,
     buildStamp: version.buildStamp,
     gitCommit,
     gitTreeState,
+    hmacKeySource,
     hmacKeyFingerprint: getHmacFingerprint(hmacKeyHex),
+    releaseKind,
     pwa: serviceWorkerVersion,
     source: {
         archiveIncludesCommittedSourceOnly: true,

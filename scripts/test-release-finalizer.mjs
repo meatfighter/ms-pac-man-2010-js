@@ -139,7 +139,11 @@ try {
 }
 
 function buildSyntheticFullCandidate() {
-    const result = spawnNodeScript(rootDir, "scripts/build-release.mjs", syntheticEnv, ["--target=full", "--key-source=env"]);
+    const result = spawnNodeScript(rootDir, "scripts/build-release.mjs", syntheticEnv, [
+        "--target=full",
+        "--key-source=env",
+        `--output-dir=${candidateTemplateDir}`
+    ]);
     assert.equal(result.status, 0, formatFailure("Synthetic full release candidate build failed.", result));
 }
 
@@ -198,6 +202,8 @@ function prepareCandidateForFixture(fixtureRoot, candidateDir, gitCommit) {
     const metadata = readReleaseMetadata(candidateDir);
     metadata.gitCommit = gitCommit;
     metadata.gitTreeState = "clean";
+    metadata.hmacKeySource = "next";
+    metadata.releaseKind = "rotation-candidate";
     metadata.source.gitCommit = gitCommit;
     metadata.source.gitTreeState = "clean";
     writeReleaseMetadata(candidateDir, metadata);

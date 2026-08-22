@@ -31,6 +31,7 @@ Useful commands:
 - `npm.cmd run release:provision` creates a new active local HMAC key and performs a complete verified full release. It does not modify the server.
 - `npm.cmd run release:rotate-hmac` creates a staged next local HMAC key and performs a complete verified candidate release into `.release-candidates/hmac-next/`. It does not alter active, rebuild `dist/`, or promote automatically.
 - `npm.cmd run release:finalize-hmac` verifies the already-tested `.release-candidates/hmac-next/` bytes, promotes those exact bytes to `dist/`, and promotes the staged next HMAC key to active.
+- `npm.cmd run smoke:production-api -- --confirm-production` performs a non-mutating production API smoke test using the active local HMAC key fingerprint. It duplicates an existing leaderboard entry and refuses to POST if the production table is empty.
 - `npm.cmd run build` builds the canonical full production-site bundle using the active local HMAC key, stamps exactly once, assembles a temporary release tree, verifies it, and atomically promotes it to `dist/`.
 - `npm.cmd run run:desktop` launches the built desktop jar with the local native libraries.
 
@@ -42,7 +43,7 @@ High-score server configuration:
 - Desktop Java uses `MSPACMAN_SCORE_API_URL` or `-Dmspacman.scoreApiUrl=...`; otherwise it defaults to `https://meatfighter.com/api/ms-pac-man-2010/scores`.
 - Desktop Java release builds embed the same selected release key in generated `desktop/target/classes/mspacman/high-score-release.properties` before packaging the JAR. At runtime, Java submission key precedence is `-Dmspacman.hmacKeyHex`, `MSPACMAN_HMAC_KEY_HEX`, embedded release resource, then no key. Explicit malformed JVM property or environment values disable remote submission and do not fall back. Without a valid key, downloads still run and submissions remain local-only.
 - The HMAC key is a release coordination and spam-resistance control, not a true client secret. Production PWA JavaScript and release desktop JARs are inspectable by users, so the high-score server must continue to validate every submitted score independently.
-- Automated/smoke release builds should use `node scripts/build-release.mjs --target=full --key-source=env` with a synthetic valid key such as `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f`. Do not use or print the real production key in automated review output.
+- Automated/smoke release builds with a synthetic valid key such as `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f` must use an explicit noncanonical output directory, for example `node scripts/build-release.mjs --target=full --key-source=env --output-dir=%TEMP%\mspacman-synthetic-release`. Synthetic HMAC full builds are rejected if they omit `--output-dir` or target repository `dist/`. Do not use or print the real production key in automated review output.
 - `.release-secrets/` must never be copied into `dist/`, `releases/`, desktop ZIPs, or generated source archives.
 - An ordinary active-key release refuses to run while `.release-secrets/ms-pac-man-2010-hmac.next.hex` exists. Finish the candidate release with the next key and finalize the rotation, or abort it before shipping another active-key release.
 - Public active/next-key release commands require a clean Git tree before building. The release build temporarily stamps `version.json` for generated artifacts and restores the exact original file bytes afterward.
@@ -60,7 +61,7 @@ Relocatable web release:
 
 Generated release artifacts:
 
-- `dist/release.json` contains the app version, build stamp, pre-build Git commit, pre-build Git tree state, PWA cache identity, and HMAC fingerprint. It never contains the full HMAC key.
+- `dist/release.json` contains the app version, build stamp, pre-build Git commit, pre-build Git tree state, release kind, HMAC key source, PWA cache identity, and HMAC fingerprint. It never contains the full HMAC key.
 - `dist/checksums.sha256` covers every generated release file except itself.
 - `dist/downloads/ms-pac-man-2010-js-source.zip` and the matching versioned source ZIP are generated with `git archive` from the exact `release.json` commit. They contain committed source only, never arbitrary untracked checkout files.
 - `dist/downloads/ms-pac-man-2010-desktop.zip` and the matching versioned desktop ZIP are copied from the exact release desktop artifact. They include the runnable JAR, separate runtime libraries, native libraries, license texts, runtime notes, and LGPL corresponding-source artifacts.
@@ -68,18 +69,30 @@ Generated release artifacts:
 
 Production operations:
 
-Current deployment with an existing production server key:
+One-time release workstation setup with an existing production server key:
 
 ```text
+npm.cmd ci --ignore-scripts
 npm.cmd run hmac:import
+npm.cmd run hmac:check
+```
+
+The imported value must be the same existing key currently configured in `/etc/ms-pac-man-2010-server.env`. `hmac:import` refuses to overwrite an existing active key, so it is not part of the ordinary repeated release checklist.
+
+Every release from an already configured workstation:
+
+```text
+npm.cmd ci --ignore-scripts
 npm.cmd run hmac:check
 npm.cmd test
 npm.cmd run lint
 npm.cmd run format:check
+npm.cmd audit --audit-level=high
 npm.cmd run build
+npm.cmd run smoke:production-api -- --confirm-production
 ```
 
-The imported value must be the same existing key currently configured in `/etc/ms-pac-man-2010-server.env`. Ordinary releases do not change that server file.
+Ordinary releases do not change the server HMAC environment file. Keep `npm audit` as a release qualification step rather than making the deterministic build command depend on advisory-service availability.
 
 Deployment workflow:
 
@@ -115,7 +128,7 @@ After `release:rotate-hmac`, verify the candidate artifacts in `.release-candida
 2. Stage the exact candidate bytes from `.release-candidates/hmac-next/`.
 3. Test everything possible before key cutover.
 4. Manually replace `MSPACMAN_HMAC_KEY_HEX` on the server from active A to next B, then restart `ms-pac-man-2010.service`.
-5. Immediately perform the final valid B-key public API test, including public GET plus a controlled disposable/safe POST path as appropriate.
+5. Immediately perform the final valid B-key public API test, including `npm.cmd run smoke:production-api -- --confirm-production` after the local active key is B.
 6. Run `npm.cmd run release:finalize-hmac` locally.
 7. Promote the exact finalized bytes to the final static location.
 

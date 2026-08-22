@@ -219,6 +219,7 @@ function verifyReleaseMetadata() {
     assert.equal(metadata.source?.gitCommit, metadata.gitCommit, "release.json source commit must match the top-level Git commit.");
     assert.equal(metadata.source?.gitTreeState, metadata.gitTreeState, "release.json source tree state must match the top-level Git tree state.");
     assert.equal(metadata.source?.archiveIncludesCommittedSourceOnly, true, "release.json must record committed-source-only source archives.");
+    verifyReleaseProvenance(metadata);
     assert.equal(metadata.hmacKeyFingerprint, fingerprint, "release.json must include the selected HMAC fingerprint.");
     assert.equal(metadataText.includes(hmacKeyHex), false, "release.json must not contain the full HMAC key.");
     assert.equal(metadata.deployment?.pwaBase, "./", "release.json must record the relocatable PWA base.");
@@ -403,6 +404,30 @@ function readExpectedGitCommit() {
     }
     assert.ok(releaseMetadata !== null, "Release metadata is required to infer the expected Git commit.");
     return releaseMetadata.gitCommit;
+}
+
+function verifyReleaseProvenance(metadata) {
+    const expectedReleaseKind = process.env.MSPACMAN_RELEASE_KIND;
+    const expectedHmacKeySource = process.env.MSPACMAN_RELEASE_HMAC_KEY_SOURCE;
+    if (expectedReleaseKind !== undefined && expectedReleaseKind !== "") {
+        assert.equal(metadata.releaseKind, expectedReleaseKind, "release.json must record the release kind.");
+    }
+    if (expectedHmacKeySource !== undefined && expectedHmacKeySource !== "") {
+        assert.equal(metadata.hmacKeySource, expectedHmacKeySource, "release.json must record the selected HMAC key source.");
+    }
+
+    const provenance = `${metadata.releaseKind}/${metadata.hmacKeySource}`;
+    assert.ok(
+        ["production/active", "synthetic-test/env", "rotation-candidate/next", "component/active", "component/env", "component/next"].includes(provenance),
+        `release.json contains an unknown release provenance: ${provenance}`
+    );
+    if (keySource === "env") {
+        assert.equal(provenance, target === "full" ? "synthetic-test/env" : "component/env", "Env-key verification must inspect an env-key release.");
+    } else if (keySource === "next") {
+        assert.equal(provenance, target === "full" ? "rotation-candidate/next" : "component/next", "Next-key verification must inspect a next-key release.");
+    } else if (keySource === "active" && target !== "full") {
+        assert.equal(provenance, "component/active", "Active-key component verification must inspect an active-key component release.");
+    }
 }
 
 function readZipEntries(archivePath) {

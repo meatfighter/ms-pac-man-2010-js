@@ -31,10 +31,6 @@ try {
 function runBuildRelease() {
     const result = spawnSync(process.execPath, ["scripts/build-release.mjs", "--target=full", "--key-source=next"], {
         cwd: rootDir,
-        env: {
-            ...process.env,
-            MSPACMAN_DIST_DIR: getHmacNextCandidateDir()
-        },
         stdio: "inherit",
         windowsHide: true
     });

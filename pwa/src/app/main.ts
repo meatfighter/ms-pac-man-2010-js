@@ -863,8 +863,7 @@ async function registerServiceWorker(): Promise<void> {
         return;
     }
     if (import.meta.env.DEV) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(registrations.map((registration) => registration.unregister()));
+        await unregisterDevelopmentServiceWorker();
         return;
     }
     try {
@@ -873,6 +872,16 @@ async function registerServiceWorker(): Promise<void> {
         });
     } catch {
         // The game still runs without PWA registration.
+    }
+}
+
+async function unregisterDevelopmentServiceWorker(): Promise<void> {
+    try {
+        const appScope = new URL("./", window.location.href).href;
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.filter((registration) => registration.scope === appScope).map((registration) => registration.unregister()));
+    } catch (error) {
+        console.warn("Unable to unregister development service worker:", error);
     }
 }
 

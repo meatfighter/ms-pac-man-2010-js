@@ -70,6 +70,7 @@ function assertVersionMismatchFailsBeforeReleaseBuild() {
 
 function assertReleaseScriptStructure() {
     const { scripts } = packageJson;
+    assert.equal(packageJson.engines?.node, "^20.19.0 || ^22.13.0 || >=24", "package.json must declare a Node version compatible with Vite.");
     assert.equal(scripts["build:pwa"], "npm run build:pwa:release", "build:pwa must delegate to the release PWA build.");
     assert.equal(
         scripts["build:pwa:release"],
@@ -98,12 +99,13 @@ function assertReleaseScriptStructure() {
         "node scripts/release-finalize-hmac.mjs",
         "release:finalize-hmac must promote a verified candidate workflow."
     );
+    assert.equal(scripts["smoke:production-api"], "node scripts/smoke-production-api.mjs", "smoke:production-api must run the production API smoke test.");
 }
 
 function runStandaloneReleasePwaBuild() {
     const beforeVersionJson = readFileSync(versionPath, "utf8");
     const beforeGitStatus = readGitStatus();
-    const result = spawnNodeScript("scripts/build-release.mjs", ["--target=pwa", "--key-source=env"], {
+    const result = spawnNodeScript("scripts/build-release.mjs", ["--target=pwa", "--key-source=env", `--output-dir=${tempDistDir}`], {
         cwd: rootDir,
         encoding: "utf8",
         env: syntheticEnv,

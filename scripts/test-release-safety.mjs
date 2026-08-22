@@ -182,6 +182,42 @@ try {
         }
     });
 
+    await runTest("env-key full release requires explicit noncanonical output before stamping", () => {
+        const beforeDist = snapshotDirectory(join(rootDir, "dist"));
+        const beforeStatus = readGitStatus();
+        const result = spawnNodeScript(
+            "scripts/build-release.mjs",
+            {
+                ...process.env,
+                MSPACMAN_HMAC_KEY_HEX: SYNTHETIC_RELEASE_HMAC_KEY_HEX
+            },
+            ["--target=full", "--key-source=env"]
+        );
+        assert.notEqual(result.status, 0, "Env-key full release without --output-dir must fail.");
+        assertOutputIncludes(result, "Synthetic HMAC full builds require --output-dir");
+        assert.equal(readFileSync(versionPath, "utf8"), originalVersionJson, "Rejected env-key full release must not modify version.json.");
+        assert.equal(readGitStatus(), beforeStatus, "Rejected env-key full release must leave Git source state unchanged.");
+        assert.deepEqual(snapshotDirectory(join(rootDir, "dist")), beforeDist, "Rejected env-key full release must not modify canonical dist/.");
+    });
+
+    await runTest("env-key full release rejects canonical dist output before stamping", () => {
+        const beforeDist = snapshotDirectory(join(rootDir, "dist"));
+        const beforeStatus = readGitStatus();
+        const result = spawnNodeScript(
+            "scripts/build-release.mjs",
+            {
+                ...process.env,
+                MSPACMAN_HMAC_KEY_HEX: SYNTHETIC_RELEASE_HMAC_KEY_HEX
+            },
+            ["--target=full", "--key-source=env", `--output-dir=${join(rootDir, "dist")}`]
+        );
+        assert.notEqual(result.status, 0, "Env-key full release targeting repository dist/ must fail.");
+        assertOutputIncludes(result, "Synthetic HMAC full builds may not write canonical repository dist");
+        assert.equal(readFileSync(versionPath, "utf8"), originalVersionJson, "Rejected env-key full release must not modify version.json.");
+        assert.equal(readGitStatus(), beforeStatus, "Rejected env-key full release must leave Git source state unchanged.");
+        assert.deepEqual(snapshotDirectory(join(rootDir, "dist")), beforeDist, "Rejected env-key full release must not modify canonical dist/.");
+    });
+
     await runTest("hmac check reports fingerprints and staged rotation state only", () => {
         const tempSecretsDir = mkdtempSync(join(tmpdir(), "mspacman-hmac-check-output-"));
         try {
@@ -404,7 +440,7 @@ try {
                     MSPACMAN_HMAC_KEY_HEX: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
                     MSPACMAN_TEST_FAIL_RELEASE_STAGE: "after-stamp"
                 },
-                ["--target=pwa", "--key-source=env"]
+                ["--target=pwa", "--key-source=env", `--output-dir=${tempDistDir}`]
             );
             assert.notEqual(result.status, 0, "Injected post-stamp failure should fail the release build.");
             assertOutputIncludes(result, "Injected release failure stage: after-stamp");
@@ -433,7 +469,7 @@ try {
                     MSPACMAN_HMAC_KEY_HEX: "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
                     MSPACMAN_TEST_FAIL_RELEASE_STAGE: "after-artifacts-before-verify"
                 },
-                ["--target=full", "--key-source=env"]
+                ["--target=full", "--key-source=env", `--output-dir=${tempDistDir}`]
             );
             assert.notEqual(
                 result.status,

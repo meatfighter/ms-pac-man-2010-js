@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { resolveConfig } from "vite";
+import { rootDir } from "./build-utils.mjs";
 
 const CONFIG_FILE = resolve("pwa", "vite.config.ts");
 const FIXED_API_URL = "/api/ms-pac-man-2010/scores";
@@ -37,6 +39,13 @@ try {
     await runTest("release build config uses a relocatable PWA base", async () => {
         const config = await resolveReleaseConfig(VALID_SYNTHETIC_KEY, FIXED_API_URL);
         assert.equal(config.base, "./");
+    });
+
+    await runTest("development service-worker cleanup is scoped to this app", () => {
+        const mainSource = readFileSync(join(rootDir, "pwa", "src", "app", "main.ts"), "utf8");
+        assert.match(mainSource, /const appScope = new URL\("\.\/", window\.location\.href\)\.href;/);
+        assert.match(mainSource, /registration\.scope === appScope/);
+        assert.doesNotMatch(mainSource, /registrations\.map\(\(registration\) => registration\.unregister\(\)\)/);
     });
 } finally {
     restoreEnv();

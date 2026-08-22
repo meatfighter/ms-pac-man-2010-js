@@ -4,8 +4,9 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+export const repositoryDistDir = join(rootDir, "dist");
 export const distDir =
-    process.env.MSPACMAN_DIST_DIR !== undefined && process.env.MSPACMAN_DIST_DIR !== "" ? resolve(process.env.MSPACMAN_DIST_DIR) : join(rootDir, "dist");
+    process.env.MSPACMAN_DIST_DIR !== undefined && process.env.MSPACMAN_DIST_DIR !== "" ? resolve(process.env.MSPACMAN_DIST_DIR) : repositoryDistDir;
 export const releaseComponentsDir =
     process.env.MSPACMAN_RELEASE_COMPONENTS_DIR !== undefined && process.env.MSPACMAN_RELEASE_COMPONENTS_DIR !== ""
         ? resolve(process.env.MSPACMAN_RELEASE_COMPONENTS_DIR)

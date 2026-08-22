@@ -5,12 +5,13 @@ import {
     assertGitWorkingTreeClean,
     assertProjectVersionsMatch,
     cleanDirectory,
-    distDir,
     ensureDirectory,
     getGitHeadCommit,
     getGitStatusPorcelain,
+    getHmacNextCandidateDir,
     readVersion,
     releaseComponentsDir,
+    repositoryDistDir,
     rootDir,
     versionPath
 } from "./build-utils.mjs";
@@ -23,13 +24,12 @@ import {
     readSelectedHmacKey,
     SYNTHETIC_RELEASE_HMAC_KEY_HEX
 } from "./hmac-config.mjs";
+import { normalizeRequestedOutputDir, resolveReleaseOutputPlan } from "./release-output-plan.mjs";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const target = readOption("target", "full");
 const keySource = readOption("key-source", "active");
-const canonicalDistDir = distDir;
-const explicitDistDir = process.env.MSPACMAN_DIST_DIR !== undefined && process.env.MSPACMAN_DIST_DIR !== "";
-const buildDistDir = resolveBuildDistDir(target, canonicalDistDir, explicitDistDir);
+const requestedOutputDir = normalizeRequestedOutputDir(rootDir, readOption("output-dir", ""));
 let promotedFullBuild = false;
 let originalVersionJson = "";
 let stampedVersionJson = false;
@@ -39,6 +39,16 @@ const validTargets = new Set(["pwa", "web", "desktop", "full"]);
 if (!validTargets.has(target)) {
     throw new Error(`Unknown release target: ${target}`);
 }
+const releasePlan = resolveReleaseOutputPlan({
+    createTemporaryFullDistDir,
+    hmacNextCandidateDir: getHmacNextCandidateDir(),
+    keySource,
+    releaseComponentsDir,
+    repositoryDistDir,
+    requestedOutputDir,
+    target
+});
+const buildDistDir = releasePlan.buildDistDir;
 
 try {
     productionCleanPreflight = shouldRequireCleanSourcePreflight(keySource);
@@ -71,8 +81,10 @@ try {
         ...process.env,
         MSPACMAN_CACHE_VERSION: cacheIdentity,
         MSPACMAN_DIST_DIR: buildDistDir,
+        MSPACMAN_RELEASE_HMAC_KEY_SOURCE: releasePlan.hmacKeySource,
         MSPACMAN_RELEASE_GIT_COMMIT: releaseGitCommit,
         MSPACMAN_RELEASE_GIT_TREE_STATE: releaseGitTreeState,
+        MSPACMAN_RELEASE_KIND: releasePlan.releaseKind,
         MSPACMAN_HMAC_KEY_HEX: hmacKeyHex
     };
 
@@ -112,10 +124,10 @@ try {
         MSPACMAN_RELEASE_VERIFY_TARGET: target
     });
 
-    if (target === "full") {
-        promoteFullDist(buildDistDir, canonicalDistDir);
+    if (releasePlan.shouldPromoteFullBuild) {
+        promoteFullDist(buildDistDir, releasePlan.finalDistDir);
         promotedFullBuild = true;
-        console.log(`Promoted verified release output to ${canonicalDistDir}.`);
+        console.log(`Promoted verified release output to ${releasePlan.finalDistDir}.`);
     }
 
     console.log(`Release build verified with key fingerprint ${initialFingerprint}.`);
@@ -123,7 +135,7 @@ try {
     if (stampedVersionJson) {
         writeFileSync(versionPath, originalVersionJson);
     }
-    if (target === "full" && !promotedFullBuild) {
+    if (releasePlan.shouldPromoteFullBuild && !promotedFullBuild) {
         rmSync(buildDistDir, { recursive: true, force: true });
     }
     if (productionCleanPreflight) {
@@ -169,19 +181,6 @@ function cleanDesktopTarget() {
 function createTemporaryFullDistDir(finalDistDir) {
     ensureDirectory(dirname(finalDistDir));
     return mkdtempSync(join(dirname(finalDistDir), `.${basename(finalDistDir)}-pending-`));
-}
-
-function resolveBuildDistDir(target, finalDistDir, explicitDistDir) {
-    if (target === "full") {
-        return createTemporaryFullDistDir(finalDistDir);
-    }
-    if (explicitDistDir) {
-        return finalDistDir;
-    }
-    if (target === "pwa" || target === "web") {
-        return join(releaseComponentsDir, target);
-    }
-    return finalDistDir;
 }
 
 function promoteFullDist(sourceDir, finalDistDir) {
