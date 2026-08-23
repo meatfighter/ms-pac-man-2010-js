@@ -244,11 +244,25 @@ function recoverStaleUpdateGuardIfPossible(guardPath) {
             console.warn(`Recovered stale release lock update guard: ${guardPath}`);
             return true;
         }
-    } catch {
-        // Fall through to mtime-based stale recovery.
+    } catch (error) {
+        if (error?.code === "ENOENT") {
+            return true;
+        }
+
+        // Malformed guards fall through to mtime-based stale recovery.
     }
 
-    if (Date.now() - statSync(guardPath).mtimeMs <= STALE_UPDATE_GUARD_MS) {
+    let mtimeMs;
+    try {
+        mtimeMs = statSync(guardPath).mtimeMs;
+    } catch (error) {
+        if (error?.code === "ENOENT") {
+            return true;
+        }
+        throw error;
+    }
+
+    if (Date.now() - mtimeMs <= STALE_UPDATE_GUARD_MS) {
         return false;
     }
 
