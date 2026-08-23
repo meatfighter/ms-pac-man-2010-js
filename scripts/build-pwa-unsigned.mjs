@@ -1,30 +1,24 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanDirectory, releaseComponentsDir, rootDir, versionPath } from "./build-utils.mjs";
+import { cleanDirectory, releaseComponentsDir, rootDir } from "./build-utils.mjs";
 import { acquireReleaseLock } from "./release-lock.mjs";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const outputDir = join(releaseComponentsDir, "pwa-unsigned");
+const buildStamp = new Date().toISOString();
+const releaseLock = acquireReleaseLock("build:pwa:unsigned");
 const env = {
     ...process.env,
     MSPACMAN_INTERNAL_DIST_DIR: outputDir,
-    MSPACMAN_INTERNAL_RELEASE_BUILD: "1"
+    MSPACMAN_INTERNAL_RELEASE_BUILD: "1",
+    MSPACMAN_RELEASE_BUILD_STAMP: buildStamp
 };
-const originalVersionJson = readFileSync(versionPath, "utf8");
-let stampedVersionJson = false;
-const releaseLock = acquireReleaseLock("build:pwa:unsigned");
 
 try {
     cleanDirectory(outputDir);
-    stampedVersionJson = true;
-    runNpmScript("stamp", env);
     runNpmScript("_build:pwa:unsigned", env);
     console.log(`Built unsigned PWA component artifact in ${outputDir}.`);
 } finally {
-    if (stampedVersionJson) {
-        writeFileSync(versionPath, originalVersionJson);
-    }
     releaseLock();
 }
 

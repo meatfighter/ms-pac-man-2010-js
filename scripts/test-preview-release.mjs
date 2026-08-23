@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createReleasePreviewServer } from "./preview-release.mjs";
@@ -40,6 +40,24 @@ try {
         assert.equal(await pwa.text(), "pwa\n");
         const asset = await fetch(`${origin}/stage/pwa/assets/app.js`);
         assert.equal(await asset.text(), "export {};\n");
+    });
+
+    await runTest("preview refuses files reached through intermediate directory links", async () => {
+        const externalDir = mkdtempSync(join(tmpdir(), "mspacman-preview-external-"));
+        try {
+            writeFileSync(join(externalDir, "external.txt"), "external\n");
+            try {
+                symlinkSync(externalDir, join(tempDir, "linked"), process.platform === "win32" ? "junction" : "dir");
+            } catch (error) {
+                console.log(`ok - preview link creation unavailable; skipped assertion (${error.code ?? "unknown"})`);
+                return;
+            }
+            const response = await fetch(`${origin}/stage/linked/external.txt`);
+            assert.equal(response.status, 403);
+        } finally {
+            rmSync(externalDir, { recursive: true, force: true });
+            rmSync(join(tempDir, "linked"), { recursive: true, force: true });
+        }
     });
 } finally {
     await close(server);

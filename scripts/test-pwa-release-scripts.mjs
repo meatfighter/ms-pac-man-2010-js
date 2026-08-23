@@ -98,6 +98,7 @@ function assertReleaseScriptStructure() {
         "release:finalize-hmac must promote a verified candidate workflow."
     );
     assert.equal(scripts["smoke:production-api"], "node scripts/smoke-production-api.mjs", "smoke:production-api must run the production API smoke test.");
+    assert.equal(scripts["release:desktop"], "node scripts/release-desktop.mjs", "release:desktop must hold one lock across build and copy.");
 }
 
 function runStandaloneReleasePwaBuild() {

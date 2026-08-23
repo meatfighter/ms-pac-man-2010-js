@@ -1,5 +1,19 @@
-import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, realpathSync, renameSync, writeSync } from "node:fs";
-import { basename, dirname, join, relative, resolve } from "node:path";
+import {
+    closeSync,
+    constants,
+    copyFileSync,
+    existsSync,
+    fsyncSync,
+    lstatSync,
+    mkdirSync,
+    openSync,
+    readdirSync,
+    realpathSync,
+    renameSync,
+    rmSync,
+    writeSync
+} from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 export function fsyncDirectoryIfSupported(path) {
     if (process.platform === "win32") {
@@ -15,31 +29,109 @@ export function fsyncDirectoryIfSupported(path) {
 }
 
 export function writeTextFileAtomically(path, text, { failPhase = "", mode = 0o600 } = {}) {
-    if (failPhase !== "") {
-        maybeFailAtomicWrite(failPhase);
-    }
-
     const dir = dirname(path);
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
     const temp = join(dir, `.${basename(path)}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
-    const fd = openSync(temp, "wx", mode);
+    let fd;
+    let renamed = false;
+
     try {
+        maybeFailAtomicWrite(failPhase, "before-create");
+        fd = openSync(temp, "wx", mode);
+        maybeFailAtomicWrite(failPhase, "after-create");
         writeSync(fd, text, null, "utf8");
+        maybeFailAtomicWrite(failPhase, "after-write");
         fsyncSync(fd);
-    } finally {
+        maybeFailAtomicWrite(failPhase, "after-fsync");
         closeSync(fd);
+        fd = undefined;
+        maybeFailAtomicWrite(failPhase, "before-rename");
+        renameSync(temp, path);
+        renamed = true;
+        maybeFailAtomicWrite(failPhase, "after-rename");
+        fsyncDirectoryIfSupported(dir);
+    } catch (error) {
+        if (fd !== undefined) {
+            try {
+                closeSync(fd);
+            } catch {
+                // Preserve the original error.
+            }
+        }
+        if (!renamed) {
+            rmSync(temp, { force: true });
+        }
+        throw error;
     }
-    renameSync(temp, path);
-    fsyncDirectoryIfSupported(dir);
+}
+
+export function copyFileAtomically(source, destination) {
+    const dir = dirname(destination);
+    mkdirSync(dir, { recursive: true });
+    const temp = join(dir, `.${basename(destination)}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    try {
+        copyFileSync(source, temp, constants.COPYFILE_EXCL);
+        const fd = openSync(temp, "r+");
+        try {
+            fsyncSync(fd);
+        } finally {
+            closeSync(fd);
+        }
+        renameSync(temp, destination);
+        fsyncDirectoryIfSupported(dir);
+    } catch (error) {
+        rmSync(temp, { force: true });
+        throw error;
+    }
 }
 
 export function listFilesStrict(root, description = "Release output") {
-    if (!existsSync(root)) {
+    const rootStat = lstatIfPresent(root);
+    if (rootStat === null) {
         return [];
+    }
+    if (rootStat.isSymbolicLink()) {
+        throw new Error(`${description} root must not be a symlink or junction: ${root}`);
+    }
+    if (!rootStat.isDirectory()) {
+        throw new Error(`${description} root must be a directory: ${root}`);
     }
     const files = [];
     collectFilesStrict(root, root, files, description);
     return files;
+}
+
+export function assertNoLinkTraversal(targetPath, managedRoot, description) {
+    const root = resolve(managedRoot);
+    const target = resolve(targetPath);
+    const rel = relative(root, target);
+
+    if (rel.startsWith("..") || isAbsolute(rel)) {
+        throw new Error(`${description} escapes managed root: ${target}`);
+    }
+
+    let cursor = root;
+    const segments = rel === "" ? [] : rel.split(/[\\/]/);
+    for (const segment of ["", ...segments]) {
+        if (segment !== "") {
+            cursor = join(cursor, segment);
+        }
+
+        const stat = lstatIfPresent(cursor);
+        if (stat === null) {
+            break;
+        }
+        if (stat.isSymbolicLink()) {
+            throw new Error(`${description} must not traverse a symlink or junction: ${cursor}`);
+        }
+    }
+
+    const physicalRoot = resolvePhysicalPath(root);
+    const physicalTarget = resolvePhysicalPath(target);
+    const physicalRel = relative(physicalRoot, physicalTarget);
+    if (physicalRel.startsWith("..") || isAbsolute(physicalRel)) {
+        throw new Error(`${description} physically escapes managed root.`);
+    }
 }
 
 export function resolvePhysicalPath(path) {
@@ -58,6 +150,17 @@ export function resolvePhysicalPath(path) {
 
     const physicalBase = realpathSync.native(cursor);
     return resolve(physicalBase, ...missing);
+}
+
+function lstatIfPresent(path) {
+    try {
+        return lstatSync(path);
+    } catch (error) {
+        if (error?.code === "ENOENT") {
+            return null;
+        }
+        throw error;
+    }
 }
 
 function collectFilesStrict(root, dir, files, description) {
@@ -79,8 +182,12 @@ function collectFilesStrict(root, dir, files, description) {
     }
 }
 
-function maybeFailAtomicWrite(phase) {
-    if (process.env.MSPACMAN_TEST_FAIL_ATOMIC_WRITE_PHASE === phase) {
+function maybeFailAtomicWrite(requestedPhase, phase) {
+    const configuredPhase = process.env.MSPACMAN_TEST_FAIL_ATOMIC_WRITE_PHASE;
+    if (requestedPhase !== "" && configuredPhase === requestedPhase) {
+        throw new Error(`Injected atomic write failure: ${requestedPhase}`);
+    }
+    if (configuredPhase === phase) {
         throw new Error(`Injected atomic write failure: ${phase}`);
     }
 }

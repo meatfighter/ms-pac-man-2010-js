@@ -19,7 +19,7 @@ await runTest("active-key full release writes only canonical repository dist", (
     assert.equal(plan.releaseKind, "production");
     assert.equal(plan.hmacKeySource, "active");
     assert.equal(pathsEqual(plan.finalDistDir, repositoryDistDir), true);
-    assert.equal(plan.buildDistDir.endsWith(".pending-test"), true);
+    assert.equal(pathsEqual(plan.buildDistDir, repositoryDistDir), true);
     assert.equal(plan.shouldPromoteFullBuild, true);
 });
 
@@ -54,7 +54,7 @@ await runTest("env-key full release uses only the managed synthetic-full directo
     assert.equal(plan.releaseKind, "synthetic-test");
     assert.equal(plan.hmacKeySource, "env");
     assert.equal(pathsEqual(plan.finalDistDir, syntheticOutputDir), true);
-    assert.equal(plan.buildDistDir, `${syntheticOutputDir}.pending-test`);
+    assert.equal(pathsEqual(plan.buildDistDir, repositoryDistDir), true);
 });
 
 await runTest("env-key full release rejects explicit output overrides", () => {
@@ -80,7 +80,7 @@ await runTest("next-key full release writes only the staged HMAC candidate direc
     assert.equal(plan.releaseKind, "rotation-candidate");
     assert.equal(plan.hmacKeySource, "next");
     assert.equal(pathsEqual(plan.finalDistDir, hmacNextCandidateDir), true);
-    assert.equal(plan.buildDistDir, `${hmacNextCandidateDir}.pending-test`);
+    assert.equal(pathsEqual(plan.buildDistDir, repositoryDistDir), true);
 });
 
 await runTest("next-key full release rejects explicit output override", () => {
@@ -99,7 +99,6 @@ await runTest("next-key full release rejects a staged candidate path that overla
     assert.throws(
         () =>
             resolveReleaseOutputPlan({
-                createTemporaryFullDistDir: (finalDistDir) => `${finalDistDir}.pending-test`,
                 hmacNextCandidateDir: repositoryDistDir,
                 keySource: "next",
                 releaseComponentsDir,
@@ -136,7 +135,7 @@ await runTest("physical links to tracked source are rejected as release output",
             console.log(`ok - physical link creation unavailable; skipped link assertion (${error.code ?? "unknown"})`);
             return;
         }
-        assert.throws(() => assertSafeReleaseMutationPath(linkPath, "linked release output"), /physically overlap|symlink|junction/);
+        assert.throws(() => assertSafeReleaseMutationPath(linkPath, "linked release output"), /managed|physically overlap|symlink|junction/);
     } finally {
         rmSync(tempRoot, { recursive: true, force: true });
     }
@@ -162,6 +161,18 @@ await runTest("PWA and web component release outputs cannot target repository di
         assert.equal(plan.releaseKind, "component");
         assert.equal(plan.shouldPromoteFullBuild, false);
     }
+});
+
+await runTest("desktop release rejects explicit output overrides", () => {
+    assert.throws(
+        () =>
+            createPlan({
+                keySource: "active",
+                requestedOutputDir: syntheticOutputDir,
+                target: "desktop"
+            }),
+        /Desktop release output is managed/
+    );
 });
 
 await runTest("release provenance accepts every supported artifact/key-source combination", () => {
@@ -200,7 +211,6 @@ await runTest("release provenance does not infer artifact provenance from verifi
 });
 function createPlan({ keySource, requestedOutputDir, target }) {
     return resolveReleaseOutputPlan({
-        createTemporaryFullDistDir: (finalDistDir) => `${finalDistDir}.pending-test`,
         hmacNextCandidateDir,
         keySource,
         releaseComponentsDir,

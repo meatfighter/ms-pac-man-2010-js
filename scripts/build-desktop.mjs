@@ -2,10 +2,12 @@ import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, readFileSync, r
 import { createHash } from "node:crypto";
 import { dirname, join, relative } from "node:path";
 import { spawnSync } from "node:child_process";
-import { readVersion, rootDir } from "./build-utils.mjs";
+import { assertSafeGeneratedDirectoryMutationPath, readBuildVersion, rootDir } from "./build-utils.mjs";
 import { getHmacFingerprint, readEnvHmacKey } from "./hmac-config.mjs";
+import { acquireReleaseLock } from "./release-lock.mjs";
 
-const version = readVersion();
+const releaseLock = acquireReleaseLock("build:desktop");
+const version = readBuildVersion();
 const releaseBuild = process.argv.includes("--release");
 const hmacKeyHex = releaseBuild ? readEnvHmacKey() : "";
 const desktopDir = join(rootDir, "desktop");
@@ -180,6 +182,8 @@ function verifyRuntimeDependencies() {
 function copyRuntimeToTarget() {
     assertNoLinksInTree(libDir, "desktop runtime lib");
     assertNoLinksInTree(nativeDir, "desktop native runtime");
+    assertSafeGeneratedDirectoryMutationPath(targetLibDir, "desktop target lib directory");
+    assertSafeGeneratedDirectoryMutationPath(targetNativeDir, "desktop target native directory");
     rmSync(targetLibDir, { recursive: true, force: true });
     rmSync(targetNativeDir, { recursive: true, force: true });
     mkdirSync(targetLibDir, { recursive: true });
@@ -192,6 +196,7 @@ function copyRuntimeToTarget() {
 function createDistribution() {
     assertNoLinksInTree(licensesDir, "desktop licenses");
     assertNoLinksInTree(thirdPartySourcesDir, "desktop third-party sources");
+    assertSafeGeneratedDirectoryMutationPath(distributionRoot, "desktop distribution directory");
     rmSync(distributionRoot, { recursive: true, force: true });
     mkdirSync(distributionDir, { recursive: true });
     copyFileSync(stableJarPath, join(distributionDir, `${distributionName}.jar`));
@@ -346,34 +351,39 @@ function crc32(buffer) {
     return (value ^ 0xffffffff) >>> 0;
 }
 
-if (!commandExists("javac")) {
-    throw new Error("The desktop build requires javac on PATH.");
+try {
+    if (!commandExists("javac")) {
+        throw new Error("The desktop build requires javac on PATH.");
+    }
+    if (!commandExists("jar")) {
+        throw new Error("The desktop build requires jar on PATH.");
+    }
+    assertSafeGeneratedDirectoryMutationPath(targetDir, "desktop target directory");
+    verifyRuntimeDependencies();
+    assertSafeGeneratedDirectoryMutationPath(classesDir, "desktop classes directory");
+    rmSync(classesDir, { recursive: true, force: true });
+    mkdirSync(classesDir, { recursive: true });
+    mkdirSync(targetDir, { recursive: true });
+    copyRuntimeToTarget();
+
+    const sources = collectJavaFiles(join(sourceDir, "mspacman"));
+    writeFileSync(sourcesFile, sources.map((source) => source.replaceAll("\\", "/")).join("\n"));
+
+    const classpath = runtimeJars.map((name) => join(libDir, name)).join(process.platform === "win32" ? ";" : ":");
+    const javacVersion = getJavacFeatureVersion();
+    const releaseArgs = javacVersion !== null && javacVersion >= 9 ? ["--release", "8"] : ["-source", "1.8", "-target", "1.8"];
+
+    run("javac", ["-encoding", "UTF-8", "-Xlint:-options", ...releaseArgs, "-cp", classpath, "-d", classesDir, `@${sourcesFile}`]);
+
+    copyResources(sourceDir, classesDir);
+    writeHighScoreReleaseProperties();
+    writeManifest();
+    run("jar", ["cfm", versionedJarPath, manifestPath, "-C", classesDir, "."]);
+    copyFileSync(versionedJarPath, stableJarPath);
+    createDistribution();
+
+    console.log(`Built ${relative(rootDir, stableJarPath)}`);
+    console.log(`Built ${relative(rootDir, stableZipPath)}`);
+} finally {
+    releaseLock();
 }
-if (!commandExists("jar")) {
-    throw new Error("The desktop build requires jar on PATH.");
-}
-
-verifyRuntimeDependencies();
-rmSync(classesDir, { recursive: true, force: true });
-mkdirSync(classesDir, { recursive: true });
-mkdirSync(targetDir, { recursive: true });
-copyRuntimeToTarget();
-
-const sources = collectJavaFiles(join(sourceDir, "mspacman"));
-writeFileSync(sourcesFile, sources.map((source) => source.replaceAll("\\", "/")).join("\n"));
-
-const classpath = runtimeJars.map((name) => join(libDir, name)).join(process.platform === "win32" ? ";" : ":");
-const javacVersion = getJavacFeatureVersion();
-const releaseArgs = javacVersion !== null && javacVersion >= 9 ? ["--release", "8"] : ["-source", "1.8", "-target", "1.8"];
-
-run("javac", ["-encoding", "UTF-8", "-Xlint:-options", ...releaseArgs, "-cp", classpath, "-d", classesDir, `@${sourcesFile}`]);
-
-copyResources(sourceDir, classesDir);
-writeHighScoreReleaseProperties();
-writeManifest();
-run("jar", ["cfm", versionedJarPath, manifestPath, "-C", classesDir, "."]);
-copyFileSync(versionedJarPath, stableJarPath);
-createDistribution();
-
-console.log(`Built ${relative(rootDir, stableJarPath)}`);
-console.log(`Built ${relative(rootDir, stableZipPath)}`);

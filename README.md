@@ -21,7 +21,7 @@ Useful commands:
 - `npm.cmd run hmac:import` imports an existing active release HMAC key using a hidden prompt. It refuses to overwrite an existing active key.
 - `npm.cmd run hmac:check` validates the active release HMAC key, reports whether a rotation key is staged, checks that `.release-secrets/` is ignored and untracked, scans tracked files for the active key and any staged next key, and prints fingerprints only.
 - `npm.cmd run hmac:rotate:prepare`, `npm.cmd run hmac:rotate:check`, `npm.cmd run hmac:rotate:show-next`, and `npm.cmd run hmac:rotate:abort` manage a staged next key. Production client/key rotation uses `release:rotate-hmac` followed by `release:finalize-hmac` so the tested candidate bytes are promoted with the key.
-- `npm.cmd run build:pwa:release` builds a noncanonical release PWA component artifact in `.release-components/pwa/` using the active local HMAC key and stamps a fresh cache version first.
+- `npm.cmd run build:pwa:release` builds a noncanonical release PWA component artifact in `.release-components/pwa/` using the active local HMAC key and a fresh in-memory build stamp.
 - `npm.cmd run build:web` builds noncanonical about-page and PWA component artifacts in `.release-components/web/` using the active local HMAC key. It is for component qualification only; use `npm.cmd run build` for the canonical production-site bundle.
 - `npm.cmd run build:pwa:unsigned` and `npm.cmd run build:web:unsigned` build local unsigned component artifacts under `.release-components/` with score submissions disabled; do not upload them as production releases.
 - `npm.cmd run build:desktop` builds an unsigned legacy Java desktop jar and zip.
@@ -32,7 +32,7 @@ Useful commands:
 - `npm.cmd run release:rotate-hmac` creates a staged next local HMAC key and performs a complete verified candidate release into `.release-candidates/hmac-next/`. It does not alter active, rebuild `dist/`, or promote automatically.
 - `npm.cmd run release:finalize-hmac` verifies the already-tested `.release-candidates/hmac-next/` bytes, promotes those exact bytes to `dist/`, and promotes the staged next HMAC key to active.
 - `npm.cmd run smoke:production-api -- --confirm-production` performs a non-mutating production API smoke test using the active local HMAC key fingerprint and `dist/release.json`. It duplicates an existing leaderboard entry and refuses to POST if the production table is empty.
-- `npm.cmd run build` builds the canonical full production-site bundle using the active local HMAC key, stamps exactly once, assembles a temporary release tree, verifies it, and atomically promotes it to `dist/`.
+- `npm.cmd run build` builds the canonical full production-site bundle using the active local HMAC key, creates exactly one in-memory build stamp, assembles a temporary release tree, verifies it, and atomically promotes it to `dist/`.
 - `npm.cmd run run:desktop` launches the built desktop jar with the local native libraries.
 
 High-score server configuration:
@@ -46,7 +46,7 @@ High-score server configuration:
 - Automated/smoke release builds with a synthetic valid key such as `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f` use the managed `.release-components/synthetic-full/` output through `node scripts/build-release.mjs --target=full --key-source=env`. Do not use or print the real production key in automated review output.
 - `.release-secrets/` must never be copied into `dist/`, `releases/`, desktop ZIPs, or generated source archives.
 - An ordinary active-key release refuses to run while `.release-secrets/ms-pac-man-2010-hmac.next.hex` exists. Finish the candidate release with the next key and finalize the rotation, or abort it before shipping another active-key release.
-- Public active/next-key release commands require a clean Git tree before building. The release build temporarily stamps `version.json` for generated artifacts and restores the exact original file bytes afterward.
+- Public active/next-key release commands require a clean Git tree before building. Release and unsigned component builds pass a transient build stamp through the build environment and do not rewrite tracked `version.json`.
 - Failed `release:provision` and `release:rotate-hmac` builds preserve generated key files. Rerun the normal release command after correcting the failure, or explicitly run `npm.cmd run hmac:rotate:abort` if a staged next key and its local candidate release should be discarded.
 - Do not run `hmac:rotate:abort` after `MSPACMAN_HMAC_KEY_HEX` on the production server has been changed to the staged next key. After server cutover, use the rotation recovery/rollback procedure instead of deleting the local next key and candidate.
 
@@ -61,11 +61,12 @@ Relocatable web release:
 
 Generated release artifacts:
 
-- `dist/release.json` contains the app version, build stamp, pre-build Git commit, pre-build Git tree state, release kind, HMAC key source, PWA cache identity, and HMAC fingerprint. It never contains the full HMAC key. The production API smoke test verifies this fingerprint and provenance before contacting the server.
+- `dist/release.json` contains the app version, build stamp, pre-build Git commit, pre-build Git tree state, release kind, HMAC key source, PWA cache identity, and HMAC fingerprint. It never contains the full HMAC key. The production API smoke test uses the fixed `https://meatfighter.com/api/ms-pac-man-2010/scores` endpoint and runs the full release verifier on the selected artifact before contacting the server.
 - `dist/checksums.sha256` covers every generated release file except itself.
 - `dist/downloads/ms-pac-man-2010-js-source.zip` and the matching versioned source ZIP are generated with `git archive` from the exact `release.json` commit. They contain committed source only, never arbitrary untracked checkout files.
 - `dist/downloads/ms-pac-man-2010-desktop.zip` and the matching versioned desktop ZIP are copied from the exact release desktop artifact. They include the runnable JAR, separate runtime libraries, native libraries, license texts, runtime notes, and LGPL corresponding-source artifacts.
 - `dist/pwa/THIRD_PARTY_NOTICES.txt` is generated from the canonical root `THIRD_PARTY_NOTICES.md`.
+- Review/source-export archives should exclude generated local state such as `node_modules/`, `dist/`, `.release-components/`, `.release-candidates/`, `.release-secrets/`, `desktop/target/`, `.dist-pending-*`, `.dist-previous-*`, and `.dist-active-before-hmac-finalize-*`.
 
 Production operations:
 
@@ -139,6 +140,7 @@ After `release:rotate-hmac`, verify the candidate artifacts in `.release-candida
 7. Promote the exact finalized bytes to the final static location.
 
 Finalize promotes the exact tested candidate bytes to canonical `dist/` and promotes the next key to active without rebuilding the client. If the process is interrupted mid-finalization, rerun `npm.cmd run release:finalize-hmac`; it uses a non-secret journal in `.release-secrets/` to complete or clean up the interrupted promotion. Old PWA/Java clients using the previous key can no longer submit after a single-key server rotation.
+After HMAC finalization, `dist/release.json` intentionally retains `rotation-candidate/next` build provenance because finalization promotes the exact previously tested candidate bytes without rewriting them.
 
 Never run `release:finalize-hmac` after server key B has been generated but before the production B-key API smoke test has succeeded.
 

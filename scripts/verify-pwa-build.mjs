@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { runInNewContext } from "node:vm";
-import { distDir, versionPath } from "./build-utils.mjs";
+import { distDir, readBuildVersion } from "./build-utils.mjs";
 import { createCacheIdentity, readEnvHmacKey } from "./hmac-config.mjs";
 import { listFilesStrict } from "./release-io.mjs";
 
@@ -21,7 +21,7 @@ async function main() {
     assert.ok(existsSync(serviceWorkerPath), "dist/pwa/sw.js was not generated.");
     assert.ok(existsSync(indexPath), "dist/pwa/index.html was not generated.");
 
-    const versionInfo = JSON.parse(readFileSync(versionPath, "utf8"));
+    const versionInfo = readBuildVersion();
     assert.equal(typeof versionInfo.version, "string", "version.json must contain a version string.");
     assert.equal(typeof versionInfo.buildStamp, "string", "version.json must contain a buildStamp string.");
     const cacheBust = readExpectedCacheBust(versionInfo);

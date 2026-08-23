@@ -16,7 +16,7 @@ const distRootDir =
         : join(rootDir, "..", "dist");
 const pwaDistDir = join(distRootDir, "pwa");
 const thirdPartyNoticesPath = join(rootDir, "..", "THIRD_PARTY_NOTICES.md");
-const versionInfo = JSON.parse(readFileSync(new URL("../version.json", import.meta.url), "utf8")) as VersionInfo;
+const versionInfo = readBuildVersionInfo();
 const encodedBuildStamp = encodeURIComponent(versionInfo.buildStamp);
 const SERVICE_WORKER_VERSION_TOKEN = "__SERVICE_WORKER_VERSION__";
 const SERVICE_WORKER_VERSION_PLACEHOLDER = JSON.stringify(SERVICE_WORKER_VERSION_TOKEN);
@@ -83,6 +83,18 @@ function createHmacFingerprint(hmacKeyHex: string): string {
     return createHash("sha256").update(Buffer.from(hmacKeyHex, "hex")).digest("hex").slice(0, 12);
 }
 
+function readBuildVersionInfo(): VersionInfo {
+    const version = JSON.parse(readFileSync(new URL("../version.json", import.meta.url), "utf8")) as VersionInfo;
+    const buildStamp = process.env.MSPACMAN_RELEASE_BUILD_STAMP;
+    if (buildStamp !== undefined && buildStamp !== "") {
+        return {
+            ...version,
+            buildStamp
+        };
+    }
+    return version;
+}
+
 function renderVersionPlaceholders(text: string, encodedCacheBust: string): string {
     return text.replaceAll("%APP_VERSION%", versionInfo.version).replaceAll("%BUILD_STAMP%", encodedBuildStamp).replaceAll("%CACHE_VERSION%", encodedCacheBust);
 }
@@ -135,6 +147,13 @@ function renderVersionedHtml(html: string, encodedCacheBust: string): string {
 }
 
 function collectPrecacheResources(dir: string, baseDir = dir): string[] {
+    const rootStat = lstatSync(dir);
+    if (rootStat.isSymbolicLink()) {
+        throw new Error(`PWA release precache root must not be a symbolic link or junction: ${dir}`);
+    }
+    if (!rootStat.isDirectory()) {
+        throw new Error(`PWA release precache root must be a directory: ${dir}`);
+    }
     const resources: string[] = [];
     for (const entry of readdirSync(dir).sort((a, b) => a.localeCompare(b))) {
         const path = join(dir, entry);

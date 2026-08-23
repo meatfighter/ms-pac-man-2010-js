@@ -1,4 +1,4 @@
-import { createReadStream, existsSync, lstatSync } from "node:fs";
+import { createReadStream, existsSync, lstatSync, realpathSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -16,6 +16,7 @@ if (isCliEntrypoint()) {
     if (!existsSync(distRoot)) {
         throw new Error(`Release directory does not exist. Run npm run build before previewing: ${distRoot}`);
     }
+    assertPreviewRootIsSafe(distRoot);
 
     const server = createReleasePreviewServer({
         basePath,
@@ -34,11 +35,14 @@ if (isCliEntrypoint()) {
 export function createReleasePreviewServer({ basePath, distRoot, host }) {
     const normalizedBasePath = normalizeBasePath(basePath);
     const resolvedDistRoot = resolve(distRoot);
+    assertPreviewRootIsSafe(resolvedDistRoot);
+    const physicalDistRoot = realpathSync.native(resolvedDistRoot);
     return createServer((request, response) => {
         serveRequest(request.url ?? "/", response, {
             basePath: normalizedBasePath,
             distRoot: resolvedDistRoot,
-            host
+            host,
+            physicalDistRoot
         });
     });
 }
@@ -94,6 +98,10 @@ function serveRequest(requestUrl, response, options) {
         sendPlainText(response, 404, "Not Found");
         return;
     }
+    if (!isPhysicalPathInsideDist(path, options.physicalDistRoot)) {
+        sendPlainText(response, 403, "Forbidden");
+        return;
+    }
 
     const stat = lstatSync(path);
     if (stat.isSymbolicLink()) {
@@ -127,6 +135,26 @@ function isInsideDist(path, distRoot) {
         pathRelativeToDist === "" ||
         (!pathRelativeToDist.startsWith("..") && !isAbsolute(pathRelativeToDist) && normalizedPath.startsWith(`${normalizedDist}${sep}`))
     );
+}
+
+function assertPreviewRootIsSafe(distRoot) {
+    const stat = lstatSync(distRoot);
+    if (stat.isSymbolicLink()) {
+        throw new Error(`Preview release root must not be a symlink or junction: ${distRoot}`);
+    }
+    if (!stat.isDirectory()) {
+        throw new Error(`Preview release root must be a directory: ${distRoot}`);
+    }
+}
+
+function isPhysicalPathInsideDist(path, physicalDistRoot) {
+    let physicalPath;
+    try {
+        physicalPath = realpathSync.native(path);
+    } catch {
+        return false;
+    }
+    return isInsideDist(physicalPath, physicalDistRoot);
 }
 
 function normalizeBasePath(value) {

@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { distDir, readVersion, rootDir } from "./build-utils.mjs";
+import { distDir, readBuildVersion, rootDir } from "./build-utils.mjs";
 import { createCacheIdentity, getHmacFingerprint, readEnvHmacKey } from "./hmac-config.mjs";
 
-const version = readVersion();
+const version = readBuildVersion();
 const hmacKeyHex = readEnvHmacKey();
 const cacheIdentity = createCacheIdentity(version, hmacKeyHex);
 const serviceWorkerVersion = readServiceWorkerVersion();

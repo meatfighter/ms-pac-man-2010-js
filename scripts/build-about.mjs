@@ -1,8 +1,20 @@
-import { copyDirectory, distDir, ensureDirectory, readVersion, releaseComponentsDir, renderTemplate, rootDir } from "./build-utils.mjs";
+import {
+    assertSafeReleaseMutationPath,
+    cleanDirectory,
+    copyDirectory,
+    distDir,
+    ensureDirectory,
+    readBuildVersion,
+    releaseComponentsDir,
+    renderTemplate,
+    rootDir
+} from "./build-utils.mjs";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { acquireReleaseLock } from "./release-lock.mjs";
 
-const version = readVersion();
+const releaseLock = acquireReleaseLock("build:about");
+const version = readBuildVersion();
 const explicitDistDir = process.env.MSPACMAN_INTERNAL_DIST_DIR !== undefined && process.env.MSPACMAN_INTERNAL_DIST_DIR !== "";
 const outputDir = explicitDistDir ? distDir : join(releaseComponentsDir, "about");
 const cacheBust = process.env.MSPACMAN_CACHE_VERSION ?? `${version.version}-${version.buildStamp}-unsigned`;
@@ -19,8 +31,14 @@ const replacements = {
 
 const aboutDir = join(rootDir, "about");
 
-ensureDirectory(outputDir);
-writeFileSync(join(outputDir, "index.html"), renderTemplate(readFileSync(join(aboutDir, "index.html"), "utf8"), replacements));
-writeFileSync(join(outputDir, "styles.css"), renderTemplate(readFileSync(join(aboutDir, "styles.css"), "utf8"), replacements));
-copyDirectory(join(aboutDir, "assets"), join(outputDir, "assets"));
-console.log(`Built about page in ${outputDir}`);
+try {
+    assertSafeReleaseMutationPath(outputDir, "about page output");
+    ensureDirectory(outputDir);
+    writeFileSync(join(outputDir, "index.html"), renderTemplate(readFileSync(join(aboutDir, "index.html"), "utf8"), replacements));
+    writeFileSync(join(outputDir, "styles.css"), renderTemplate(readFileSync(join(aboutDir, "styles.css"), "utf8"), replacements));
+    cleanDirectory(join(outputDir, "assets"));
+    copyDirectory(join(aboutDir, "assets"), join(outputDir, "assets"));
+    console.log(`Built about page in ${outputDir}`);
+} finally {
+    releaseLock();
+}

@@ -12,7 +12,7 @@ import {
     readSelectedHmacKey,
     SYNTHETIC_RELEASE_HMAC_KEY_HEX
 } from "./hmac-config.mjs";
-import { distDir, readVersion, rootDir, spawnGit } from "./build-utils.mjs";
+import { distDir, readBuildVersion, rootDir, spawnGit } from "./build-utils.mjs";
 import { assertReleaseProvenance } from "./release-provenance.mjs";
 import { listFilesStrict } from "./release-io.mjs";
 
@@ -24,7 +24,7 @@ const expectedHmacKeySource = readOption("expected-hmac-key-source", "");
 const validTargets = new Set(["pwa", "web", "desktop", "full"]);
 assert.ok(validTargets.has(target), `Unknown release verification target: ${target}`);
 const hmacKeyHex = readSelectedHmacKey(keySource);
-const sourceVersion = readVersion();
+const sourceVersion = readBuildVersion();
 const releaseMetadata = target === "web" || target === "full" ? readReleaseMetadataIfAvailable() : null;
 const version = readVerificationVersion(sourceVersion, releaseMetadata);
 const cacheIdentity = createCacheIdentity(version, hmacKeyHex);

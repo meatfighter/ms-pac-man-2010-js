@@ -1,8 +1,8 @@
 import { copyFileSync, rmSync } from "node:fs";
 import { join, relative } from "node:path";
-import { distDir, ensureDirectory, readVersion, rootDir, spawnGit } from "./build-utils.mjs";
+import { distDir, ensureDirectory, readBuildVersion, rootDir, spawnGit } from "./build-utils.mjs";
 
-const version = readVersion();
+const version = readBuildVersion();
 const sourceCommit = process.env.MSPACMAN_RELEASE_GIT_COMMIT ?? "HEAD";
 const downloadsDir = join(distDir, "downloads");
 const archiveRootName = `ms-pac-man-2010-js-source-${version.version}`;

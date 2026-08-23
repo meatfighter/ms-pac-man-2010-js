@@ -2,8 +2,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
+import { acquireReleaseLock } from "./release-lock.mjs";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const releaseLock = acquireReleaseLock("generate:icons");
 const sourcePath = join(rootDir, "assets", "icons", "ms-pac-man.svg");
 const ARTWORK_RATIO = 1;
 const squareSvgTargets = ["pwa/public/icon.svg", "pwa/public/favicon.svg", "about/assets/favicon.svg"];
@@ -23,18 +25,22 @@ const pngTargets = [
     { path: "desktop/src/favicon.png", size: 32 }
 ];
 
-const sourceSvg = await readFile(sourcePath, "utf8");
-const squareSvg = createSquareSvg(sourceSvg, 512);
+try {
+    const sourceSvg = await readFile(sourcePath, "utf8");
+    const squareSvg = createSquareSvg(sourceSvg, 512);
 
-for (const target of squareSvgTargets) {
-    await writeText(target, squareSvg);
+    for (const target of squareSvgTargets) {
+        await writeText(target, squareSvg);
+    }
+
+    for (const target of pngTargets) {
+        await writePng(target.path, createSquareSvg(sourceSvg, target.size), target.size);
+    }
+
+    console.log(`Generated ${squareSvgTargets.length + pngTargets.length} icon asset(s).`);
+} finally {
+    releaseLock();
 }
-
-for (const target of pngTargets) {
-    await writePng(target.path, createSquareSvg(sourceSvg, target.size), target.size);
-}
-
-console.log(`Generated ${squareSvgTargets.length + pngTargets.length} icon asset(s).`);
 
 function createSquareSvg(source, size) {
     const viewBox = parseViewBox(source);

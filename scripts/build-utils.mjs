@@ -1,8 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolvePhysicalPath } from "./release-io.mjs";
+import { assertNoLinkTraversal, resolvePhysicalPath } from "./release-io.mjs";
 
 export const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const repositoryDistDir = join(rootDir, "dist");
@@ -11,6 +11,8 @@ export const canonicalHmacNextCandidateDir = join(canonicalReleaseCandidatesDir,
 export const canonicalReleaseComponentsDir = join(rootDir, ".release-components");
 export const canonicalReleaseSecretsDir = join(rootDir, ".release-secrets");
 export const managedReleaseRoots = [repositoryDistDir, canonicalReleaseComponentsDir, canonicalReleaseCandidatesDir, canonicalReleaseSecretsDir];
+export const desktopTargetDir = join(rootDir, "desktop", "target");
+export const releasesDir = join(rootDir, "releases");
 export const distDir = readInternalBuildOutputDir();
 export const releaseComponentsDir = readManagedTestPathOverride(
     "MSPACMAN_TEST_RELEASE_COMPONENTS_DIR",
@@ -32,6 +34,18 @@ export function getReleaseDistDir() {
 
 export function readVersion() {
     return JSON.parse(readFileSync(versionPath, "utf8").replace(/^\uFEFF/, ""));
+}
+
+export function readBuildVersion() {
+    const version = readVersion();
+    const buildStamp = process.env.MSPACMAN_RELEASE_BUILD_STAMP;
+    if (buildStamp !== undefined && buildStamp !== "") {
+        return {
+            ...version,
+            buildStamp
+        };
+    }
+    return version;
 }
 
 export function readPackageJson() {
@@ -151,18 +165,46 @@ export function assertSafeHmacNextCandidateDir(path) {
 export function assertSafeReleaseMutationPath(path, description) {
     const resolvedPath = resolve(path);
     assertNoLegacyPathOverrides();
-    assertExistingPathIsDirectoryOrAbsent(resolvedPath, description);
     assertNotRepositoryRootOrAncestor(resolvedPath, description);
     assertManagedRootsAreNotLinks();
-    assertDoesNotPhysicallyOverlapTrackedSource(resolvedPath, description);
-    if (isPathAllowedForReleaseMutation(resolvedPath)) {
-        return resolvedPath;
+    const managedRoot = findReleaseMutationRoot(resolvedPath);
+    if (managedRoot === null) {
+        throw new Error(`${description} must use a managed release directory: ${resolvedPath}`);
     }
-    throw new Error(`${description} must use a managed release directory: ${resolvedPath}`);
+    assertNoLinkTraversal(resolvedPath, managedRoot, description);
+    assertExistingPathIsDirectoryOrAbsent(resolvedPath, description);
+    assertDoesNotPhysicallyOverlapTrackedSource(resolvedPath, description);
+    return resolvedPath;
+}
+
+export function assertSafeGeneratedDirectoryMutationPath(path, description) {
+    const resolvedPath = resolve(path);
+    assertNotRepositoryRootOrAncestor(resolvedPath, description);
+    const generatedRoot = findGeneratedDirectoryRoot(resolvedPath);
+    if (generatedRoot === null) {
+        throw new Error(`${description} must use a managed generated directory: ${resolvedPath}`);
+    }
+    assertNoLinkTraversal(resolvedPath, generatedRoot, description);
+    assertExistingPathIsDirectoryOrAbsent(resolvedPath, description);
+    return resolvedPath;
+}
+
+export function assertSafeGeneratedFileMutationPath(path, description) {
+    const resolvedPath = resolve(path);
+    assertSafeGeneratedDirectoryMutationPath(dirname(resolvedPath), `${description} parent directory`);
+    const stat = lstatIfPresent(resolvedPath);
+    if (stat?.isSymbolicLink()) {
+        throw new Error(`${description} must not be a symlink or junction: ${resolvedPath}`);
+    }
+    if (stat !== null && !stat.isFile()) {
+        throw new Error(`${description} must be a regular file or absent: ${resolvedPath}`);
+    }
+    return resolvedPath;
 }
 
 export function assertManagedRootsAreNotLinks() {
     for (const [path, label] of [
+        [repositoryDistDir, "dist"],
         [canonicalReleaseComponentsDir, ".release-components"],
         [canonicalReleaseCandidatesDir, ".release-candidates"],
         [canonicalReleaseSecretsDir, ".release-secrets"]
@@ -209,7 +251,18 @@ export function isPathInside(path, parent) {
 }
 
 function assertExistingPathIsDirectoryOrAbsent(path, description) {
-    if (existsSync(path) && !statSync(path).isDirectory()) {
+    if (!existsSync(path)) {
+        const stat = lstatIfPresent(path);
+        if (stat?.isSymbolicLink()) {
+            throw new Error(`${description} must not be a broken symlink or junction: ${path}`);
+        }
+        return;
+    }
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink()) {
+        throw new Error(`${description} must not be a symlink or junction: ${path}`);
+    }
+    if (!stat.isDirectory()) {
         throw new Error(`${description} must be a directory or an absent path: ${path}`);
     }
 }
@@ -252,6 +305,7 @@ function isTestPathOverrideAllowed() {
 function assertManagedRootForFallback(path, description) {
     const resolvedPath = resolve(path);
     if (pathsEqual(resolvedPath, repositoryDistDir)) {
+        assertManagedRootIsNotLink(repositoryDistDir, "dist");
         return;
     }
     if (pathsEqual(resolvedPath, canonicalReleaseComponentsDir)) {
@@ -269,27 +323,57 @@ function assertManagedRootForFallback(path, description) {
     throw new Error(`${description} is not a managed release path: ${path}`);
 }
 
-function isPathAllowedForReleaseMutation(path) {
+function findReleaseMutationRoot(path) {
     const resolvedPath = resolve(path);
     if (pathsEqual(resolvedPath, repositoryDistDir) || isPathInside(resolvedPath, repositoryDistDir)) {
-        return true;
+        return repositoryDistDir;
     }
     if (pathsEqual(resolvedPath, canonicalReleaseComponentsDir) || isPathInside(resolvedPath, canonicalReleaseComponentsDir)) {
-        return true;
+        return canonicalReleaseComponentsDir;
     }
     if (pathsEqual(resolvedPath, canonicalReleaseCandidatesDir) || isPathInside(resolvedPath, canonicalReleaseCandidatesDir)) {
-        return true;
+        return canonicalReleaseCandidatesDir;
     }
     if (pathsEqual(resolvedPath, canonicalReleaseSecretsDir) || isPathInside(resolvedPath, canonicalReleaseSecretsDir)) {
-        return true;
+        return canonicalReleaseSecretsDir;
     }
     if (isControlledTemporaryReleasePath(resolvedPath)) {
-        return true;
+        return rootDir;
     }
     if (isTestPathOverrideAllowed()) {
-        return true;
+        const controlledTestRoot = findControlledTestTemporaryRoot(resolvedPath);
+        if (controlledTestRoot !== null) {
+            return controlledTestRoot;
+        }
+        for (const overrideRoot of readActiveTestOverrideRoots()) {
+            if (pathsEqual(resolvedPath, overrideRoot) || isPathInside(resolvedPath, overrideRoot)) {
+                return overrideRoot;
+            }
+        }
     }
-    return false;
+    return null;
+}
+
+function findGeneratedDirectoryRoot(path) {
+    const resolvedPath = resolve(path);
+    for (const root of [desktopTargetDir, releasesDir]) {
+        if (pathsEqual(resolvedPath, root) || isPathInside(resolvedPath, root)) {
+            return root;
+        }
+    }
+    return null;
+}
+
+function readActiveTestOverrideRoots() {
+    return [
+        process.env.MSPACMAN_TEST_DIST_DIR,
+        process.env.MSPACMAN_TEST_RELEASE_COMPONENTS_DIR,
+        process.env.MSPACMAN_TEST_HMAC_NEXT_CANDIDATE_DIR,
+        process.env.MSPACMAN_TEST_RELEASE_SECRETS_DIR,
+        process.env.MSPACMAN_INTERNAL_DIST_DIR
+    ]
+        .filter((value) => value !== undefined && value !== "")
+        .map((value) => resolve(value));
 }
 
 function isControlledTemporaryReleasePath(path) {
@@ -301,11 +385,28 @@ function isControlledTemporaryReleasePath(path) {
     );
 }
 
+function findControlledTestTemporaryRoot(path) {
+    for (const overrideRoot of readActiveTestOverrideRoots()) {
+        const parent = dirname(overrideRoot);
+        const name = basename(path);
+        const baseName = basename(overrideRoot);
+        if (
+            pathsEqual(dirname(path), parent) &&
+            (name.startsWith(`.${baseName}-pending-`) ||
+                name.startsWith(`.${baseName}-previous-`) ||
+                name.startsWith(`.${baseName}-active-before-hmac-finalize-`))
+        ) {
+            return parent;
+        }
+    }
+    return null;
+}
+
 function assertManagedRootIsNotLink(path, label) {
-    if (!existsSync(path)) {
+    const stat = lstatIfPresent(path);
+    if (stat === null) {
         return;
     }
-    const stat = lstatSync(path);
     if (stat.isSymbolicLink()) {
         throw new Error(`${label} must not be a symlink or junction: ${path}`);
     }
@@ -313,6 +414,17 @@ function assertManagedRootIsNotLink(path, label) {
     const expected = resolve(path);
     if (!pathsEqual(actual, expected)) {
         throw new Error(`${label} must not resolve through a symlink or junction: ${path}`);
+    }
+}
+
+function lstatIfPresent(path) {
+    try {
+        return lstatSync(path);
+    } catch (error) {
+        if (error?.code === "ENOENT") {
+            return null;
+        }
+        throw error;
     }
 }
 

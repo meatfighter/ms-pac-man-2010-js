@@ -1,32 +1,26 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { cleanDirectory, releaseComponentsDir, rootDir, versionPath } from "./build-utils.mjs";
+import { cleanDirectory, releaseComponentsDir, rootDir } from "./build-utils.mjs";
 import { acquireReleaseLock } from "./release-lock.mjs";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const outputDir = join(releaseComponentsDir, "web-unsigned");
+const buildStamp = new Date().toISOString();
+const releaseLock = acquireReleaseLock("build:web:unsigned");
 const env = {
     ...process.env,
     MSPACMAN_INTERNAL_DIST_DIR: outputDir,
-    MSPACMAN_INTERNAL_RELEASE_BUILD: "1"
+    MSPACMAN_INTERNAL_RELEASE_BUILD: "1",
+    MSPACMAN_RELEASE_BUILD_STAMP: buildStamp
 };
-const originalVersionJson = readFileSync(versionPath, "utf8");
-let stampedVersionJson = false;
-const releaseLock = acquireReleaseLock("build:web:unsigned");
 
 try {
     cleanDirectory(outputDir);
-    stampedVersionJson = true;
-    runNpmScript("stamp", env);
     runNpmScript("_build:pwa:unsigned", env);
     runNpmScript("_build:about", env);
     runNodeScript("write-source-archive.mjs", env);
     console.log(`Built unsigned web component artifact in ${outputDir}.`);
 } finally {
-    if (stampedVersionJson) {
-        writeFileSync(versionPath, originalVersionJson);
-    }
     releaseLock();
 }
 

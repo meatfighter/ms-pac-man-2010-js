@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { canonicalHmacNextCandidateDir, repositoryDistDir } from "./build-utils.mjs";
+import { canonicalHmacNextCandidateDir, repositoryDistDir, rootDir } from "./build-utils.mjs";
 import { getHmacFingerprint, readSelectedHmacKey } from "./hmac-config.mjs";
 import { assertReleaseProvenance } from "./release-provenance.mjs";
 
@@ -14,7 +15,7 @@ const MAX_RESPONSE_BYTES = 8192;
 const REQUEST_TIMEOUT_MS = 5000;
 const DEFAULT_PRODUCTION_URL = "https://meatfighter.com/api/ms-pac-man-2010/scores";
 
-const url = readOption("url", process.env.MSPACMAN_PRODUCTION_SCORE_API_URL ?? DEFAULT_PRODUCTION_URL);
+const url = readSmokeUrl();
 const keySource = readOption("key-source", "active");
 assert.ok(keySource === "active" || keySource === "next", "--key-source must be active or next.");
 
@@ -221,15 +222,32 @@ function verifyReleaseArtifact(fingerprint, keySource) {
 
     const metadata = JSON.parse(readFileSync(releaseMetadataPath, "utf8"));
     assert.equal(metadata.hmacKeyFingerprint, fingerprint, "Release artifact HMAC fingerprint must match the selected local key.");
-    assertReleaseProvenance(
-        metadata,
-        keySource === "next"
-            ? { expectedHmacKeySource: "next", expectedReleaseKind: "rotation-candidate" }
-            : {
-                  expectedHmacKeySource: "active",
-                  expectedReleaseKind: "production"
-              }
+    const provenance = readExpectedSmokeProvenance(metadata, keySource);
+    runReleaseVerifier(releaseDir, provenance);
+}
+
+function readExpectedSmokeProvenance(metadata, keySource) {
+    if (keySource === "next") {
+        assertReleaseProvenance(metadata, {
+            expectedHmacKeySource: "next",
+            expectedReleaseKind: "rotation-candidate"
+        });
+        return {
+            hmacKeySource: "next",
+            releaseKind: "rotation-candidate"
+        };
+    }
+
+    const ordinaryProduction = metadata.releaseKind === "production" && metadata.hmacKeySource === "active";
+    const finalizedRotation = metadata.releaseKind === "rotation-candidate" && metadata.hmacKeySource === "next";
+    assert.ok(
+        ordinaryProduction || finalizedRotation,
+        "Active production smoke testing requires either production/active provenance or an exact finalized rotation-candidate/next artifact."
     );
+    return {
+        hmacKeySource: metadata.hmacKeySource,
+        releaseKind: metadata.releaseKind
+    };
 }
 
 function readReleaseDirForSmoke(keySource) {
@@ -241,6 +259,54 @@ function readReleaseDirForSmoke(keySource) {
         return resolve(override);
     }
     return keySource === "next" ? canonicalHmacNextCandidateDir : repositoryDistDir;
+}
+
+function readSmokeUrl() {
+    const requestedUrl = readOption("url", DEFAULT_PRODUCTION_URL);
+    const testMode = process.env.MSPACMAN_ENABLE_TEST_PATH_OVERRIDES === "1";
+    if (!testMode && requestedUrl !== DEFAULT_PRODUCTION_URL) {
+        throw new Error("Production API smoke testing uses the fixed production score endpoint.");
+    }
+
+    const parsed = new URL(requestedUrl);
+    if (!testMode) {
+        assert.equal(parsed.protocol, "https:", "Production API smoke testing must use HTTPS.");
+        assert.equal(parsed.href, DEFAULT_PRODUCTION_URL, "Production API smoke testing must use the fixed score endpoint.");
+    }
+    return parsed.href;
+}
+
+function runReleaseVerifier(releaseDir, provenance) {
+    if (process.env.MSPACMAN_ENABLE_TEST_PATH_OVERRIDES === "1" && process.env.MSPACMAN_TEST_ASSUME_VERIFIED_RELEASE_ARTIFACT === "1") {
+        return;
+    }
+
+    const result = spawnSync(
+        process.execPath,
+        [
+            "scripts/verify-release.mjs",
+            "--key-source=env",
+            `--expected-release-kind=${provenance.releaseKind}`,
+            `--expected-hmac-key-source=${provenance.hmacKeySource}`
+        ],
+        {
+            cwd: rootDir,
+            encoding: "utf8",
+            env: {
+                ...process.env,
+                MSPACMAN_ENABLE_TEST_PATH_OVERRIDES: process.env.MSPACMAN_ENABLE_TEST_PATH_OVERRIDES,
+                MSPACMAN_HMAC_KEY_HEX: keyHex,
+                MSPACMAN_INTERNAL_DIST_DIR: releaseDir,
+                MSPACMAN_INTERNAL_RELEASE_BUILD: "1",
+                MSPACMAN_RELEASE_VERIFY_TARGET: "full"
+            },
+            maxBuffer: 96 * 1024 * 1024,
+            windowsHide: true
+        }
+    );
+    if (result.status !== 0 || result.error) {
+        throw result.error ?? new Error(`Release artifact verification failed before production API smoke testing.\n${result.stdout}\n${result.stderr}`);
+    }
 }
 
 function isJsonContentType(value) {

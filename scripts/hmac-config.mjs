@@ -21,7 +21,7 @@ export function getReleaseSecretsDir() {
         }
         return assertSafeReleaseMutationPath(resolve(override), "MSPACMAN_TEST_RELEASE_SECRETS_DIR");
     }
-    return canonicalReleaseSecretsDir;
+    return assertSafeReleaseMutationPath(canonicalReleaseSecretsDir, "release secrets directory");
 }
 
 export function getReleaseSecretPaths() {
@@ -104,7 +104,7 @@ export function writeKeyFile(path, keyHex) {
 
 export function replaceKeyFileAtomically(path, keyHex, options = {}) {
     validateHmacKeyHex(keyHex);
-    mkdirSync(dirname(path), { recursive: true });
+    mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     writeTextFileAtomically(path, `${keyHex}\n`, { failPhase: options.failPhase ?? "", mode: 0o600 });
 }
 

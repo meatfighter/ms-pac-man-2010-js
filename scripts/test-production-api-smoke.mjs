@@ -13,13 +13,14 @@ const tempSecretsDir = mkdtempSync(join(tmpdir(), "mspacman-smoke-api-secrets-")
 const tempDistDir = mkdtempSync(join(tmpdir(), "mspacman-smoke-api-dist-"));
 const tempCandidateDir = mkdtempSync(join(tmpdir(), "mspacman-smoke-api-candidate-"));
 const activeKey = createHmacKeyHex();
+const activeKeyPath = join(tempSecretsDir, "ms-pac-man-2010-hmac.hex");
 let nextKey = createHmacKeyHex();
 while (nextKey === activeKey) {
     nextKey = createHmacKeyHex();
 }
 
 try {
-    writeKeyFile(join(tempSecretsDir, "ms-pac-man-2010-hmac.hex"), activeKey);
+    writeKeyFile(activeKeyPath, activeKey);
     writeReleaseMetadata(tempDistDir, "production", "active", getHmacFingerprint(activeKey));
     writeReleaseMetadata(tempCandidateDir, "rotation-candidate", "next", getHmacFingerprint(nextKey));
 
@@ -82,6 +83,66 @@ try {
         }
     });
 
+    await runTest("active smoke accepts finalized rotation-candidate next provenance with active key", async () => {
+        const finalizedDir = mkdtempSync(join(tmpdir(), "mspacman-finalized-rotation-smoke-"));
+        const table = [{ world: 0, score: 654320, initials: "FIN" }];
+        let postCount = 0;
+        const server = await startScoreServer({
+            table,
+            onPost: (payload) => {
+                postCount++;
+                assert.deepEqual(payload, {
+                    protocolVersion: PROTOCOL_VERSION,
+                    ...table[0],
+                    checksum: calculateChecksum(nextKey, table[0])
+                });
+            }
+        });
+        try {
+            writeKeyFile(activeKeyPath, nextKey);
+            writeReleaseMetadata(finalizedDir, "rotation-candidate", "next", getHmacFingerprint(nextKey));
+            const result = await runSmoke(server.url, [`--release-dir=${finalizedDir}`]);
+            assert.equal(result.status, 0, formatFailure("Expected finalized rotation active smoke test to pass.", result));
+            assert.equal(postCount, 1, "Finalized rotation active smoke test must POST exactly once.");
+            assertOutputIncludes(result, getHmacFingerprint(nextKey));
+            assertOutputIncludes(result, "Using active HMAC key fingerprint");
+        } finally {
+            writeKeyFile(activeKeyPath, activeKey);
+            await server.close();
+            rmSync(finalizedDir, { recursive: true, force: true });
+        }
+    });
+
+    await runTest("active smoke rejects non-production and non-finalized-rotation provenance", async () => {
+        for (const [releaseKind, hmacKeySource] of [
+            ["synthetic-test", "env"],
+            ["component", "active"],
+            ["component", "next"]
+        ]) {
+            const rejectedDir = mkdtempSync(join(tmpdir(), "mspacman-rejected-smoke-"));
+            try {
+                writeReleaseMetadata(rejectedDir, releaseKind, hmacKeySource, getHmacFingerprint(activeKey));
+                const result = await runSmoke("http://127.0.0.1:1/scores", [`--release-dir=${rejectedDir}`]);
+                assert.notEqual(result.status, 0, `${releaseKind}/${hmacKeySource} active smoke test must fail.`);
+                assertOutputIncludes(result, "Active production smoke testing requires");
+            } finally {
+                rmSync(rejectedDir, { recursive: true, force: true });
+            }
+        }
+    });
+
+    await runTest("active smoke rejects finalized-rotation provenance with the wrong fingerprint", async () => {
+        const rejectedDir = mkdtempSync(join(tmpdir(), "mspacman-rejected-smoke-"));
+        try {
+            writeReleaseMetadata(rejectedDir, "rotation-candidate", "next", getHmacFingerprint(nextKey));
+            const result = await runSmoke("http://127.0.0.1:1/scores", [`--release-dir=${rejectedDir}`]);
+            assert.notEqual(result.status, 0, "Finalized rotation active smoke test with the wrong fingerprint must fail.");
+            assertOutputIncludes(result, "Release artifact HMAC fingerprint must match");
+        } finally {
+            rmSync(rejectedDir, { recursive: true, force: true });
+        }
+    });
+
     await runTest("production API smoke test refuses to POST into an empty leaderboard", async () => {
         let postCount = 0;
         const server = await startScoreServer({
@@ -107,10 +168,34 @@ try {
         assertOutputIncludes(result, "--confirm-production");
         assertOutputDoesNotExposeKey(result, activeKey);
     });
+
+    await runTest("production API smoke test refuses redirected production URLs outside test mode", async () => {
+        const result = await runNodeScriptWithoutTestOverrides(["scripts/smoke-production-api.mjs", "--confirm-production", "--url=http://127.0.0.1:1/scores"]);
+        assert.notEqual(result.status, 0, "Production smoke test must reject redirected URLs outside test mode.");
+        assertOutputIncludes(result, "fixed production score endpoint");
+    });
 } finally {
     rmSync(tempSecretsDir, { recursive: true, force: true });
     rmSync(tempDistDir, { recursive: true, force: true });
     rmSync(tempCandidateDir, { recursive: true, force: true });
+}
+
+function runNodeScriptWithoutTestOverrides(args) {
+    return new Promise((resolve) => {
+        const env = {
+            ...process.env
+        };
+        delete env.MSPACMAN_ENABLE_TEST_PATH_OVERRIDES;
+        delete env.MSPACMAN_TEST_ASSUME_VERIFIED_RELEASE_ARTIFACT;
+        delete env.MSPACMAN_TEST_HMAC_NEXT_CANDIDATE_DIR;
+        delete env.MSPACMAN_TEST_RELEASE_SECRETS_DIR;
+        const child = spawn(process.execPath, args, {
+            cwd: rootDir,
+            env,
+            windowsHide: true
+        });
+        collectChildResult(child, resolve);
+    });
 }
 
 async function startScoreServer({ onPost, table }) {
@@ -179,27 +264,32 @@ function runNodeScript(args) {
             env: {
                 ...process.env,
                 MSPACMAN_ENABLE_TEST_PATH_OVERRIDES: "1",
+                MSPACMAN_TEST_ASSUME_VERIFIED_RELEASE_ARTIFACT: "1",
                 MSPACMAN_TEST_HMAC_NEXT_CANDIDATE_DIR: tempCandidateDir,
                 MSPACMAN_TEST_RELEASE_SECRETS_DIR: tempSecretsDir
             },
             windowsHide: true
         });
-        let stdout = "";
-        let stderr = "";
-        child.stdout.setEncoding("utf8");
-        child.stderr.setEncoding("utf8");
-        child.stdout.on("data", (chunk) => {
-            stdout += chunk;
-        });
-        child.stderr.on("data", (chunk) => {
-            stderr += chunk;
-        });
-        child.on("close", (status) => {
-            resolve({
-                status,
-                stdout,
-                stderr
-            });
+        collectChildResult(child, resolve);
+    });
+}
+
+function collectChildResult(child, resolve) {
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+        stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+        stderr += chunk;
+    });
+    child.on("close", (status) => {
+        resolve({
+            status,
+            stdout,
+            stderr
         });
     });
 }
