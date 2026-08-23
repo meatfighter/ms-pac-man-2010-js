@@ -1,8 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { checkActiveHmacKey, createNewActiveKey } from "./hmac-config.mjs";
 import { assertGitWorkingTreeClean, rootDir } from "./build-utils.mjs";
+import { acquireReleaseLock } from "./release-lock.mjs";
 
 let activeFingerprint = "";
+const releaseLock = acquireReleaseLock("release:provision");
 try {
     assertGitWorkingTreeClean();
     const active = createNewActiveKey();
@@ -18,6 +20,8 @@ try {
     }
     console.error("The active HMAC key was preserved. Do not deploy a failed provision build; rerun npm run build after correcting the failure.");
     process.exitCode = 1;
+} finally {
+    releaseLock();
 }
 
 function runBuildRelease() {

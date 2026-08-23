@@ -32,7 +32,8 @@ function runUnsignedPwaBuild() {
         encoding: "utf8",
         env: {
             ...process.env,
-            MSPACMAN_RELEASE_COMPONENTS_DIR: tempComponentsDir
+            MSPACMAN_ENABLE_TEST_PATH_OVERRIDES: "1",
+            MSPACMAN_TEST_RELEASE_COMPONENTS_DIR: tempComponentsDir
         },
         maxBuffer: 32 * 1024 * 1024,
         windowsHide: true

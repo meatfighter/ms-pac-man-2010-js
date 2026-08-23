@@ -23,16 +23,18 @@ import {
     validateHmacKeyHex
 } from "./hmac-config.mjs";
 
-const originalSecretsDir = process.env.MSPACMAN_RELEASE_SECRETS_DIR;
-const originalCandidateDir = process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR;
+const originalSecretsDir = process.env.MSPACMAN_TEST_RELEASE_SECRETS_DIR;
+const originalCandidateDir = process.env.MSPACMAN_TEST_HMAC_NEXT_CANDIDATE_DIR;
+const originalAllowPathOverrides = process.env.MSPACMAN_ENABLE_TEST_PATH_OVERRIDES;
 const tempDir = mkdtempSync(join(tmpdir(), "mspacman-hmac-test-"));
 const tempCandidateDir = mkdtempSync(join(tmpdir(), "mspacman-hmac-candidate-test-"));
 const importedKey = SYNTHETIC_RELEASE_HMAC_KEY_HEX;
 const secondKey = "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f";
 
 try {
-    process.env.MSPACMAN_RELEASE_SECRETS_DIR = tempDir;
-    process.env.MSPACMAN_HMAC_NEXT_CANDIDATE_DIR = tempCandidateDir;
+    process.env.MSPACMAN_ENABLE_TEST_PATH_OVERRIDES = "1";
+    process.env.MSPACMAN_TEST_RELEASE_SECRETS_DIR = tempDir;
+    process.env.MSPACMAN_TEST_HMAC_NEXT_CANDIDATE_DIR = tempCandidateDir;
 
     await runTest("validates strict lowercase 32-byte hex keys", () => {
         assert.equal(validateHmacKeyHex(importedKey), importedKey);
@@ -90,15 +92,15 @@ try {
     });
 
     await runTest("hmac check validates a random active key without printing or scanning gaps", async () => {
-        const previousSecretsDir = process.env.MSPACMAN_RELEASE_SECRETS_DIR;
+        const previousSecretsDir = process.env.MSPACMAN_TEST_RELEASE_SECRETS_DIR;
         const checkDir = mkdtempSync(join(tmpdir(), "mspacman-hmac-check-test-"));
         try {
-            process.env.MSPACMAN_RELEASE_SECRETS_DIR = checkDir;
+            process.env.MSPACMAN_TEST_RELEASE_SECRETS_DIR = checkDir;
             const key = createHmacKeyHex();
             importActiveKey(key);
             assert.equal(await checkActiveHmacKey(), getHmacFingerprint(key));
         } finally {
-            restoreEnv("MSPACMAN_RELEASE_SECRETS_DIR", previousSecretsDir);
+            restoreEnv("MSPACMAN_TEST_RELEASE_SECRETS_DIR", previousSecretsDir);
             rmSync(checkDir, { recursive: true, force: true });
         }
     });
@@ -109,8 +111,9 @@ try {
         assert.equal(await fileContainsBuffer(path, Buffer.from(secondKey, "utf8")), true);
     });
 } finally {
-    restoreEnv("MSPACMAN_RELEASE_SECRETS_DIR", originalSecretsDir);
-    restoreEnv("MSPACMAN_HMAC_NEXT_CANDIDATE_DIR", originalCandidateDir);
+    restoreEnv("MSPACMAN_TEST_RELEASE_SECRETS_DIR", originalSecretsDir);
+    restoreEnv("MSPACMAN_TEST_HMAC_NEXT_CANDIDATE_DIR", originalCandidateDir);
+    restoreEnv("MSPACMAN_ENABLE_TEST_PATH_OVERRIDES", originalAllowPathOverrides);
     rmSync(tempDir, { recursive: true, force: true });
     rmSync(tempCandidateDir, { recursive: true, force: true });
 }

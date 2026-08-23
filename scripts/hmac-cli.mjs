@@ -12,6 +12,7 @@ import {
     prepareNextKey,
     readKeyFile
 } from "./hmac-config.mjs";
+import { acquireReleaseLock } from "./release-lock.mjs";
 
 const command = process.argv[2];
 
@@ -50,20 +51,30 @@ try {
 }
 
 function runInit() {
-    const result = initActiveKey();
-    console.log(`${result.created ? "Created" : "Found"} active HMAC key.`);
-    console.log(`Active key fingerprint: ${result.fingerprint}`);
+    const releaseLock = acquireReleaseLock("hmac:init");
+    try {
+        const result = initActiveKey();
+        console.log(`${result.created ? "Created" : "Found"} active HMAC key.`);
+        console.log(`Active key fingerprint: ${result.fingerprint}`);
+    } finally {
+        releaseLock();
+    }
 }
 
 async function runImport() {
-    const paths = getReleaseSecretPaths();
-    if (existsSync(paths.active)) {
-        throw new Error("Active HMAC key already exists. Use rotation to replace an established key.");
+    const releaseLock = acquireReleaseLock("hmac:import");
+    try {
+        const paths = getReleaseSecretPaths();
+        if (existsSync(paths.active)) {
+            throw new Error("Active HMAC key already exists. Use rotation to replace an established key.");
+        }
+        const keyHex = await readHiddenKey("Enter active HMAC key hex: ");
+        const fingerprint = importActiveKey(keyHex);
+        console.log("Imported active HMAC key.");
+        console.log(`Active key fingerprint: ${fingerprint}`);
+    } finally {
+        releaseLock();
     }
-    const keyHex = await readHiddenKey("Enter active HMAC key hex: ");
-    const fingerprint = importActiveKey(keyHex);
-    console.log("Imported active HMAC key.");
-    console.log(`Active key fingerprint: ${fingerprint}`);
 }
 
 async function runCheck() {
@@ -85,9 +96,14 @@ async function runShow() {
 }
 
 function runRotatePrepare() {
-    const fingerprint = prepareNextKey();
-    console.log("Created next HMAC key.");
-    console.log(`Next key fingerprint: ${fingerprint}`);
+    const releaseLock = acquireReleaseLock("hmac:rotate:prepare");
+    try {
+        const fingerprint = prepareNextKey();
+        console.log("Created next HMAC key.");
+        console.log(`Next key fingerprint: ${fingerprint}`);
+    } finally {
+        releaseLock();
+    }
 }
 
 function runRotateCheck() {
@@ -106,17 +122,22 @@ async function runRotateShowNext() {
 }
 
 async function runRotateAbort() {
-    await confirmDangerousOperation(
-        [
-            "This will delete the staged next HMAC key and discard the next-key release candidate.",
-            "DO NOT use ordinary abort after MSPACMAN_HMAC_KEY_HEX on the production server has been changed to the next key.",
-            "After server cutover, use the documented rotation recovery/rollback procedure."
-        ].join("\n"),
-        "ABORT HMAC ROTATION"
-    );
-    const result = abortRotation();
-    console.log(result.nextRemoved ? "Removed next HMAC key." : "No next HMAC key was present.");
-    console.log("Discarded next-key release candidate directory if present.");
+    const releaseLock = acquireReleaseLock("hmac:rotate:abort");
+    try {
+        await confirmDangerousOperation(
+            [
+                "This will delete the staged next HMAC key and discard the next-key release candidate.",
+                "DO NOT use ordinary abort after MSPACMAN_HMAC_KEY_HEX on the production server has been changed to the next key.",
+                "After server cutover, use the documented rotation recovery/rollback procedure."
+            ].join("\n"),
+            "ABORT HMAC ROTATION"
+        );
+        const result = abortRotation();
+        console.log(result.nextRemoved ? "Removed next HMAC key." : "No next HMAC key was present.");
+        console.log("Discarded next-key release candidate directory if present.");
+    } finally {
+        releaseLock();
+    }
 }
 
 async function confirmDangerousOperation(warning, confirmationText) {

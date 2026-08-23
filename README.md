@@ -43,7 +43,7 @@ High-score server configuration:
 - Desktop Java uses `MSPACMAN_SCORE_API_URL` or `-Dmspacman.scoreApiUrl=...`; otherwise it defaults to `https://meatfighter.com/api/ms-pac-man-2010/scores`.
 - Desktop Java release builds embed the same selected release key in generated `desktop/target/classes/mspacman/high-score-release.properties` before packaging the JAR. At runtime, Java submission key precedence is `-Dmspacman.hmacKeyHex`, `MSPACMAN_HMAC_KEY_HEX`, embedded release resource, then no key. Explicit malformed JVM property or environment values disable remote submission and do not fall back. Without a valid key, downloads still run and submissions remain local-only.
 - The HMAC key is a release coordination and spam-resistance control, not a true client secret. Production PWA JavaScript and release desktop JARs are inspectable by users, so the high-score server must continue to validate every submitted score independently.
-- Automated/smoke release builds with a synthetic valid key such as `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f` must use an explicit noncanonical output directory, for example `node scripts/build-release.mjs --target=full --key-source=env --output-dir=%TEMP%\mspacman-synthetic-release`. Synthetic HMAC full builds are rejected if they omit `--output-dir` or target repository `dist/`. Do not use or print the real production key in automated review output.
+- Automated/smoke release builds with a synthetic valid key such as `000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f` use the managed `.release-components/synthetic-full/` output through `node scripts/build-release.mjs --target=full --key-source=env`. Do not use or print the real production key in automated review output.
 - `.release-secrets/` must never be copied into `dist/`, `releases/`, desktop ZIPs, or generated source archives.
 - An ordinary active-key release refuses to run while `.release-secrets/ms-pac-man-2010-hmac.next.hex` exists. Finish the candidate release with the next key and finalize the rotation, or abort it before shipping another active-key release.
 - Public active/next-key release commands require a clean Git tree before building. The release build temporarily stamps `version.json` for generated artifacts and restores the exact original file bytes afterward.
@@ -119,6 +119,12 @@ HMAC rotation:
 ```text
 npm.cmd run release:rotate-hmac
 npm.cmd run hmac:rotate:show-next
+
+# Manually install key B on the production server and restart the service.
+
+npm.cmd run smoke:production-api -- --confirm-production --key-source=next
+
+# Only after the production B-key smoke test succeeds:
 npm.cmd run release:finalize-hmac
 ```
 
@@ -133,6 +139,8 @@ After `release:rotate-hmac`, verify the candidate artifacts in `.release-candida
 7. Promote the exact finalized bytes to the final static location.
 
 Finalize promotes the exact tested candidate bytes to canonical `dist/` and promotes the next key to active without rebuilding the client. If the process is interrupted mid-finalization, rerun `npm.cmd run release:finalize-hmac`; it uses a non-secret journal in `.release-secrets/` to complete or clean up the interrupted promotion. Old PWA/Java clients using the previous key can no longer submit after a single-key server rotation.
+
+Never run `release:finalize-hmac` after server key B has been generated but before the production B-key API smoke test has succeeded.
 
 Before server cutover, `npm.cmd run hmac:rotate:abort` is allowed if the staged next key and candidate should be discarded.
 

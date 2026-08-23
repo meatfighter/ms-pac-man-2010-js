@@ -1,11 +1,27 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, rmSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { assertGitWorkingTreeClean, distDir, getGitHeadCommit, getHmacNextCandidateDir, rootDir } from "./build-utils.mjs";
+import {
+    assertGitWorkingTreeClean,
+    assertSafeReleaseMutationPath,
+    getGitHeadCommit,
+    getHmacNextCandidateDir,
+    getReleaseDistDir,
+    pathsEqual,
+    rootDir
+} from "./build-utils.mjs";
+import { acquireReleaseLock } from "./release-lock.mjs";
+import { writeTextFileAtomically } from "./release-io.mjs";
 import { checkRotationKeys, getHmacFingerprint, getReleaseSecretPaths, promoteNextKey, readKeyFile, writeKeyFile } from "./hmac-config.mjs";
 
 const TRANSACTION_FILE_NAME = "hmac-finalize-transaction.json";
+const FINGERPRINT_PATTERN = /^[0-9a-f]{12}$/;
+const GIT_COMMIT_PATTERN = /^[0-9a-f]{40,64}$/;
+
+const releaseDistDir = getReleaseDistDir();
+const hmacNextCandidateDir = getHmacNextCandidateDir();
+const releaseLock = acquireReleaseLock("release:finalize-hmac");
 
 try {
     assertGitWorkingTreeClean();
@@ -13,14 +29,27 @@ try {
     const transaction = readFinalizeTransactionIfPresent();
     if (transaction !== null) {
         recoverFinalizeTransaction(transaction);
-        console.log(`Recovered interrupted HMAC rotation finalize.`);
+        console.log("Recovered interrupted HMAC rotation finalize.");
         console.log(`Previous key fingerprint: ${transaction.activeFingerprint}`);
         console.log(`Active key fingerprint: ${transaction.nextFingerprint}`);
-        process.exit(0);
+    } else {
+        const fingerprints = checkRotationKeys();
+        validateCandidateMetadata(fingerprints);
+        runVerifyCandidate(hmacNextCandidateDir);
+        promoteCandidateAndKey(fingerprints);
+        console.log("Finalized HMAC rotation.");
+        console.log(`Previous key fingerprint: ${fingerprints.activeFingerprint}`);
+        console.log(`Active key fingerprint: ${fingerprints.nextFingerprint}`);
     }
+} catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    console.error("HMAC rotation finalize failed. The full keys were not printed.");
+    process.exitCode = 1;
+} finally {
+    releaseLock();
+}
 
-    const fingerprints = checkRotationKeys();
-    const hmacNextCandidateDir = getHmacNextCandidateDir();
+function validateCandidateMetadata(fingerprints) {
     const releaseMetadataPath = join(hmacNextCandidateDir, "release.json");
     assert.ok(existsSync(releaseMetadataPath), `Next-key release candidate is missing release.json: ${releaseMetadataPath}`);
 
@@ -31,92 +60,59 @@ try {
     assert.equal(metadata.gitCommit, getGitHeadCommit(), "Candidate release commit must match the current clean checkout.");
     assert.equal(metadata.gitTreeState, "clean", "Candidate release must have been built from clean committed source.");
     assert.equal(metadata.source?.archiveIncludesCommittedSourceOnly, true, "Candidate release must use a committed-source-only source archive.");
-
-    runVerifyCandidate(hmacNextCandidateDir);
-    promoteCandidateAndKey(hmacNextCandidateDir, fingerprints);
-    console.log(`Finalized HMAC rotation.`);
-    console.log(`Previous key fingerprint: ${fingerprints.activeFingerprint}`);
-    console.log(`Active key fingerprint: ${fingerprints.nextFingerprint}`);
-} catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
-    console.error("HMAC rotation finalize failed. The full keys were not printed.");
-    process.exitCode = 1;
 }
 
-function runVerifyCandidate(hmacNextCandidateDir) {
-    const result = spawnSync(process.execPath, ["scripts/verify-release.mjs", "--key-source=next"], {
-        cwd: rootDir,
-        env: {
-            ...process.env,
-            MSPACMAN_DIST_DIR: hmacNextCandidateDir,
-            MSPACMAN_RELEASE_VERIFY_TARGET: "full"
-        },
-        stdio: "inherit",
-        windowsHide: true
-    });
-    if (result.status !== 0 || result.error) {
-        throw result.error ?? new Error("Next-key candidate release verification failed.");
-    }
+function runVerifyCandidate(candidateDir) {
+    runVerifyRelease(candidateDir, readKeyFile(getReleaseSecretPaths().next, "Next HMAC key"), getGitHeadCommit());
 }
 
-function promoteCandidateAndKey(hmacNextCandidateDir, fingerprints) {
-    const backupDir = join(dirname(distDir), `.${basename(distDir)}-active-before-hmac-finalize-${process.pid}-${Date.now()}`);
+function promoteCandidateAndKey(fingerprints) {
+    const backupDir = join(dirname(releaseDistDir), `.${basename(releaseDistDir)}-active-before-hmac-finalize-${process.pid}-${Date.now()}`);
+    const transaction = createFinalizeTransaction(backupDir, fingerprints);
     let movedExistingDist = false;
     let installedCandidate = false;
-    let promotedKey = false;
-    const transaction = createFinalizeTransaction(hmacNextCandidateDir, backupDir, fingerprints);
 
     try {
         writeFinalizeTransaction(transaction);
+        assertSafeReleaseMutationPath(backupDir, "HMAC finalize backup directory");
         rmSync(backupDir, { recursive: true, force: true });
-        if (existsSync(distDir)) {
-            renameSync(distDir, backupDir);
+        if (existsSync(releaseDistDir)) {
+            renameSync(releaseDistDir, backupDir);
             movedExistingDist = true;
         }
-        renameSync(hmacNextCandidateDir, distDir);
+        renameSync(hmacNextCandidateDir, releaseDistDir);
         installedCandidate = true;
         writeFinalizeTransaction({
             ...transaction,
             phase: "dist-promoted"
         });
         maybeExitFinalizeStage("after-candidate-install");
+        verifyRecoveredRelease(transaction);
         promoteNextKey({
             exitStage: process.env.MSPACMAN_TEST_EXIT_HMAC_FINALIZE_STAGE,
-            failStage: process.env.MSPACMAN_TEST_FAIL_HMAC_PROMOTE_STAGE
+            failStage: process.env.MSPACMAN_TEST_FAIL_HMAC_PROMOTE_STAGE,
+            preserveTempsOnError: true
         });
-        promotedKey = true;
         writeFinalizeTransaction({
             ...transaction,
             phase: "key-promoted"
         });
         maybeExitFinalizeStage("after-key-promoted");
-        try {
-            rmSync(backupDir, { recursive: true, force: true });
-        } catch (error) {
-            console.warn(`Warning: finalized rotation but old dist backup could not be removed: ${backupDir}`);
-            console.warn(error instanceof Error ? error.message : String(error));
-        }
-        removeFinalizeTransaction();
+        cleanupFinalizeTransaction(transaction);
     } catch (error) {
-        if (!promotedKey) {
-            if (installedCandidate && existsSync(distDir) && !existsSync(hmacNextCandidateDir)) {
-                renameSync(distDir, hmacNextCandidateDir);
-            }
-            if (movedExistingDist && !existsSync(distDir) && existsSync(backupDir)) {
-                renameSync(backupDir, distDir);
-            }
+        if (tryRollbackCandidatePromotion(transaction, { installedCandidate, movedExistingDist })) {
+            removeFinalizeTransaction();
         }
-        removeFinalizeTransaction();
         throw error;
     }
 }
 
-function createFinalizeTransaction(candidatePath, backupPath, fingerprints) {
+function createFinalizeTransaction(backupPath, fingerprints) {
     return {
         activeFingerprint: fingerprints.activeFingerprint,
         backupPath,
-        candidatePath,
-        distPath: distDir,
+        candidatePath: hmacNextCandidateDir,
+        distPath: releaseDistDir,
         gitCommit: getGitHeadCommit(),
         nextFingerprint: fingerprints.nextFingerprint,
         phase: "prepared",
@@ -126,11 +122,13 @@ function createFinalizeTransaction(candidatePath, backupPath, fingerprints) {
 
 function recoverFinalizeTransaction(transaction) {
     validateFinalizeTransaction(transaction);
+    assert.equal(transaction.gitCommit, getGitHeadCommit(), "Interrupted finalization must be recovered from the same Git commit.");
     ensureCandidateInstalled(transaction);
     writeFinalizeTransaction({
         ...transaction,
         phase: "dist-promoted"
     });
+    verifyRecoveredRelease(transaction);
     completeKeyPromotion(transaction);
     writeFinalizeTransaction({
         ...transaction,
@@ -140,17 +138,17 @@ function recoverFinalizeTransaction(transaction) {
 }
 
 function ensureCandidateInstalled(transaction) {
-    if (releaseDirHasFingerprint(transaction.distPath, transaction.nextFingerprint)) {
+    if (releaseDirHasFingerprint(releaseDistDir, transaction.nextFingerprint)) {
         return;
     }
-    if (!existsSync(transaction.candidatePath)) {
+    if (!existsSync(hmacNextCandidateDir)) {
         throw new Error("Interrupted HMAC finalize cannot recover because neither dist nor the candidate contains the next-key release.");
     }
-    if (existsSync(transaction.distPath) && !existsSync(transaction.backupPath)) {
-        renameSync(transaction.distPath, transaction.backupPath);
+    if (existsSync(releaseDistDir) && !existsSync(transaction.backupPath)) {
+        renameSync(releaseDistDir, transaction.backupPath);
     }
-    renameSync(transaction.candidatePath, transaction.distPath);
-    if (!releaseDirHasFingerprint(transaction.distPath, transaction.nextFingerprint)) {
+    renameSync(hmacNextCandidateDir, releaseDistDir);
+    if (!releaseDirHasFingerprint(releaseDistDir, transaction.nextFingerprint)) {
         throw new Error("Recovered HMAC finalize dist does not contain the expected next-key release.");
     }
 }
@@ -202,8 +200,75 @@ function ensurePreviousKeyAfterInterruptedPromotion(transaction) {
     throw new Error("Interrupted HMAC finalize cannot recover the previous active key.");
 }
 
+function tryRollbackCandidatePromotion(transaction, state) {
+    const paths = getReleaseSecretPaths();
+    try {
+        const activeKey = readKeyFile(paths.active, "Active HMAC key");
+        if (getHmacFingerprint(activeKey) !== transaction.activeFingerprint) {
+            return false;
+        }
+        const nextKey = readKeyFile(paths.next, "Next HMAC key");
+        if (getHmacFingerprint(nextKey) !== transaction.nextFingerprint) {
+            return false;
+        }
+        if (state.installedCandidate && existsSync(releaseDistDir) && !existsSync(hmacNextCandidateDir)) {
+            renameSync(releaseDistDir, hmacNextCandidateDir);
+        }
+        if (state.movedExistingDist && !existsSync(releaseDistDir) && existsSync(transaction.backupPath)) {
+            renameSync(transaction.backupPath, releaseDistDir);
+        }
+        const verifiedActiveKey = readKeyFile(paths.active, "Active HMAC key");
+        const verifiedNextKey = readKeyFile(paths.next, "Next HMAC key");
+        assert.equal(getHmacFingerprint(verifiedActiveKey), transaction.activeFingerprint);
+        assert.equal(getHmacFingerprint(verifiedNextKey), transaction.nextFingerprint);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function verifyRecoveredRelease(transaction) {
+    runVerifyRelease(releaseDistDir, readRecoveryKey(transaction), transaction.gitCommit);
+}
+
+function readRecoveryKey(transaction) {
+    const paths = getReleaseSecretPaths();
+    if (existsSync(paths.next)) {
+        const next = readKeyFile(paths.next, "Next HMAC key");
+        assert.equal(getHmacFingerprint(next), transaction.nextFingerprint, "Recovery next key must match the transaction.");
+        return next;
+    }
+
+    const active = readKeyFile(paths.active, "Active HMAC key");
+    assert.equal(getHmacFingerprint(active), transaction.nextFingerprint, "Neither next nor active contains the transaction next key.");
+    return active;
+}
+
+function runVerifyRelease(releaseDir, keyHex, gitCommit) {
+    const result = spawnSync(
+        process.execPath,
+        ["scripts/verify-release.mjs", "--key-source=env", "--expected-release-kind=rotation-candidate", "--expected-hmac-key-source=next"],
+        {
+            cwd: rootDir,
+            env: {
+                ...process.env,
+                MSPACMAN_HMAC_KEY_HEX: keyHex,
+                MSPACMAN_INTERNAL_DIST_DIR: releaseDir,
+                MSPACMAN_INTERNAL_RELEASE_BUILD: "1",
+                MSPACMAN_RELEASE_GIT_COMMIT: gitCommit,
+                MSPACMAN_RELEASE_VERIFY_TARGET: "full"
+            },
+            stdio: "inherit",
+            windowsHide: true
+        }
+    );
+    if (result.status !== 0 || result.error) {
+        throw result.error ?? new Error("Recovered rotation release verification failed.");
+    }
+}
+
 function cleanupFinalizeTransaction(transaction) {
-    rmSync(transaction.candidatePath, { recursive: true, force: true });
+    rmSync(hmacNextCandidateDir, { recursive: true, force: true });
     rmSync(transaction.backupPath, { recursive: true, force: true });
     cleanupHmacPromotionTempFiles(getReleaseSecretPaths().dir);
     removeFinalizeTransaction();
@@ -233,9 +298,12 @@ function readFinalizeTransactionIfPresent() {
 }
 
 function writeFinalizeTransaction(transaction) {
+    maybeFailFinalizeJournalWrite(transaction.phase);
     const path = getFinalizeTransactionPath();
-    mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, `${JSON.stringify(transaction, null, 4)}\n`, { mode: 0o600 });
+    writeTextFileAtomically(path, `${JSON.stringify(transaction, null, 4)}\n`, {
+        failPhase: `hmac-finalize-journal-${transaction.phase}`,
+        mode: 0o600
+    });
 }
 
 function removeFinalizeTransaction() {
@@ -253,11 +321,26 @@ function validateFinalizeTransaction(transaction) {
         assert.equal(typeof transaction[key], "string", `HMAC finalize transaction must contain ${key}.`);
         assert.notEqual(transaction[key], "", `HMAC finalize transaction ${key} must not be empty.`);
     }
-    assert.equal(transaction.distPath, distDir, "HMAC finalize transaction dist path must match the configured dist path.");
+    assert.match(transaction.activeFingerprint, FINGERPRINT_PATTERN, "Transaction active fingerprint must be a 12-character lowercase hex fingerprint.");
+    assert.match(transaction.nextFingerprint, FINGERPRINT_PATTERN, "Transaction next fingerprint must be a 12-character lowercase hex fingerprint.");
+    assert.match(transaction.gitCommit, GIT_COMMIT_PATTERN, "Transaction Git commit must be a full hex commit id.");
+    assert.ok(pathsEqual(transaction.distPath, releaseDistDir), "HMAC finalize transaction dist path must match the canonical release dist path.");
+    assert.ok(
+        pathsEqual(transaction.candidatePath, hmacNextCandidateDir),
+        "HMAC finalize transaction candidate path must match the canonical next-key candidate path."
+    );
+    assert.ok(pathsEqual(dirname(transaction.backupPath), dirname(releaseDistDir)), "HMAC finalize transaction backup path must be next to dist.");
+    assert.match(basename(transaction.backupPath), /^\.dist-active-before-hmac-finalize-\d+-\d+$/, "HMAC finalize backup path has an unexpected name.");
 }
 
 function maybeExitFinalizeStage(stage) {
     if (process.env.MSPACMAN_TEST_EXIT_HMAC_FINALIZE_STAGE === stage) {
         process.exit(97);
+    }
+}
+
+function maybeFailFinalizeJournalWrite(phase) {
+    if (process.env.MSPACMAN_TEST_FAIL_FINALIZE_JOURNAL_PHASE === phase) {
+        throw new Error(`Injected journal write failure: ${phase}`);
     }
 }

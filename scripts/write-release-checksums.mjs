@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { distDir } from "./build-utils.mjs";
+import { listFilesStrict } from "./release-io.mjs";
 
 const checksumManifestName = "checksums.sha256";
 const checksumManifestPath = join(distDir, checksumManifestName);
@@ -11,7 +12,7 @@ if (!existsSync(distDir)) {
 }
 
 const entries = [];
-for (const path of listFiles(distDir)) {
+for (const path of listFilesStrict(distDir, "Release checksum input")) {
     const relativePath = relative(distDir, path).replaceAll("\\", "/");
     if (relativePath === checksumManifestName) {
         continue;
@@ -21,24 +22,6 @@ for (const path of listFiles(distDir)) {
 
 writeFileSync(checksumManifestPath, `${entries.sort((a, b) => a.localeCompare(b)).join("\n")}\n`);
 console.log(`Wrote ${relative(process.cwd(), checksumManifestPath)}`);
-
-function listFiles(dir) {
-    const files = [];
-    collectFiles(dir, files);
-    return files;
-}
-
-function collectFiles(dir, files) {
-    for (const entry of readdirSync(dir).sort((a, b) => a.localeCompare(b))) {
-        const path = join(dir, entry);
-        const stat = statSync(path);
-        if (stat.isDirectory()) {
-            collectFiles(path, files);
-        } else if (stat.isFile()) {
-            files.push(path);
-        }
-    }
-}
 
 function sha256File(path) {
     return createHash("sha256").update(readFileSync(path)).digest("hex");

@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { basename, join, relative } from "node:path";
 import { runInNewContext } from "node:vm";
 import { distDir, versionPath } from "./build-utils.mjs";
 import { createCacheIdentity, readEnvHmacKey } from "./hmac-config.mjs";
+import { listFilesStrict } from "./release-io.mjs";
 
 const pwaDistDir = join(distDir, "pwa");
 const assetsDir = join(pwaDistDir, "assets");
@@ -98,13 +99,7 @@ function listGeneratedPwaResources() {
 }
 
 function collectGeneratedPwaResources(dir, resources) {
-    for (const entry of readdirSync(dir).sort((a, b) => a.localeCompare(b))) {
-        const path = join(dir, entry);
-        const stat = statSync(path);
-        if (stat.isDirectory()) {
-            collectGeneratedPwaResources(path, resources);
-            continue;
-        }
+    for (const path of listFilesStrict(dir, "Generated PWA output")) {
         const resource = `./${relative(pwaDistDir, path).replaceAll("\\", "/")}`;
         if (resource === "./sw.js") {
             continue;
@@ -121,13 +116,8 @@ function listBuiltAssets() {
 }
 
 function collectAssets(dir, assets) {
-    for (const entry of readdirSync(dir).sort((a, b) => a.localeCompare(b))) {
-        const path = join(dir, entry);
-        const stat = statSync(path);
-        if (stat.isDirectory()) {
-            collectAssets(path, assets);
-            continue;
-        }
+    for (const path of listFilesStrict(dir, "Generated PWA assets")) {
+        const entry = basename(path);
         if (!/\.(?:css|js)$/.test(entry)) {
             continue;
         }

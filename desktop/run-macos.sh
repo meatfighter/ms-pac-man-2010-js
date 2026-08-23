@@ -22,6 +22,9 @@ if [ ! -d "$NATIVE_PATH" ]; then
 fi
 
 JAVA_COMPAT_ARGS=""
+if java -XstartOnFirstThread -version >/dev/null 2>&1; then
+    JAVA_COMPAT_ARGS="$JAVA_COMPAT_ARGS -XstartOnFirstThread"
+fi
 if java --enable-native-access=ALL-UNNAMED -version >/dev/null 2>&1; then
     JAVA_COMPAT_ARGS="$JAVA_COMPAT_ARGS --enable-native-access=ALL-UNNAMED"
 fi

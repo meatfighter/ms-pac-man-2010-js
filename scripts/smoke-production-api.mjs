@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { distDir, getHmacNextCandidateDir } from "./build-utils.mjs";
+import { join, resolve } from "node:path";
+import { canonicalHmacNextCandidateDir, repositoryDistDir } from "./build-utils.mjs";
 import { getHmacFingerprint, readSelectedHmacKey } from "./hmac-config.mjs";
 import { assertReleaseProvenance } from "./release-provenance.mjs";
 
@@ -213,7 +213,7 @@ function calculateChecksum(keyHex, candidate) {
 }
 
 function verifyReleaseArtifact(fingerprint, keySource) {
-    const releaseDir = keySource === "next" ? getHmacNextCandidateDir() : distDir;
+    const releaseDir = readReleaseDirForSmoke(keySource);
     const releaseMetadataPath = join(releaseDir, "release.json");
     if (!existsSync(releaseMetadataPath)) {
         throw new Error(`Release metadata is required before production API smoke testing: ${releaseMetadataPath}`);
@@ -230,6 +230,17 @@ function verifyReleaseArtifact(fingerprint, keySource) {
                   expectedReleaseKind: "production"
               }
     );
+}
+
+function readReleaseDirForSmoke(keySource) {
+    const override = readOption("release-dir", "");
+    if (override !== "") {
+        if (process.env.MSPACMAN_ENABLE_TEST_PATH_OVERRIDES !== "1") {
+            throw new Error("--release-dir is reserved for tests; production smoke tests use canonical release artifacts.");
+        }
+        return resolve(override);
+    }
+    return keySource === "next" ? canonicalHmacNextCandidateDir : repositoryDistDir;
 }
 
 function isJsonContentType(value) {

@@ -1,8 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
-import { copyFileSync, createReadStream, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
-import { getHmacNextCandidateDir, rootDir } from "./build-utils.mjs";
+import { assertNoLegacyPathOverrides, assertSafeReleaseMutationPath, canonicalReleaseSecretsDir, getHmacNextCandidateDir, rootDir } from "./build-utils.mjs";
+import { writeTextFileAtomically } from "./release-io.mjs";
 
 export const HMAC_KEY_PATTERN = /^[0-9a-f]{64}$/;
 export const SYNTHETIC_RELEASE_HMAC_KEY_HEX = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
@@ -12,8 +13,15 @@ const NEXT_FILE_NAME = "ms-pac-man-2010-hmac.next.hex";
 const PREVIOUS_FILE_NAME = "ms-pac-man-2010-hmac.previous.hex";
 
 export function getReleaseSecretsDir() {
-    const override = process.env.MSPACMAN_RELEASE_SECRETS_DIR;
-    return override && override.length > 0 ? resolve(override) : join(rootDir, ".release-secrets");
+    assertNoLegacyPathOverrides();
+    const override = process.env.MSPACMAN_TEST_RELEASE_SECRETS_DIR;
+    if (override !== undefined && override !== "") {
+        if (process.env.MSPACMAN_ENABLE_TEST_PATH_OVERRIDES !== "1") {
+            throw new Error("MSPACMAN_TEST_RELEASE_SECRETS_DIR requires MSPACMAN_ENABLE_TEST_PATH_OVERRIDES=1.");
+        }
+        return assertSafeReleaseMutationPath(resolve(override), "MSPACMAN_TEST_RELEASE_SECRETS_DIR");
+    }
+    return canonicalReleaseSecretsDir;
 }
 
 export function getReleaseSecretPaths() {
@@ -91,9 +99,13 @@ export function readEnvHmacKey() {
 }
 
 export function writeKeyFile(path, keyHex) {
+    replaceKeyFileAtomically(path, keyHex);
+}
+
+export function replaceKeyFileAtomically(path, keyHex, options = {}) {
     validateHmacKeyHex(keyHex);
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, `${keyHex}\n`, { mode: 0o600 });
+    writeTextFileAtomically(path, `${keyHex}\n`, { failPhase: options.failPhase ?? "", mode: 0o600 });
 }
 
 export function initActiveKey() {
@@ -191,6 +203,7 @@ export function promoteNextKey(options = {}) {
     const rollbackPath = join(paths.dir, `${ACTIVE_FILE_NAME}.rollback`);
     const nextActivePath = join(paths.dir, `${ACTIVE_FILE_NAME}.promote`);
     const previousPath = join(paths.dir, `${PREVIOUS_FILE_NAME}.promote`);
+    let cleanupTemps = true;
 
     rmSync(rollbackPath, { force: true });
     rmSync(nextActivePath, { force: true });
@@ -204,7 +217,9 @@ export function promoteNextKey(options = {}) {
             throw new Error("Injected HMAC promotion failure: before-active-replace");
         }
 
-        copyFileSync(nextActivePath, paths.active);
+        replaceKeyFileAtomically(paths.active, nextKey, {
+            failPhase: options.failStage === "during-active-replace" ? "during-active-replace" : ""
+        });
         if (readKeyFile(paths.active, "Promoted active HMAC key") !== nextKey) {
             throw new Error("Promoted active HMAC key did not match the staged next key.");
         }
@@ -215,7 +230,9 @@ export function promoteNextKey(options = {}) {
             throw new Error("Injected HMAC promotion failure: after-active-replace");
         }
 
-        copyFileSync(previousPath, paths.previous);
+        replaceKeyFileAtomically(paths.previous, activeKey, {
+            failPhase: options.failStage === "during-previous-write" ? "during-previous-write" : ""
+        });
         if (options.exitStage === "after-previous-write") {
             process.exit(97);
         }
@@ -226,13 +243,25 @@ export function promoteNextKey(options = {}) {
         };
     } catch (error) {
         if (existsSync(rollbackPath)) {
-            copyFileSync(rollbackPath, paths.active);
+            try {
+                replaceKeyFileAtomically(paths.active, readKeyFile(rollbackPath, "Rollback HMAC key"), {
+                    failPhase: options.failStage === "during-active-rollback" ? "during-active-rollback" : ""
+                });
+            } catch (rollbackError) {
+                cleanupTemps = false;
+                throw rollbackError;
+            }
+        }
+        if (options.preserveTempsOnError) {
+            cleanupTemps = false;
         }
         throw error;
     } finally {
-        rmSync(rollbackPath, { force: true });
-        rmSync(nextActivePath, { force: true });
-        rmSync(previousPath, { force: true });
+        if (cleanupTemps) {
+            rmSync(rollbackPath, { force: true });
+            rmSync(nextActivePath, { force: true });
+            rmSync(previousPath, { force: true });
+        }
     }
 }
 

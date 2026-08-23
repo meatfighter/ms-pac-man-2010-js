@@ -1,8 +1,10 @@
 import { spawnSync } from "node:child_process";
 import { assertSecretAbsentFromTrackedFiles, checkActiveHmacKey, checkRotationKeys, ensureNextKey, readSelectedHmacKey } from "./hmac-config.mjs";
 import { assertGitWorkingTreeClean, getHmacNextCandidateDir, rootDir } from "./build-utils.mjs";
+import { acquireReleaseLock } from "./release-lock.mjs";
 
 let nextFingerprint = "";
+const releaseLock = acquireReleaseLock("release:rotate-hmac");
 try {
     assertGitWorkingTreeClean();
     const activeFingerprint = await checkActiveHmacKey();
@@ -26,6 +28,8 @@ try {
     }
     console.error("The staged next HMAC key was preserved. Do not deploy a failed rotation build; rerun npm run release:rotate-hmac or abort explicitly.");
     process.exitCode = 1;
+} finally {
+    releaseLock();
 }
 
 function runBuildRelease() {

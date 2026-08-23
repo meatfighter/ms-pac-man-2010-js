@@ -1,4 +1,4 @@
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join, relative } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -79,10 +79,16 @@ function getJavacFeatureVersion() {
 function collectJavaFiles(dir, files = []) {
     for (const entry of readdirSync(dir)) {
         const full = join(dir, entry);
-        if (statSync(full).isDirectory()) {
+        const stat = lstatSync(full);
+        if (stat.isSymbolicLink()) {
+            throw new Error(`Desktop source tree must not contain symbolic links or junctions: ${relative(desktopDir, full)}`);
+        }
+        if (stat.isDirectory()) {
             collectJavaFiles(full, files);
-        } else if (entry.endsWith(".java")) {
+        } else if (stat.isFile() && entry.endsWith(".java")) {
             files.push(full);
+        } else if (!stat.isFile()) {
+            throw new Error(`Desktop source tree contains unsupported filesystem entry: ${relative(desktopDir, full)}`);
         }
     }
     return files;
@@ -92,13 +98,18 @@ function copyResources(source, target) {
     for (const entry of readdirSync(source)) {
         const sourcePath = join(source, entry);
         const targetPath = join(target, entry);
-        const stat = statSync(sourcePath);
+        const stat = lstatSync(sourcePath);
+        if (stat.isSymbolicLink()) {
+            throw new Error(`Desktop resources must not contain symbolic links or junctions: ${relative(desktopDir, sourcePath)}`);
+        }
         if (stat.isDirectory()) {
             mkdirSync(targetPath, { recursive: true });
             copyResources(sourcePath, targetPath);
-        } else if (!entry.endsWith(".java")) {
+        } else if (stat.isFile() && !entry.endsWith(".java")) {
             mkdirSync(dirname(targetPath), { recursive: true });
             copyFileSync(sourcePath, targetPath);
+        } else if (!stat.isFile()) {
+            throw new Error(`Desktop resources contain unsupported filesystem entry: ${relative(desktopDir, sourcePath)}`);
         }
     }
 }
@@ -167,6 +178,8 @@ function verifyRuntimeDependencies() {
 }
 
 function copyRuntimeToTarget() {
+    assertNoLinksInTree(libDir, "desktop runtime lib");
+    assertNoLinksInTree(nativeDir, "desktop native runtime");
     rmSync(targetLibDir, { recursive: true, force: true });
     rmSync(targetNativeDir, { recursive: true, force: true });
     mkdirSync(targetLibDir, { recursive: true });
@@ -177,6 +190,8 @@ function copyRuntimeToTarget() {
 }
 
 function createDistribution() {
+    assertNoLinksInTree(licensesDir, "desktop licenses");
+    assertNoLinksInTree(thirdPartySourcesDir, "desktop third-party sources");
     rmSync(distributionRoot, { recursive: true, force: true });
     mkdirSync(distributionDir, { recursive: true });
     copyFileSync(stableJarPath, join(distributionDir, `${distributionName}.jar`));
@@ -276,7 +291,10 @@ function collectZipEntriesFromDirectory(dir, sourceRoot, entries) {
 
     for (const entry of readdirSync(dir).sort((a, b) => a.localeCompare(b))) {
         const path = join(dir, entry);
-        const stat = statSync(path);
+        const stat = lstatSync(path);
+        if (stat.isSymbolicLink()) {
+            throw new Error(`Desktop release ZIP input must not contain symbolic links or junctions: ${relative(sourceRoot, path)}`);
+        }
         if (stat.isDirectory()) {
             collectZipEntriesFromDirectory(path, sourceRoot, entries);
         } else if (stat.isFile()) {
@@ -287,6 +305,23 @@ function collectZipEntriesFromDirectory(dir, sourceRoot, entries) {
                 name,
                 path
             });
+        } else {
+            throw new Error(`Desktop release ZIP input contains unsupported filesystem entry: ${relative(sourceRoot, path)}`);
+        }
+    }
+}
+
+function assertNoLinksInTree(dir, description) {
+    for (const entry of readdirSync(dir).sort((a, b) => a.localeCompare(b))) {
+        const path = join(dir, entry);
+        const stat = lstatSync(path);
+        if (stat.isSymbolicLink()) {
+            throw new Error(`${description} must not contain symbolic links or junctions: ${relative(desktopDir, path)}`);
+        }
+        if (stat.isDirectory()) {
+            assertNoLinksInTree(path, description);
+        } else if (!stat.isFile()) {
+            throw new Error(`${description} contains unsupported filesystem entry: ${relative(desktopDir, path)}`);
         }
     }
 }

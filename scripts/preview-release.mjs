@@ -1,31 +1,32 @@
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, lstatSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
-import { distDir } from "./build-utils.mjs";
+import { repositoryDistDir } from "./build-utils.mjs";
 
 if (isCliEntrypoint()) {
     const host = readOption("host", "127.0.0.1");
     const port = Number.parseInt(readOption("port", "4175"), 10);
     const basePath = normalizeBasePath(readOption("base", "/ms-pac-man-2010-staging/"));
+    const distRoot = resolve(readOption("dist-dir", repositoryDistDir));
 
     if (!Number.isInteger(port) || port < 0 || port > 65535) {
         throw new Error("--port must be an integer from 0 through 65535.");
     }
-    if (!existsSync(distDir)) {
-        throw new Error("dist/ does not exist. Run npm run build before previewing a release artifact.");
+    if (!existsSync(distRoot)) {
+        throw new Error(`Release directory does not exist. Run npm run build before previewing: ${distRoot}`);
     }
 
     const server = createReleasePreviewServer({
         basePath,
-        distRoot: distDir,
+        distRoot,
         host
     });
 
     server.listen(port, host, () => {
         const address = server.address();
         const actualPort = typeof address === "object" && address !== null ? address.port : port;
-        console.log(`Serving ${distDir}`);
+        console.log(`Serving ${distRoot}`);
         console.log(`Mounted at http://${host}:${actualPort}${basePath}`);
     });
 }
@@ -94,7 +95,11 @@ function serveRequest(requestUrl, response, options) {
         return;
     }
 
-    const stat = statSync(path);
+    const stat = lstatSync(path);
+    if (stat.isSymbolicLink()) {
+        sendPlainText(response, 404, "Not Found");
+        return;
+    }
     if (stat.isDirectory()) {
         if (!url.pathname.endsWith("/")) {
             sendRedirect(response, `${url.pathname}/${url.search}`);

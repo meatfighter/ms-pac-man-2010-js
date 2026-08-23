@@ -42,7 +42,7 @@ try {
             }
         });
         try {
-            const result = await runSmoke(server.url);
+            const result = await runSmoke(server.url, [`--release-dir=${tempDistDir}`]);
             assert.equal(result.status, 0, formatFailure("Expected production API smoke test to pass.", result));
             assert.equal(postCount, 1, "Smoke test must perform exactly one duplicate POST.");
             assertOutputIncludes(result, getHmacFingerprint(activeKey));
@@ -70,7 +70,7 @@ try {
             }
         });
         try {
-            const result = await runSmoke(server.url, ["--key-source=next"]);
+            const result = await runSmoke(server.url, ["--key-source=next", `--release-dir=${tempCandidateDir}`]);
             assert.equal(result.status, 0, formatFailure("Expected next-key production API smoke test to pass.", result));
             assert.equal(postCount, 1, "Next-key smoke test must perform exactly one duplicate POST.");
             assertOutputIncludes(result, getHmacFingerprint(nextKey));
@@ -91,7 +91,7 @@ try {
             }
         });
         try {
-            const result = await runSmoke(server.url);
+            const result = await runSmoke(server.url, [`--release-dir=${tempDistDir}`]);
             assert.notEqual(result.status, 0, "Empty leaderboard smoke test must fail.");
             assert.equal(postCount, 0, "Empty leaderboard smoke test must not POST.");
             assertOutputIncludes(result, "Production leaderboard is empty");
@@ -178,9 +178,9 @@ function runNodeScript(args) {
             cwd: rootDir,
             env: {
                 ...process.env,
-                MSPACMAN_DIST_DIR: tempDistDir,
-                MSPACMAN_HMAC_NEXT_CANDIDATE_DIR: tempCandidateDir,
-                MSPACMAN_RELEASE_SECRETS_DIR: tempSecretsDir
+                MSPACMAN_ENABLE_TEST_PATH_OVERRIDES: "1",
+                MSPACMAN_TEST_HMAC_NEXT_CANDIDATE_DIR: tempCandidateDir,
+                MSPACMAN_TEST_RELEASE_SECRETS_DIR: tempSecretsDir
             },
             windowsHide: true
         });

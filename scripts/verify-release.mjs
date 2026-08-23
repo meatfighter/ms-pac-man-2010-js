@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { inflateRawSync } from "node:zlib";
@@ -14,6 +14,7 @@ import {
 } from "./hmac-config.mjs";
 import { distDir, readVersion, rootDir, spawnGit } from "./build-utils.mjs";
 import { assertReleaseProvenance } from "./release-provenance.mjs";
+import { listFilesStrict } from "./release-io.mjs";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const target = process.env.MSPACMAN_RELEASE_VERIFY_TARGET ?? readOption("target", "full");
@@ -525,24 +526,7 @@ function readJavaProperties(text) {
 }
 
 function listFiles(dir) {
-    if (!existsSync(dir)) {
-        return [];
-    }
-    const files = [];
-    collectFiles(dir, files);
-    return files;
-}
-
-function collectFiles(dir, files) {
-    for (const entry of readdirSync(dir)) {
-        const path = join(dir, entry);
-        const stat = statSync(path);
-        if (stat.isDirectory()) {
-            collectFiles(path, files);
-        } else {
-            files.push(path);
-        }
-    }
+    return listFilesStrict(dir, "Release verification input");
 }
 
 function runNpmScript(scriptName) {

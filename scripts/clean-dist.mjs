@@ -1,4 +1,10 @@
-import { cleanDirectory, distDir } from "./build-utils.mjs";
+import { cleanDirectory, repositoryDistDir } from "./build-utils.mjs";
+import { acquireReleaseLock } from "./release-lock.mjs";
 
-cleanDirectory(distDir);
-console.log(`Cleaned ${distDir}`);
+const releaseLock = acquireReleaseLock("clean");
+try {
+    cleanDirectory(repositoryDistDir);
+    console.log(`Cleaned ${repositoryDistDir}`);
+} finally {
+    releaseLock();
+}

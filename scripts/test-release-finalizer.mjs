@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { appendFileSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+    appendFileSync,
+    copyFileSync,
+    cpSync,
+    existsSync,
+    mkdirSync,
+    mkdtempSync,
+    readFileSync,
+    readdirSync,
+    rmSync,
+    statSync,
+    symlinkSync,
+    writeFileSync
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -12,10 +25,11 @@ const EXECUTABLE_ZIP_ENTRIES = new Set([`${distributionName}/run-linux.sh`, `${d
 const CRC32_TABLE = createCrc32Table();
 const originalGitStatus = readGitStatus(rootDir);
 const candidateRoot = mkdtempSync(join(tmpdir(), "mspacman-release-finalizer-candidate-"));
-const candidateTemplateDir = join(candidateRoot, "candidate");
+const candidateTemplateDir = join(candidateRoot, "synthetic-full");
 const syntheticEnv = {
     ...process.env,
-    MSPACMAN_DIST_DIR: candidateTemplateDir,
+    MSPACMAN_ENABLE_TEST_PATH_OVERRIDES: "1",
+    MSPACMAN_TEST_RELEASE_COMPONENTS_DIR: candidateRoot,
     MSPACMAN_HMAC_KEY_HEX: SYNTHETIC_RELEASE_HMAC_KEY_HEX
 };
 
@@ -83,6 +97,20 @@ try {
         const result = verifyCandidate(candidateDir);
         assert.notEqual(result.status, 0, "Candidate changed without checksum manifest update should fail verification.");
         assertOutputIncludes(result, "Checksum mismatch");
+    });
+
+    await runTest("candidate PWA symlink fails verification", () => {
+        const candidateDir = copyCandidate("pwa-symlink");
+        const linkPath = join(candidateDir, "pwa", "bad-link");
+        try {
+            symlinkSync(join(rootDir, "version.json"), linkPath, "file");
+        } catch (error) {
+            console.log(`ok - symlink creation unavailable; skipped verifier link assertion (${error.code ?? "unknown"})`);
+            return;
+        }
+        const result = verifyCandidate(candidateDir);
+        assert.notEqual(result.status, 0, "Candidate containing a PWA symlink should fail verification.");
+        assertOutputIncludes(result, "symbolic links");
     });
 
     await runTest("finalize rejects candidate HMAC fingerprint mismatch without changing state", () => {
@@ -159,6 +187,27 @@ try {
         });
     });
 
+    await runTest("finalize recovers after key-promoted journal write failure", () => {
+        withFinalizeFixture((fixture) => {
+            const beforeCandidate = snapshotDirectory(fixture.candidateDir);
+            const beforeActive = readKeyFile(fixture.activePath, "Active HMAC key");
+            const beforeNext = readKeyFile(fixture.nextPath, "Next HMAC key");
+            const first = runFinalize(fixture, {
+                MSPACMAN_TEST_FAIL_FINALIZE_JOURNAL_PHASE: "key-promoted"
+            });
+            assert.notEqual(first.status, 0, "Expected injected key-promoted journal write failure.");
+            assertOutputIncludes(first, "Injected journal write failure: key-promoted");
+            assert.equal(
+                existsSync(join(fixture.secretsDir, "hmac-finalize-transaction.json")),
+                true,
+                "Ambiguous key-promotion failure must keep the journal."
+            );
+            const recovery = runFinalize(fixture);
+            assert.equal(recovery.status, 0, formatFailure("Expected finalizer recovery to succeed.", recovery));
+            assertFinalizedState(fixture, beforeCandidate, beforeActive, beforeNext);
+        });
+    });
+
     await runTest("successful finalize promotes exact candidate bytes and staged next key", () => {
         withFinalizeFixture((fixture) => {
             rmSync(join(fixture.fixtureRoot, "desktop", "target"), { recursive: true, force: true });
@@ -176,11 +225,7 @@ try {
 }
 
 function buildSyntheticFullCandidate() {
-    const result = spawnNodeScript(rootDir, "scripts/build-release.mjs", syntheticEnv, [
-        "--target=full",
-        "--key-source=env",
-        `--output-dir=${candidateTemplateDir}`
-    ]);
+    const result = spawnNodeScript(rootDir, "scripts/build-release.mjs", syntheticEnv, ["--target=full", "--key-source=env"]);
     assert.equal(result.status, 0, formatFailure("Synthetic full release candidate build failed.", result));
 }
 
@@ -190,7 +235,9 @@ function verifyCandidate(candidateDir, extraArgs = []) {
         "scripts/verify-release.mjs",
         {
             ...process.env,
-            MSPACMAN_DIST_DIR: candidateDir,
+            MSPACMAN_ENABLE_TEST_PATH_OVERRIDES: "1",
+            MSPACMAN_INTERNAL_DIST_DIR: candidateDir,
+            MSPACMAN_INTERNAL_RELEASE_BUILD: "1",
             MSPACMAN_HMAC_KEY_HEX: SYNTHETIC_RELEASE_HMAC_KEY_HEX,
             MSPACMAN_RELEASE_VERIFY_TARGET: "full"
         },
@@ -246,7 +293,9 @@ function prepareCandidateForFixture(fixtureRoot, candidateDir, gitCommit) {
     writeReleaseMetadata(candidateDir, metadata);
     const env = {
         ...process.env,
-        MSPACMAN_DIST_DIR: candidateDir,
+        MSPACMAN_ENABLE_TEST_PATH_OVERRIDES: "1",
+        MSPACMAN_INTERNAL_DIST_DIR: candidateDir,
+        MSPACMAN_INTERNAL_RELEASE_BUILD: "1",
         MSPACMAN_RELEASE_GIT_COMMIT: gitCommit,
         MSPACMAN_RELEASE_GIT_TREE_STATE: "clean"
     };
@@ -259,7 +308,8 @@ function prepareCandidateForFixture(fixtureRoot, candidateDir, gitCommit) {
 function rewriteChecksums(candidateDir) {
     const result = spawnNodeScript(rootDir, "scripts/write-release-checksums.mjs", {
         ...process.env,
-        MSPACMAN_DIST_DIR: candidateDir
+        MSPACMAN_ENABLE_TEST_PATH_OVERRIDES: "1",
+        MSPACMAN_INTERNAL_DIST_DIR: candidateDir
     });
     assert.equal(result.status, 0, formatFailure("Candidate checksum rewrite failed.", result));
 }
@@ -299,9 +349,10 @@ function runFinalize(fixture, extraEnv = {}) {
         {
             ...process.env,
             ...extraEnv,
-            MSPACMAN_DIST_DIR: fixture.distDir,
-            MSPACMAN_HMAC_NEXT_CANDIDATE_DIR: fixture.candidateDir,
-            MSPACMAN_RELEASE_SECRETS_DIR: fixture.secretsDir
+            MSPACMAN_ENABLE_TEST_PATH_OVERRIDES: "1",
+            MSPACMAN_TEST_DIST_DIR: fixture.distDir,
+            MSPACMAN_TEST_HMAC_NEXT_CANDIDATE_DIR: fixture.candidateDir,
+            MSPACMAN_TEST_RELEASE_SECRETS_DIR: fixture.secretsDir
         },
         []
     );

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type PluginOption } from "vite";
@@ -11,7 +11,9 @@ interface VersionInfo {
 
 const rootDir = fileURLToPath(new URL(".", import.meta.url));
 const distRootDir =
-    process.env.MSPACMAN_DIST_DIR !== undefined && process.env.MSPACMAN_DIST_DIR !== "" ? resolve(process.env.MSPACMAN_DIST_DIR) : join(rootDir, "..", "dist");
+    process.env.MSPACMAN_INTERNAL_DIST_DIR !== undefined && process.env.MSPACMAN_INTERNAL_DIST_DIR !== ""
+        ? resolve(process.env.MSPACMAN_INTERNAL_DIST_DIR)
+        : join(rootDir, "..", "dist");
 const pwaDistDir = join(distRootDir, "pwa");
 const thirdPartyNoticesPath = join(rootDir, "..", "THIRD_PARTY_NOTICES.md");
 const versionInfo = JSON.parse(readFileSync(new URL("../version.json", import.meta.url), "utf8")) as VersionInfo;
@@ -136,10 +138,16 @@ function collectPrecacheResources(dir: string, baseDir = dir): string[] {
     const resources: string[] = [];
     for (const entry of readdirSync(dir).sort((a, b) => a.localeCompare(b))) {
         const path = join(dir, entry);
-        const stat = statSync(path);
+        const stat = lstatSync(path);
+        if (stat.isSymbolicLink()) {
+            throw new Error(`PWA release precache must not include symbolic links or junctions: ${relative(baseDir, path).replaceAll("\\", "/")}`);
+        }
         if (stat.isDirectory()) {
             resources.push(...collectPrecacheResources(path, baseDir));
             continue;
+        }
+        if (!stat.isFile()) {
+            throw new Error(`PWA release precache contains an unsupported filesystem entry: ${relative(baseDir, path).replaceAll("\\", "/")}`);
         }
 
         const ref = relative(baseDir, path).replaceAll("\\", "/");

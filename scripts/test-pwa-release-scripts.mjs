@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { rootDir, versionPath } from "./build-utils.mjs";
@@ -9,11 +8,10 @@ import { createCacheIdentity, getHmacFingerprint, SYNTHETIC_RELEASE_HMAC_KEY_HEX
 const packageJson = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 const originalVersionJson = readFileSync(versionPath, "utf8");
 const originalVersion = JSON.parse(originalVersionJson);
-const tempRoot = mkdtempSync(join(tmpdir(), "mspacman-pwa-release-test-"));
-const tempDistDir = join(tempRoot, "dist");
+const outputDir = join(rootDir, ".release-components", "pwa");
+const sentinelPath = join(outputDir, "preserved-web-shell.txt");
 const syntheticEnv = {
     ...process.env,
-    MSPACMAN_DIST_DIR: tempDistDir,
     MSPACMAN_HMAC_KEY_HEX: SYNTHETIC_RELEASE_HMAC_KEY_HEX
 };
 
@@ -21,7 +19,7 @@ try {
     assertReleaseScriptStructure();
     assertVersionMismatchFailsBeforeReleaseBuild();
     const first = runStandaloneReleasePwaBuild();
-    writeFileSync(join(tempDistDir, "preserved-web-shell.txt"), "preserve me\n");
+    writeFileSync(sentinelPath, "preserve me\n");
     const second = runStandaloneReleasePwaBuild();
 
     assert.notEqual(first.buildStamp, second.buildStamp, "Standalone release PWA builds must stamp a fresh buildStamp.");
@@ -29,11 +27,11 @@ try {
     assert.equal(first.workerVersion, createCacheIdentity({ ...originalVersion, buildStamp: first.buildStamp }, SYNTHETIC_RELEASE_HMAC_KEY_HEX));
     assert.equal(second.workerVersion, createCacheIdentity({ ...originalVersion, buildStamp: second.buildStamp }, SYNTHETIC_RELEASE_HMAC_KEY_HEX));
     assert.equal(readFileSync(versionPath, "utf8"), originalVersionJson, "Standalone release PWA builds must restore tracked version.json.");
-    assert.equal(existsSync(join(tempDistDir, "preserved-web-shell.txt")), true, "Standalone PWA release builds must not clean unrelated dist files.");
+    assert.equal(existsSync(sentinelPath), true, "Standalone PWA release builds must not clean unrelated component files.");
     console.log("ok - standalone release PWA builds stamp distinct service-worker versions");
 } finally {
     writeFileSync(versionPath, originalVersionJson);
-    rmSync(tempRoot, { recursive: true, force: true });
+    rmSync(sentinelPath, { force: true });
 }
 
 function assertVersionMismatchFailsBeforeReleaseBuild() {
@@ -105,7 +103,7 @@ function assertReleaseScriptStructure() {
 function runStandaloneReleasePwaBuild() {
     const beforeVersionJson = readFileSync(versionPath, "utf8");
     const beforeGitStatus = readGitStatus();
-    const result = spawnNodeScript("scripts/build-release.mjs", ["--target=pwa", "--key-source=env", `--output-dir=${tempDistDir}`], {
+    const result = spawnNodeScript("scripts/build-release.mjs", ["--target=pwa", "--key-source=env"], {
         cwd: rootDir,
         encoding: "utf8",
         env: syntheticEnv,
@@ -118,7 +116,7 @@ function runStandaloneReleasePwaBuild() {
         ["Standalone env-key release PWA build failed.", "stdout:", result.stdout, "stderr:", result.stderr, "error:", result.error?.message ?? ""].join("\n")
     );
 
-    const serviceWorkerPath = join(tempDistDir, "pwa", "sw.js");
+    const serviceWorkerPath = join(outputDir, "pwa", "sw.js");
     assert.ok(existsSync(serviceWorkerPath), "Standalone release PWA build did not generate dist/pwa/sw.js.");
     const workerVersion = readEmbeddedServiceWorkerVersion(readFileSync(serviceWorkerPath, "utf8"));
     assert.equal(readFileSync(versionPath, "utf8"), beforeVersionJson, "Release PWA build must restore version.json after success.");

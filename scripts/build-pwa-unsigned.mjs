@@ -2,15 +2,18 @@ import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { cleanDirectory, releaseComponentsDir, rootDir, versionPath } from "./build-utils.mjs";
+import { acquireReleaseLock } from "./release-lock.mjs";
 
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const outputDir = join(releaseComponentsDir, "pwa-unsigned");
 const env = {
     ...process.env,
-    MSPACMAN_DIST_DIR: outputDir
+    MSPACMAN_INTERNAL_DIST_DIR: outputDir,
+    MSPACMAN_INTERNAL_RELEASE_BUILD: "1"
 };
 const originalVersionJson = readFileSync(versionPath, "utf8");
 let stampedVersionJson = false;
+const releaseLock = acquireReleaseLock("build:pwa:unsigned");
 
 try {
     cleanDirectory(outputDir);
@@ -22,6 +25,7 @@ try {
     if (stampedVersionJson) {
         writeFileSync(versionPath, originalVersionJson);
     }
+    releaseLock();
 }
 
 function runNpmScript(scriptName, env) {
