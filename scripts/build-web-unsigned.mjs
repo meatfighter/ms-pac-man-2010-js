@@ -11,6 +11,8 @@ const env = {
     ...process.env,
     MSPACMAN_INTERNAL_DIST_DIR: outputDir,
     MSPACMAN_INTERNAL_RELEASE_BUILD: "1",
+    MSPACMAN_CACHE_VERSION: "",
+    MSPACMAN_HMAC_KEY_HEX: "",
     MSPACMAN_RELEASE_BUILD_STAMP: buildStamp
 };
 

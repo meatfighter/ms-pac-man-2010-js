@@ -16,8 +16,6 @@ jobs:
     verify:
         runs-on: ubuntu-latest
         timeout-minutes: 45
-        env:
-            MSPACMAN_HMAC_KEY_HEX: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
 
         steps:
             - name: Checkout
@@ -48,4 +46,6 @@ jobs:
               run: npm test
 
             - name: Synthetic Release Build
+              env:
+                  MSPACMAN_HMAC_KEY_HEX: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
               run: node scripts/build-release.mjs --target=full --key-source=env

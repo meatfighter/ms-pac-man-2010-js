@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { rootDir, versionPath } from "./build-utils.mjs";
+import { SYNTHETIC_RELEASE_HMAC_KEY_HEX } from "./hmac-config.mjs";
 
 const originalVersionJson = readFileSync(versionPath, "utf8");
 const originalVersion = JSON.parse(originalVersionJson);
@@ -33,6 +34,8 @@ function runUnsignedPwaBuild() {
         env: {
             ...process.env,
             MSPACMAN_ENABLE_TEST_PATH_OVERRIDES: "1",
+            MSPACMAN_CACHE_VERSION: "polluted-cache-version",
+            MSPACMAN_HMAC_KEY_HEX: SYNTHETIC_RELEASE_HMAC_KEY_HEX,
             MSPACMAN_TEST_RELEASE_COMPONENTS_DIR: tempComponentsDir
         },
         maxBuffer: 32 * 1024 * 1024,
