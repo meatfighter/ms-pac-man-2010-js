@@ -88,14 +88,14 @@ The important distinction is that **building and deploying are separate operatio
 
 For a small game, the release tooling may look unusually elaborate. Most of the complexity exists to preserve a few important invariants:
 
-* The PWA and Java desktop client must use the HMAC key expected by the score server.
-* A release tested in staging should not be silently rebuilt into different bytes before production.
-* A failed build must not replace a previously good `dist/`.
-* A process crash during release promotion or HMAC rotation must be recoverable.
-* Concurrent release commands must not race and leave artifacts and keys out of sync.
-* Recursive cleanup must never escape generated directories through a bad path, symlink, or junction.
-* HMAC material must never leak into Git, source archives, logs, or public release metadata.
-* Staging and production PWA deployments must coexist on the same origin without sharing save state or service-worker cache namespaces.
+- The PWA and Java desktop client must use the HMAC key expected by the score server.
+- A release tested in staging should not be silently rebuilt into different bytes before production.
+- A failed build must not replace a previously good `dist/`.
+- A process crash during release promotion or HMAC rotation must be recoverable.
+- Concurrent release commands must not race and leave artifacts and keys out of sync.
+- Recursive cleanup must never escape generated directories through a bad path, symlink, or junction.
+- HMAC material must never leak into Git, source archives, logs, or public release metadata.
+- Staging and production PWA deployments must coexist on the same origin without sharing save state or service-worker cache namespaces.
 
 The scripts therefore use clean-tree checks, allowlisted output locations, link-safe filesystem validation, atomic writes/copies, release locks, transaction journals, HMAC fingerprints, checksums, and full artifact verification.
 
@@ -387,9 +387,9 @@ When changing release tooling, add a regression test for the failure mode being 
 
 The project version must agree across:
 
-* `version.json`;
-* `package.json`;
-* `desktop/pom.xml`.
+- `version.json`;
+- `package.json`;
+- `desktop/pom.xml`.
 
 Release builds verify this consistency.
 
@@ -397,9 +397,9 @@ A release also gets a fresh **transient build stamp** passed through the build e
 
 The PWA cache identity includes:
 
-* application version;
-* build stamp;
-* either an unsigned marker or selected HMAC-key fingerprint.
+- application version;
+- build stamp;
+- either an unsigned marker or selected HMAC-key fingerprint.
 
 The PWA verifier enumerates the generated PWA tree and checks that everything intended for precaching appears exactly once in the generated service-worker resource list.
 
@@ -487,9 +487,9 @@ Local release keys live under:
 
 The relevant states are:
 
-* **active** — current production/client/server key;
-* **next** — staged key during rotation;
-* **previous** — retained after rotation as local reference/rollback history.
+- **active** — current production/client/server key;
+- **next** — staged key during rotation;
+- **previous** — retained after rotation as local reference/rollback history.
 
 `.release-secrets/` must never be copied into `dist/`, `releases/`, source archives, or review archives.
 
@@ -581,13 +581,13 @@ HMAC finalization changes both a candidate artifact and local key state, so it u
 
 A canonical `dist/` includes:
 
-* `dist/index.html` and about-page assets;
-* `dist/pwa/` with the PWA, service worker, manifest, icons, and static game assets;
-* `dist/pwa/THIRD_PARTY_NOTICES.txt`;
-* stable and versioned source ZIPs under `dist/downloads/`;
-* stable and versioned desktop ZIPs under `dist/downloads/`;
-* `dist/release.json`;
-* `dist/checksums.sha256`.
+- `dist/index.html` and about-page assets;
+- `dist/pwa/` with the PWA, service worker, manifest, icons, and static game assets;
+- `dist/pwa/THIRD_PARTY_NOTICES.txt`;
+- stable and versioned source ZIPs under `dist/downloads/`;
+- stable and versioned desktop ZIPs under `dist/downloads/`;
+- `dist/release.json`;
+- `dist/checksums.sha256`.
 
 Source ZIPs are generated with `git archive` from the exact commit recorded in `release.json`; they contain committed source, not arbitrary untracked workstation files.
 
@@ -599,20 +599,20 @@ Source ZIPs are generated with `git archive` from the exact commit recorded in `
 
 `npm.cmd test` exercises both application behavior and the release system itself. It includes:
 
-* PWA save/restore and corrupted-storage recovery;
-* PWA high-score/HMAC protocol behavior;
-* PWA build configuration and cache stamping;
-* release output planning and provenance;
-* symlink/junction and generated-path safety;
-* atomic write/copy failure handling;
-* release-lock concurrency, nested holders, stale/malformed-lock recovery, and stress tests;
-* journaled `dist/` crash recovery;
-* HMAC import/rotation/leak scanning;
-* preview relocation/path safety;
-* release failure and recovery scenarios;
-* HMAC finalization/exact-candidate promotion;
-* production smoke-test behavior against a mock server;
-* Java high-score protocol tests.
+- PWA save/restore and corrupted-storage recovery;
+- PWA high-score/HMAC protocol behavior;
+- PWA build configuration and cache stamping;
+- release output planning and provenance;
+- symlink/junction and generated-path safety;
+- atomic write/copy failure handling;
+- release-lock concurrency, nested holders, stale/malformed-lock recovery, and stress tests;
+- journaled `dist/` crash recovery;
+- HMAC import/rotation/leak scanning;
+- preview relocation/path safety;
+- release failure and recovery scenarios;
+- HMAC finalization/exact-candidate promotion;
+- production smoke-test behavior against a mock server;
+- Java high-score protocol tests.
 
 Also run these release qualification gates:
 
@@ -857,18 +857,18 @@ It should not. Deployment path is part of both browser-storage and service-worke
 
 ## Rules of Thumb for Contributors
 
-* Treat `dist/` as generated output, never source.
-* Prefer public npm commands over internal `_build:*` scripts.
-* Never copy `.release-secrets/` into any artifact or review archive.
-* Never put a real HMAC key into source, tests, documentation, shell scripts, or logs.
-* Do not bypass clean-tree checks for production builds.
-* Do not rebuild between staging acceptance and production deployment.
-* Do not add hard-coded deployment paths to static PWA/about assets.
-* Do not cache `/api/ms-pac-man-2010/` in the service worker.
-* Do not manually delete release journals/locks/candidates while a recovery workflow exists.
-* Keep browser and Java score-protocol behavior in parity.
-* Add adversarial tests when changing release-safety behavior.
-* Preserve the external-server boundary: this repository should not automate root/SSH server changes.
+- Treat `dist/` as generated output, never source.
+- Prefer public npm commands over internal `_build:*` scripts.
+- Never copy `.release-secrets/` into any artifact or review archive.
+- Never put a real HMAC key into source, tests, documentation, shell scripts, or logs.
+- Do not bypass clean-tree checks for production builds.
+- Do not rebuild between staging acceptance and production deployment.
+- Do not add hard-coded deployment paths to static PWA/about assets.
+- Do not cache `/api/ms-pac-man-2010/` in the service worker.
+- Do not manually delete release journals/locks/candidates while a recovery workflow exists.
+- Keep browser and Java score-protocol behavior in parity.
+- Add adversarial tests when changing release-safety behavior.
+- Preserve the external-server boundary: this repository should not automate root/SSH server changes.
 
 ## License
 

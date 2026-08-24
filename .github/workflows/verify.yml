@@ -1,0 +1,51 @@
+name: Verify
+
+on:
+    push:
+    pull_request:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: verify-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    verify:
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+        env:
+            MSPACMAN_HMAC_KEY_HEX: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set Up Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22.13.0
+                  cache: npm
+
+            - name: Set Up Java
+              uses: actions/setup-java@v4
+              with:
+                  distribution: temurin
+                  java-version: "21"
+
+            - name: Install Dependencies
+              run: npm ci --ignore-scripts
+
+            - name: Format
+              run: npm run format:check
+
+            - name: Lint
+              run: npm run lint
+
+            - name: Test
+              run: npm test
+
+            - name: Synthetic Release Build
+              run: node scripts/build-release.mjs --target=full --key-source=env
