@@ -2,7 +2,7 @@ import type { GameContainer } from "slick2d-ts";
 import { createBrowserStorageKeys } from "../../app/BrowserStorageKeys";
 import type { Main } from "../Main";
 import type { MsPacManGameStateSnapshot } from "./GameStateSnapshot";
-import { MsPacManGameStateSerializer } from "./MsPacManGameStateSerializer";
+import { isFutureMsPacManGameStateSnapshot, MsPacManGameStateSerializer } from "./MsPacManGameStateSerializer";
 
 export class MsPacManGameStateStore {
     private readonly serializer = new MsPacManGameStateSerializer();
@@ -35,7 +35,6 @@ export class MsPacManGameStateStore {
             return true;
         } catch (error) {
             console.warn("Unable to restore MS Pac-Man game state.", error);
-            this.clear();
             return false;
         }
     }
@@ -43,8 +42,8 @@ export class MsPacManGameStateStore {
     public hasValidSave(): boolean {
         try {
             return this.readSnapshot() !== null;
-        } catch {
-            this.clear();
+        } catch (error) {
+            console.warn("Unable to inspect MS Pac-Man game state.", error);
             return false;
         }
     }
@@ -61,8 +60,18 @@ export class MsPacManGameStateStore {
             return null;
         }
 
-        const snapshot = JSON.parse(text) as unknown;
+        let snapshot: unknown;
+        try {
+            snapshot = JSON.parse(text) as unknown;
+        } catch {
+            this.clear();
+            return null;
+        }
+
         if (!this.serializer.isSupportedSnapshot(snapshot)) {
+            if (isFutureMsPacManGameStateSnapshot(snapshot)) {
+                return null;
+            }
             this.clear();
             return null;
         }

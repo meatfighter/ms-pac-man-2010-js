@@ -446,6 +446,11 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
     return snapshot.submittedScore === null || isValidSubmittedScoreSnapshot(snapshot.submittedScore);
 }
 
+export function isFutureMsPacManGameStateSnapshot(value: unknown): boolean {
+    const snapshot = asRecord(value);
+    return snapshot !== null && typeof snapshot.version === "number" && Number.isInteger(snapshot.version) && snapshot.version > GAME_STATE_VERSION;
+}
+
 function isValidModeSnapshot(value: unknown): value is CurrentModeSnapshot {
     const snapshot = asRecord(value);
     if (!snapshot || !isModeId(snapshot.id)) {

@@ -7,7 +7,7 @@ import { RESOURCE_REFS } from "./resourceManifest";
 import { APP_VERSION, CACHE_BUST } from "./version";
 import type { Main as MsPacManMain } from "../mspacman/Main";
 import type { MsPacManGameStateStore } from "../mspacman/persistence/MsPacManGameStateStore";
-import { isValidMsPacManGameStateSnapshot } from "../mspacman/persistence/MsPacManGameStateSerializer";
+import { isFutureMsPacManGameStateSnapshot, isValidMsPacManGameStateSnapshot } from "../mspacman/persistence/MsPacManGameStateSerializer";
 
 type SlickRuntime = typeof import("slick2d-ts");
 type MainConstructor = typeof import("../mspacman/Main").Main;
@@ -473,21 +473,32 @@ function getLoadedGameStateStore(): MsPacManGameStateStore | null {
 }
 
 function hasPotentialSavedGameState(): boolean {
+    let text: string | null;
     try {
-        const text = localStorage.getItem(createBrowserStorageKeys().gameState);
-        if (text === null) {
-            return false;
-        }
-        const snapshot = JSON.parse(text) as unknown;
-        if (!isValidMsPacManGameStateSnapshot(snapshot)) {
-            clearStoredGameState();
-            return false;
-        }
-        return true;
+        text = localStorage.getItem(createBrowserStorageKeys().gameState);
+    } catch {
+        return false;
+    }
+    if (text === null) {
+        return false;
+    }
+
+    let snapshot: unknown;
+    try {
+        snapshot = JSON.parse(text) as unknown;
     } catch {
         clearStoredGameState();
         return false;
     }
+
+    if (isValidMsPacManGameStateSnapshot(snapshot)) {
+        return true;
+    }
+    if (isFutureMsPacManGameStateSnapshot(snapshot)) {
+        return false;
+    }
+    clearStoredGameState();
+    return false;
 }
 
 function clearStoredGameState(): void {

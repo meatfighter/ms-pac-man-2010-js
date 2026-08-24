@@ -180,13 +180,13 @@ const server = await createServer({
 });
 
 try {
-    const { MsPacManGameStateSerializer, isValidMsPacManGameStateSnapshot } = await server.ssrLoadModule(
+    const { MsPacManGameStateSerializer, isFutureMsPacManGameStateSnapshot, isValidMsPacManGameStateSnapshot } = await server.ssrLoadModule(
         "/src/mspacman/persistence/MsPacManGameStateSerializer.ts"
     );
     const { MsPacManGameStateStore } = await server.ssrLoadModule("/src/mspacman/persistence/MsPacManGameStateStore.ts");
     const { createBrowserStorageKeys } = await server.ssrLoadModule("/src/app/BrowserStorageKeys.ts");
 
-    await runTest("store clears corrupted local-storage snapshots", () => {
+    await runTest("store clears malformed and current-version invalid local-storage snapshots", () => {
         const storage = installMemoryLocalStorage();
         const store = new MsPacManGameStateStore(APP_VERSION);
         setTestLocation(STAGE_URL);
@@ -196,9 +196,21 @@ try {
         assert.equal(store.hasValidSave(), false);
         assert.equal(storage.getItem(storageKey), null);
 
-        storage.setItem(storageKey, JSON.stringify({ version: 999 }));
+        storage.setItem(storageKey, JSON.stringify({ version: 1 }));
         assert.equal(store.hasValidSave(), false);
         assert.equal(storage.getItem(storageKey), null);
+    });
+
+    await runTest("store preserves future-version local-storage snapshots", () => {
+        const storage = installMemoryLocalStorage();
+        const store = new MsPacManGameStateStore(APP_VERSION);
+        setTestLocation(STAGE_URL);
+        const storageKey = createBrowserStorageKeys().gameState;
+        const futureSnapshot = JSON.stringify({ version: 999 });
+
+        storage.setItem(storageKey, futureSnapshot);
+        assert.equal(store.hasValidSave(), false);
+        assert.equal(storage.getItem(storageKey), futureSnapshot);
     });
 
     await runTest("browser storage keys isolate save state by deployment path", () => {
@@ -261,10 +273,12 @@ try {
         const unsupportedVersion = clone(snapshot);
         unsupportedVersion.version = 999;
         assert.equal(serializer.isSupportedSnapshot(unsupportedVersion), false);
+        assert.equal(isFutureMsPacManGameStateSnapshot(unsupportedVersion), true);
 
         const missingMainField = clone(snapshot);
         delete missingMainField.mainFields.score;
         assert.equal(serializer.isSupportedSnapshot(missingMainField), false);
+        assert.equal(isFutureMsPacManGameStateSnapshot(missingMainField), false);
 
         const extraModeField = clone(snapshot);
         extraModeField.mode.fields.extra = 1;
@@ -309,6 +323,36 @@ try {
         assert.equal(target.stopAllSoundEffectsCalls >= 1, true);
         assert.equal(target.input.clearCalls > 0, true);
         assert.deepEqual(gc.musicOnValues, [true]);
+    });
+
+    await runTest("store preserves saved snapshot when restore throws", () => {
+        const storage = installMemoryLocalStorage();
+        const store = new MsPacManGameStateStore(APP_VERSION);
+        setTestLocation(STAGE_URL);
+        const storageKey = createBrowserStorageKeys().gameState;
+        const source = createFakeMain("attract", "source");
+        const target = createFakeMain("attract", "target");
+
+        assert.equal(store.save(source), true);
+        const savedSnapshot = storage.getItem(storageKey);
+        assert.notEqual(savedSnapshot, null);
+        target.getModeForStateRestore = () => {
+            throw new Error("Injected restore failure.");
+        };
+
+        const originalWarn = console.warn;
+        let warnCalls = 0;
+        console.warn = (...args) => {
+            warnCalls++;
+            assert.equal(String(args[0]).includes("Unable to restore MS Pac-Man game state."), true);
+        };
+        try {
+            assert.equal(store.restore(target, createGameContainer()), false);
+        } finally {
+            console.warn = originalWarn;
+        }
+        assert.equal(warnCalls, 1);
+        assert.equal(storage.getItem(storageKey), savedSnapshot);
     });
 
     await runTest("serializer restores playing mode fields and runtime bindings", () => {
