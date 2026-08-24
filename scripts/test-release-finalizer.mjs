@@ -89,6 +89,18 @@ try {
         assertOutputIncludes(result, "licenses/README.md");
     });
 
+    await runTest("candidate desktop launcher missing compatibility arg fails verification", () => {
+        const candidateDir = copyCandidate("missing-launcher-compat-arg");
+        mutateDesktopZip(candidateDir, (distributionDir) => {
+            const launcherPath = join(distributionDir, "run-linux.sh");
+            const launcherText = readFileSync(launcherPath, "utf8");
+            writeFileSync(launcherPath, launcherText.replaceAll("--sun-misc-unsafe-memory-access=allow", "--removed-unsafe-memory-access=allow"));
+        });
+        const result = verifyCandidate(candidateDir);
+        assert.notEqual(result.status, 0, "Candidate missing a desktop launcher compatibility arg should fail verification.");
+        assertOutputIncludes(result, "Desktop release launcher run-linux.sh must include --sun-misc-unsafe-memory-access=allow.");
+    });
+
     await runTest("candidate Java ZIP changed without checksum update fails verification", () => {
         const candidateDir = copyCandidate("checksum-mismatch");
         for (const zipPath of getDesktopZipPaths(candidateDir)) {

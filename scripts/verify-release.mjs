@@ -139,6 +139,7 @@ function verifyDesktopRelease() {
     verifyZipEntryMode(zipEntries, `${distributionName}/run-macos.sh`, 0o755);
     verifyZipEntryMode(zipEntries, `${distributionName}/run-windows.cmd`, 0o644);
     verifyZipEntryMode(zipEntries, `${distributionName}/run-windows.ps1`, 0o644);
+    verifyDesktopLauncherContents(desktopZip, zipEntries, distributionName);
     verifyZipEntryMode(zipEntries, `${distributionName}/README.md`, 0o644);
     for (const requiredEntry of [`${distributionName}/LICENSE`, `${distributionName}/THIRD_PARTY_NOTICES.md`, `${distributionName}/RUNTIME_DEPENDENCIES.md`]) {
         assert.ok(zipEntryNames.includes(requiredEntry), `Desktop release ZIP must contain ${requiredEntry}.`);
@@ -209,6 +210,22 @@ function verifyDesktopRelease() {
     );
     const runnableJar = readRequiredZipEntryData(desktopZip, zipEntries, `${distributionName}/${distributionName}.jar`);
     verifyJarReleasePropertiesFromBuffer(runnableJar, `${distributionName}/${distributionName}.jar`);
+}
+
+function verifyDesktopLauncherContents(desktopZip, zipEntries, distributionName) {
+    const commonCompatibilityArgs = ["--enable-native-access=ALL-UNNAMED", "--sun-misc-unsafe-memory-access=allow"];
+    for (const [launcherName, requiredArgs] of Object.entries({
+        "run-windows.cmd": commonCompatibilityArgs,
+        "run-windows.ps1": commonCompatibilityArgs,
+        "run-linux.sh": commonCompatibilityArgs,
+        "run-macos.sh": ["-XstartOnFirstThread", ...commonCompatibilityArgs]
+    })) {
+        const entryName = `${distributionName}/${launcherName}`;
+        const launcherText = readRequiredZipEntryData(desktopZip, zipEntries, entryName).toString("utf8");
+        for (const arg of requiredArgs) {
+            assert.ok(launcherText.includes(arg), `Desktop release launcher ${launcherName} must include ${arg}.`);
+        }
+    }
 }
 
 function verifyReleaseMetadata() {
