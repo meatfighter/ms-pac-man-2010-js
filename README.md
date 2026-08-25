@@ -90,19 +90,19 @@ The important distinction is that **building and deploying are separate operatio
 
 ### Source-of-truth quick reference
 
-| Concern | Source of truth | Generated/derived output |
-| --- | --- | --- |
-| Gameplay behavior | `pwa/src/mspacman/`, compared with Java under `desktop/src/` | bundled PWA JavaScript |
-| Browser shell/storage/bootstrap | `pwa/src/app/` | bundled PWA JavaScript |
-| Save/continue format | `pwa/src/mspacman/persistence/` | browser storage |
-| Static PWA/offline behavior | `pwa/public/`, `pwa/vite.config.ts` | generated `pwa/` release |
-| Public project page | `about/` plus `assets/` | root of assembled release |
-| Java desktop source | `desktop/src/` | `desktop/target/` and desktop ZIP |
-| Desktop runtime contract | `desktop/RUNTIME_DEPENDENCIES.md` plus packaged runtime material in the full repository | desktop ZIP |
-| Release version | `version.json` | release filenames and metadata |
-| High-score protocol | TypeScript/Java high-score code plus release HMAC configuration | signed score submissions |
-| Production release logic | `scripts/` | `dist/` |
-| Release integrity/provenance | release scripts + Git state | `dist/release.json`, `dist/checksums.sha256` |
+| Concern                         | Source of truth                                                                         | Generated/derived output                     |
+| ------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Gameplay behavior               | `pwa/src/mspacman/`, compared with Java under `desktop/src/`                            | bundled PWA JavaScript                       |
+| Browser shell/storage/bootstrap | `pwa/src/app/`                                                                          | bundled PWA JavaScript                       |
+| Save/continue format            | `pwa/src/mspacman/persistence/`                                                         | browser storage                              |
+| Static PWA/offline behavior     | `pwa/public/`, `pwa/vite.config.ts`                                                     | generated `pwa/` release                     |
+| Public project page             | `about/` plus `assets/`                                                                 | root of assembled release                    |
+| Java desktop source             | `desktop/src/`                                                                          | `desktop/target/` and desktop ZIP            |
+| Desktop runtime contract        | `desktop/RUNTIME_DEPENDENCIES.md` plus packaged runtime material in the full repository | desktop ZIP                                  |
+| Release version                 | `version.json`                                                                          | release filenames and metadata               |
+| High-score protocol             | TypeScript/Java high-score code plus release HMAC configuration                         | signed score submissions                     |
+| Production release logic        | `scripts/`                                                                              | `dist/`                                      |
+| Release integrity/provenance    | release scripts + Git state                                                             | `dist/release.json`, `dist/checksums.sha256` |
 
 If source and generated output disagree, fix the source and rebuild. Do not patch generated files to make a release appear correct.
 
@@ -185,37 +185,37 @@ Production release provenance depends on Git. Active-key and next-key release bu
 
 ### Source and configuration
 
-| Path | Purpose |
-| --- | --- |
-| `about/` | Source for the static public project/about page. |
-| `assets/` | Shared source assets used by generated public pages/icons. |
-| `pwa/` | TypeScript browser PWA. |
-| `pwa/src/app/` | Browser shell, bootstrap, storage scoping, resource inventory, styles, and version integration. |
-| `pwa/src/mspacman/` | Main TypeScript game port and high-score client code. |
-| `pwa/src/mspacman/persistence/` | Save-state snapshot, serialization, validation, and storage. |
-| `pwa/public/` | Manifest, service worker source, icons, stages/demos, and static PWA resources. |
-| `desktop/` | Preserved Java project, packaging metadata, launchers, licenses, and corresponding-source material. |
-| `scripts/` | Build, verification, HMAC, release, preview, smoke-test, recovery, and packaging tooling. |
-| `version.json` | Checked-in application version/build-stamp source. |
-| `package.json` | Root command surface and JavaScript dependencies. |
-| `package-lock.json` | Reproducible JavaScript dependency resolution. |
-| `THIRD_PARTY_NOTICES.md` | Root third-party notices. |
-| `LICENSE` | Project license. |
+| Path                            | Purpose                                                                                             |
+| ------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `about/`                        | Source for the static public project/about page.                                                    |
+| `assets/`                       | Shared source assets used by generated public pages/icons.                                          |
+| `pwa/`                          | TypeScript browser PWA.                                                                             |
+| `pwa/src/app/`                  | Browser shell, bootstrap, storage scoping, resource inventory, styles, and version integration.     |
+| `pwa/src/mspacman/`             | Main TypeScript game port and high-score client code.                                               |
+| `pwa/src/mspacman/persistence/` | Save-state snapshot, serialization, validation, and storage.                                        |
+| `pwa/public/`                   | Manifest, service worker source, icons, stages/demos, and static PWA resources.                     |
+| `desktop/`                      | Preserved Java project, packaging metadata, launchers, licenses, and corresponding-source material. |
+| `scripts/`                      | Build, verification, HMAC, release, preview, smoke-test, recovery, and packaging tooling.           |
+| `version.json`                  | Checked-in application version/build-stamp source.                                                  |
+| `package.json`                  | Root command surface and JavaScript dependencies.                                                   |
+| `package-lock.json`             | Reproducible JavaScript dependency resolution.                                                      |
+| `THIRD_PARTY_NOTICES.md`        | Root third-party notices.                                                                           |
+| `LICENSE`                       | Project license.                                                                                    |
 
 ### Generated and local state
 
-| Path | Purpose | Commit? |
-| --- | --- | --- |
-| `node_modules/` | Installed JavaScript dependencies. | No |
-| `desktop/target/` | Generated Java classes/JAR/ZIP/distribution staging. | No |
-| `dist/` | **Canonical verified production release.** | No |
-| `releases/` | Local staging for separately refreshed desktop release ZIPs. | No |
-| `.release-components/` | Noncanonical component and synthetic-test builds. | No |
-| `.release-candidates/` | Verified next-key release candidate during HMAC rotation. | No |
-| `.release-secrets/` | Local HMAC material, release lock state, and recovery state. | **Never** |
-| `.dist-pending-*` | Temporary full-release promotion state. | No |
-| `.dist-previous-*` | Temporary full-release rollback state. | No |
-| `.dist-active-before-hmac-finalize-*` | Temporary HMAC-finalization rollback state. | No |
+| Path                                  | Purpose                                                      | Commit?   |
+| ------------------------------------- | ------------------------------------------------------------ | --------- |
+| `node_modules/`                       | Installed JavaScript dependencies.                           | No        |
+| `desktop/target/`                     | Generated Java classes/JAR/ZIP/distribution staging.         | No        |
+| `dist/`                               | **Canonical verified production release.**                   | No        |
+| `releases/`                           | Local staging for separately refreshed desktop release ZIPs. | No        |
+| `.release-components/`                | Noncanonical component and synthetic-test builds.            | No        |
+| `.release-candidates/`                | Verified next-key release candidate during HMAC rotation.    | No        |
+| `.release-secrets/`                   | Local HMAC material, release lock state, and recovery state. | **Never** |
+| `.dist-pending-*`                     | Temporary full-release promotion state.                      | No        |
+| `.dist-previous-*`                    | Temporary full-release rollback state.                       | No        |
+| `.dist-active-before-hmac-finalize-*` | Temporary HMAC-finalization rollback state.                  | No        |
 
 Do not include generated/local release state in source-review archives. In particular, keep `dist/`, `.release-components/`, `.release-candidates/`, `.release-secrets/`, and `desktop/target/` out of review/source-export ZIPs.
 
@@ -297,14 +297,14 @@ The root scripts form a release system, not a miscellaneous utility folder.
 
 They are divided by responsibility:
 
-| Area | Representative scripts | Responsibility |
-| --- | --- | --- |
-| Build orchestration | `build-release.mjs`, `release-output-plan.mjs`, `build-*-unsigned.mjs`, `build-utils.mjs` | Select artifact type, key source, legal output location, and child build environment. |
-| Artifact creation | `assemble.mjs`, `build-about.mjs`, `build-desktop.mjs`, `generate-icons.mjs`, `write-release-metadata.mjs`, `write-release-checksums.mjs`, `write-source-archive.mjs` | Create release files. |
-| Verification | `verify-pwa-build.mjs`, `verify-release.mjs` | Verify PWA output, release structure, metadata, hashes, source archives, desktop package, deployment assumptions, and HMAC provenance. |
-| Filesystem/release safety | `release-io.mjs`, `release-lock.mjs`, `release-dist-promotion.mjs` | Link-safe walking, atomic writes/copies, release locking, and crash-safe promotion. |
-| HMAC lifecycle | `hmac-config.mjs`, `hmac-cli.mjs`, `release-provision.mjs`, `release-rotate-hmac.mjs`, `release-finalize-hmac.mjs` | Manage active/next key state and exact-candidate promotion. |
-| Preview/smoke testing | `preview-release.mjs`, `smoke-production-api.mjs`, `test-*.mjs` | Test relocation, application behavior, protocol parity, adversarial release cases, and production API coordination. |
+| Area                      | Representative scripts                                                                                                                                                | Responsibility                                                                                                                         |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Build orchestration       | `build-release.mjs`, `release-output-plan.mjs`, `build-*-unsigned.mjs`, `build-utils.mjs`                                                                             | Select artifact type, key source, legal output location, and child build environment.                                                  |
+| Artifact creation         | `assemble.mjs`, `build-about.mjs`, `build-desktop.mjs`, `generate-icons.mjs`, `write-release-metadata.mjs`, `write-release-checksums.mjs`, `write-source-archive.mjs` | Create release files.                                                                                                                  |
+| Verification              | `verify-pwa-build.mjs`, `verify-release.mjs`                                                                                                                          | Verify PWA output, release structure, metadata, hashes, source archives, desktop package, deployment assumptions, and HMAC provenance. |
+| Filesystem/release safety | `release-io.mjs`, `release-lock.mjs`, `release-dist-promotion.mjs`                                                                                                    | Link-safe walking, atomic writes/copies, release locking, and crash-safe promotion.                                                    |
+| HMAC lifecycle            | `hmac-config.mjs`, `hmac-cli.mjs`, `release-provision.mjs`, `release-rotate-hmac.mjs`, `release-finalize-hmac.mjs`                                                    | Manage active/next key state and exact-candidate promotion.                                                                            |
+| Preview/smoke testing     | `preview-release.mjs`, `smoke-production-api.mjs`, `test-*.mjs`                                                                                                       | Test relocation, application behavior, protocol parity, adversarial release cases, and production API coordination.                    |
 
 When changing release tooling, add a regression test for the failure mode being fixed. Much of this code exists specifically to cover failure modes that ordinary happy-path builds do not exercise.
 
@@ -512,16 +512,16 @@ npm run hmac:check
 
 ### HMAC command reference
 
-| Command | Purpose |
-| --- | --- |
-| `npm run hmac:init` | Create a new local active key. |
-| `npm run hmac:import` | Import an existing production key through a hidden prompt. |
-| `npm run hmac:check` | Validate key state, scan for leaks, and print fingerprints. |
-| `npm run hmac:show` | Print the active key for deliberate server provisioning. |
-| `npm run hmac:rotate:prepare` | Stage a next key. |
-| `npm run hmac:rotate:check` | Validate active + next rotation state. |
-| `npm run hmac:rotate:show-next` | Print the next key for deliberate server cutover. |
-| `npm run hmac:rotate:abort` | Remove staged next-key state when it is safe to abort. |
+| Command                         | Purpose                                                     |
+| ------------------------------- | ----------------------------------------------------------- |
+| `npm run hmac:init`             | Create a new local active key.                              |
+| `npm run hmac:import`           | Import an existing production key through a hidden prompt.  |
+| `npm run hmac:check`            | Validate key state, scan for leaks, and print fingerprints. |
+| `npm run hmac:show`             | Print the active key for deliberate server provisioning.    |
+| `npm run hmac:rotate:prepare`   | Stage a next key.                                           |
+| `npm run hmac:rotate:check`     | Validate active + next rotation state.                      |
+| `npm run hmac:rotate:show-next` | Print the next key for deliberate server cutover.           |
+| `npm run hmac:rotate:abort`     | Remove staged next-key state when it is safe to abort.      |
 
 A normal active-key production build refuses to run while a next key is staged. Finish/finalize or safely abort the rotation instead of bypassing the guard.
 
@@ -629,19 +629,19 @@ This is the command to use when the goal is **“create exactly what will be dep
 
 ### Build-command quick reference
 
-| Goal | Command | Output | HMAC source |
-| --- | --- | --- | --- |
-| Develop browser game | `npm run dev` | Vite dev server | none embedded |
-| Inspect unsigned PWA | `npm run build:pwa:unsigned` | `.release-components/pwa-unsigned/` | unsigned |
-| Inspect release PWA | `npm run build:pwa:release` | `.release-components/pwa/` | active |
-| Inspect unsigned web bundle | `npm run build:web:unsigned` | `.release-components/web-unsigned/` | unsigned |
-| Inspect release web bundle | `npm run build:web:release` | `.release-components/web/` | active |
-| Build unsigned desktop | `npm run build:desktop` | `desktop/target/` | unsigned |
-| Build release desktop | `npm run build:desktop:release` | `desktop/target/` | active |
-| Stage standalone desktop ZIP | `npm run release:desktop` | `releases/` | active |
-| **Build canonical production release** | **`npm run build`** | **`dist/`** | **active** |
-| Provision a new deployment | `npm run release:provision` | `dist/` | new active |
-| Prepare HMAC rotation | `npm run release:rotate-hmac` | `.release-candidates/hmac-next/` | next |
+| Goal                                   | Command                         | Output                              | HMAC source   |
+| -------------------------------------- | ------------------------------- | ----------------------------------- | ------------- |
+| Develop browser game                   | `npm run dev`                   | Vite dev server                     | none embedded |
+| Inspect unsigned PWA                   | `npm run build:pwa:unsigned`    | `.release-components/pwa-unsigned/` | unsigned      |
+| Inspect release PWA                    | `npm run build:pwa:release`     | `.release-components/pwa/`          | active        |
+| Inspect unsigned web bundle            | `npm run build:web:unsigned`    | `.release-components/web-unsigned/` | unsigned      |
+| Inspect release web bundle             | `npm run build:web:release`     | `.release-components/web/`          | active        |
+| Build unsigned desktop                 | `npm run build:desktop`         | `desktop/target/`                   | unsigned      |
+| Build release desktop                  | `npm run build:desktop:release` | `desktop/target/`                   | active        |
+| Stage standalone desktop ZIP           | `npm run release:desktop`       | `releases/`                         | active        |
+| **Build canonical production release** | **`npm run build`**             | **`dist/`**                         | **active**    |
+| Provision a new deployment             | `npm run release:provision`     | `dist/`                             | new active    |
+| Prepare HMAC rotation                  | `npm run release:rotate-hmac`   | `.release-candidates/hmac-next/`    | next          |
 
 Internal `_build:*` commands are implementation details. Use them directly only when working on release tooling itself.
 
@@ -1064,59 +1064,59 @@ Then launch the **generated ZIP** on every platform/JVM combination you intend t
 
 ## Useful Commands
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start local PWA development server. |
-| `npm run clean` | Remove/recreate managed canonical build output as defined by the clean script. |
-| `npm test` | Run application/release-system tests. |
-| `npm run format` | Apply Prettier. |
-| `npm run format:check` | Check formatting. |
-| `npm run lint` | Run ESLint. |
-| `npm run build:pwa:unsigned` | Build unsigned PWA component. |
-| `npm run build:pwa:release` | Build active-key PWA component. |
-| `npm run build:web:unsigned` | Build unsigned about + PWA component. |
-| `npm run build:web:release` | Build active-key about + PWA component. |
-| `npm run build:desktop` | Build unsigned desktop output. |
-| `npm run build:desktop:release` | Build active-key desktop output. |
-| `npm run release:desktop` | Stage a verified standalone desktop release ZIP. |
-| `npm run run:desktop` | Run the desktop Java build. |
-| `npm run build` | Build/verify/promote canonical production release to `dist/`. |
-| `npm run verify:pwa-build` | Verify generated PWA release output. |
-| `npm run verify:release` | Verify canonical release output with active-key provenance. |
-| `npm run preview:release -- --base=/test-location/` | Serve existing `dist/` under another base path without rebuilding it. |
-| `npm run hmac:check` | Validate local HMAC state and print fingerprints. |
-| `npm run smoke:production-api -- --confirm-production` | Verify release/server HMAC coordination using a duplicate production score. |
-| `npm run release:rotate-hmac` | Build verified next-key rotation candidate. |
-| `npm run release:finalize-hmac` | Promote exact tested rotation candidate and finalize local key state. |
+| Command                                                | Purpose                                                                        |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `npm run dev`                                          | Start local PWA development server.                                            |
+| `npm run clean`                                        | Remove/recreate managed canonical build output as defined by the clean script. |
+| `npm test`                                             | Run application/release-system tests.                                          |
+| `npm run format`                                       | Apply Prettier.                                                                |
+| `npm run format:check`                                 | Check formatting.                                                              |
+| `npm run lint`                                         | Run ESLint.                                                                    |
+| `npm run build:pwa:unsigned`                           | Build unsigned PWA component.                                                  |
+| `npm run build:pwa:release`                            | Build active-key PWA component.                                                |
+| `npm run build:web:unsigned`                           | Build unsigned about + PWA component.                                          |
+| `npm run build:web:release`                            | Build active-key about + PWA component.                                        |
+| `npm run build:desktop`                                | Build unsigned desktop output.                                                 |
+| `npm run build:desktop:release`                        | Build active-key desktop output.                                               |
+| `npm run release:desktop`                              | Stage a verified standalone desktop release ZIP.                               |
+| `npm run run:desktop`                                  | Run the desktop Java build.                                                    |
+| `npm run build`                                        | Build/verify/promote canonical production release to `dist/`.                  |
+| `npm run verify:pwa-build`                             | Verify generated PWA release output.                                           |
+| `npm run verify:release`                               | Verify canonical release output with active-key provenance.                    |
+| `npm run preview:release -- --base=/test-location/`    | Serve existing `dist/` under another base path without rebuilding it.          |
+| `npm run hmac:check`                                   | Validate local HMAC state and print fingerprints.                              |
+| `npm run smoke:production-api -- --confirm-production` | Verify release/server HMAC coordination using a duplicate production score.    |
+| `npm run release:rotate-hmac`                          | Build verified next-key rotation candidate.                                    |
+| `npm run release:finalize-hmac`                        | Promote exact tested rotation candidate and finalize local key state.          |
 
 ---
 
 ## Where Do I Make This Change?
 
-| Goal | Start here |
-| --- | --- |
-| Game mechanics/modes/entities | `pwa/src/mspacman/`, compare Java under `desktop/src/` |
-| Browser startup/shell | `pwa/src/app/main.ts` |
-| Browser persistent-key scoping | `pwa/src/app/BrowserStorageKeys.ts` |
-| Browser resource inventory | `pwa/src/app/resourceManifest.ts` |
-| Save/continue serialization | `pwa/src/mspacman/persistence/` |
-| Browser high-score protocol/service | `pwa/src/mspacman/HighScoreProtocol.ts`, `HighScoreService.ts` |
-| Static service-worker/PWA resources | `pwa/public/`, `pwa/vite.config.ts` |
-| Public project/about page | `about/`, `assets/`, `scripts/build-about.mjs` |
-| Java behavior | `desktop/src/` |
-| Desktop runtime dependencies | `desktop/RUNTIME_DEPENDENCIES.md` and full-repo runtime material |
-| Desktop packaging | `scripts/build-desktop.mjs` |
-| Full release orchestration | `scripts/build-release.mjs` |
-| Release output policy | `scripts/release-output-plan.mjs` |
-| Release verification | `scripts/verify-release.mjs` |
-| HMAC state | `scripts/hmac-config.mjs`, `scripts/hmac-cli.mjs` |
-| Release lock | `scripts/release-lock.mjs` |
-| Atomic full-release promotion | `scripts/release-dist-promotion.mjs` |
-| HMAC rotation/finalization | `scripts/release-rotate-hmac.mjs`, `scripts/release-finalize-hmac.mjs` |
-| Production API smoke test | `scripts/smoke-production-api.mjs` |
-| Source archives | `scripts/write-source-archive.mjs` |
-| Release metadata/checksums | `scripts/write-release-metadata.mjs`, `scripts/write-release-checksums.mjs` |
-| Third-party notices | root/PWA notices plus desktop license/source material |
+| Goal                                | Start here                                                                  |
+| ----------------------------------- | --------------------------------------------------------------------------- |
+| Game mechanics/modes/entities       | `pwa/src/mspacman/`, compare Java under `desktop/src/`                      |
+| Browser startup/shell               | `pwa/src/app/main.ts`                                                       |
+| Browser persistent-key scoping      | `pwa/src/app/BrowserStorageKeys.ts`                                         |
+| Browser resource inventory          | `pwa/src/app/resourceManifest.ts`                                           |
+| Save/continue serialization         | `pwa/src/mspacman/persistence/`                                             |
+| Browser high-score protocol/service | `pwa/src/mspacman/HighScoreProtocol.ts`, `HighScoreService.ts`              |
+| Static service-worker/PWA resources | `pwa/public/`, `pwa/vite.config.ts`                                         |
+| Public project/about page           | `about/`, `assets/`, `scripts/build-about.mjs`                              |
+| Java behavior                       | `desktop/src/`                                                              |
+| Desktop runtime dependencies        | `desktop/RUNTIME_DEPENDENCIES.md` and full-repo runtime material            |
+| Desktop packaging                   | `scripts/build-desktop.mjs`                                                 |
+| Full release orchestration          | `scripts/build-release.mjs`                                                 |
+| Release output policy               | `scripts/release-output-plan.mjs`                                           |
+| Release verification                | `scripts/verify-release.mjs`                                                |
+| HMAC state                          | `scripts/hmac-config.mjs`, `scripts/hmac-cli.mjs`                           |
+| Release lock                        | `scripts/release-lock.mjs`                                                  |
+| Atomic full-release promotion       | `scripts/release-dist-promotion.mjs`                                        |
+| HMAC rotation/finalization          | `scripts/release-rotate-hmac.mjs`, `scripts/release-finalize-hmac.mjs`      |
+| Production API smoke test           | `scripts/smoke-production-api.mjs`                                          |
+| Source archives                     | `scripts/write-source-archive.mjs`                                          |
+| Release metadata/checksums          | `scripts/write-release-metadata.mjs`, `scripts/write-release-checksums.mjs` |
+| Third-party notices                 | root/PWA notices plus desktop license/source material                       |
 
 ---
 

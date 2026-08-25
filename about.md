@@ -10,18 +10,18 @@ Press the **Play** button below to launch the desktop browser version of _Ms. Pa
 
 ## Controls
 
-*Ms. Pac-Man 2010* supports both keyboard and gamepad input. The controls are:
+_Ms. Pac-Man 2010_ supports both keyboard and gamepad input. The controls are:
 
-| Action            | Keyboard                           | Gamepad                    |
-| ----------------- | ---------------------------------- | -------------------------- |
-| Up                | Up Arrow, W, I, 8, Numpad 8        | D-pad Up                   |
-| Down              | Down Arrow, S, K, 2, Numpad 2      | D-pad Down                 |
-| Left              | Left Arrow, A, J, 4, Numpad 4      | D-pad Left                 |
-| Right             | Right Arrow, D, L, 6, Numpad 6     | D-pad Right                |
-| Start             | Enter                              | Any                        |
-| Pause             | Enter, P                           | Any                        |
-| Toggle fullscreen | Space                              | —                          |
-| Exit fullscreen   | Esc                                | —                          |
+| Action            | Keyboard                       | Gamepad     |
+| ----------------- | ------------------------------ | ----------- |
+| Up                | Up Arrow, W, I, 8, Numpad 8    | D-pad Up    |
+| Down              | Down Arrow, S, K, 2, Numpad 2  | D-pad Down  |
+| Left              | Left Arrow, A, J, 4, Numpad 4  | D-pad Left  |
+| Right             | Right Arrow, D, L, 6, Numpad 6 | D-pad Right |
+| Start             | Enter                          | Any         |
+| Pause             | Enter, P                       | Any         |
+| Toggle fullscreen | Space                          | —           |
+| Exit fullscreen   | Esc                            | —           |
 
 ## Browser Menu
 
@@ -65,7 +65,6 @@ The Java desktop version is available as an executable JAR file **[here]**. Run 
 
 java -jar ...TODO...
 
-
 ## Acknowledgements
 
 The original _Pac-Man_ was designed by Toru Iwatani and developed by Namco. _Ms. Pac-Man_ was developed by the General Computer Corporation and Midway.
@@ -77,5 +76,3 @@ The music and sound effects in _Ms. Pac-Man 2010_ come from the arcade versions 
 This project is an unofficial fan-made tribute to the original games. It is not affiliated with, sponsored by, or endorsed by Bandai Namco Entertainment, Midway, Nintendo, or Capcom. The original games, graphics, music, sound effects, characters, and other content remain the property of their respective rights holders.
 
 I provide _Ms. Pac-Man 2010_ free of charge. It contains no advertising and generates no revenue.
-
-
