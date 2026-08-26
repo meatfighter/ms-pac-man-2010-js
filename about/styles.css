@@ -136,7 +136,7 @@ button {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
-    padding: 2.93rem 0 1.1rem;
+    padding: 2.72rem 0 1.1rem;
 }
 
 .site-title {
@@ -628,7 +628,7 @@ button {
     }
 
     .site-header__inner {
-        padding-top: 2.85rem;
+        padding-top: 2.72rem;
     }
 
     .article {
