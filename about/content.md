@@ -35,7 +35,7 @@ _Ms. Pac-Man 2010_ automatically pauses when the browser loses focus and resumes
 
 # History
 
-I created _Ms. Pac-Man 2010_ in 2010, hence the name, as a Java game using the [Slick2D](https://slick.ninjacave.com/wiki/index.php?title=Getting_Started) and [JInput](https://jinput.github.io/jinput/) libraries. I studied the original arcade game in the [MAME](https://www.mamedev.org/) multi-purpose emulator and recreated its mazes and mechanics through observation.
+I created _Ms. Pac-Man 2010_ in 2010, hence the name, as a Java game using the [Slick2D](https://github.com/nguillaumin/slick2d-maven) and [JInput](https://jinput.github.io/jinput/) libraries. I studied the original arcade game in the [MAME](https://www.mamedev.org/) multi-purpose emulator and recreated its mazes and mechanics through observation.
 
 I released _Ms. Pac-Man 2010_ as a Java applet that ran in a web page and as a downloadable desktop version. As technology evolved, both options became increasingly impractical. Browsers abandoned Java applets, while the desktop version required players to download and run an executable and install Java, something many people understandably avoided because of the hassle and security concerns. The game also relied on platform-specific native libraries that modern operating systems no longer support.
 

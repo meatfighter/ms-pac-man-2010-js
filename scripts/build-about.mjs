@@ -40,9 +40,9 @@ const replacements = {
     __TITLE_IMAGE_HEIGHT__: titleImageHeight,
     __TITLE_IMAGE_SIZES__: titleImageSizes,
     __TITLE_IMAGE_WIDTH__: titleImageWidth,
-    __TITLE_PNG_SRC__: `assets/title-900.png?v=${encodedBuildStamp}`,
-    __TITLE_PNG_SRCSET__: `assets/title-900.png?v=${encodedBuildStamp} 900w, assets/title-1800.png?v=${encodedBuildStamp} 1800w`,
-    __TITLE_WEBP_SRCSET__: `assets/title-900.webp?v=${encodedBuildStamp} 900w, assets/title-1800.webp?v=${encodedBuildStamp} 1800w`
+    __TITLE_PNG_SRC__: `assets/title-750.png?v=${encodedBuildStamp}`,
+    __TITLE_PNG_SRCSET__: `assets/title-750.png?v=${encodedBuildStamp} 750w, assets/title-1500.png?v=${encodedBuildStamp} 1500w`,
+    __TITLE_WEBP_SRCSET__: `assets/title-750.webp?v=${encodedBuildStamp} 750w, assets/title-1500.webp?v=${encodedBuildStamp} 1500w`
 };
 
 function assertNoUnresolvedTokens(content, label) {

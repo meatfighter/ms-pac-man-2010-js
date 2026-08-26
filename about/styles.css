@@ -16,7 +16,7 @@
 
 :root {
     color-scheme: light;
-    --bg: #fff9fd;
+    --bg: #f7f8fa;
     --surface: #ffffff;
     --surface-soft: #fff0fa;
     --text: #171114;
@@ -31,13 +31,13 @@
     --switch-track: #f2ddea;
     --switch-track-checked: #fd47b9;
     --switch-border: #bd7ca6;
-    --switch-knob: #ffffff;
+    --switch-knob: var(--pac-yellow);
     --switch-knob-border: #a66890;
     --pac-yellow: #ffea02;
     --pac-pink: #fd47b9;
-    --play-button-bg: var(--pac-yellow);
-    --play-button-text: #000000;
-    --measure: 900px;
+    --play-button-bg: var(--pac-pink);
+    --play-button-text: var(--bg);
+    --measure: 750px;
     --font-body: "Source Sans 3", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
     --font-ui: var(--font-body);
     --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
@@ -48,7 +48,7 @@
 
 html[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #000000;
+    --bg: #111419;
     --surface: #101010;
     --surface-soft: #171017;
     --text: #ffffff;
@@ -63,10 +63,10 @@ html[data-theme="dark"] {
     --switch-track: #2a2a2a;
     --switch-track-checked: var(--pac-pink);
     --switch-border: #575757;
-    --switch-knob: #ffffff;
+    --switch-knob: var(--pac-yellow);
     --switch-knob-border: #a0a0a0;
     --play-button-bg: var(--pac-yellow);
-    --play-button-text: #000000;
+    --play-button-text: var(--bg);
 }
 
 * {
@@ -136,7 +136,7 @@ button {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
-    padding: 1rem 0 1.1rem;
+    padding: 2.93rem 0 1.1rem;
 }
 
 .site-title {
@@ -628,7 +628,7 @@ button {
     }
 
     .site-header__inner {
-        padding-top: 0.85rem;
+        padding-top: 2.85rem;
     }
 
     .article {

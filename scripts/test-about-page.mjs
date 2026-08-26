@@ -79,10 +79,14 @@ await runTest("about page shell carries SEO, theme, footer, and generated-conten
     assert.match(indexTemplate, /<script src=".\/theme\.js\?v=__BUILD_STAMP_ENCODED__"><\/script>/);
     assert.match(styles, /SourceSans3VF-Upright\.ttf\.woff2\?v=__BUILD_STAMP_ENCODED__/);
     assert.match(styles, /SourceSans3VF-Italic\.ttf\.woff2\?v=__BUILD_STAMP_ENCODED__/);
-    assert.match(styles, /--bg: #000000;/);
+    assert.match(styles, /--bg: #f7f8fa;/);
+    assert.match(styles, /--bg: #111419;/);
     assert.match(styles, /--link: #fd47b9;/);
+    assert.match(styles, /--measure: 750px;/);
+    assert.match(styles, /--switch-knob: var\(--pac-yellow\);/);
+    assert.match(styles, /--play-button-bg: var\(--pac-pink\);/);
     assert.match(styles, /--play-button-bg: var\(--pac-yellow\);/);
-    assert.match(styles, /--play-button-text: #000000;/);
+    assert.match(styles, /--play-button-text: var\(--bg\);/);
     assert.match(styles, /\.toc \{\s+margin: 0 0 2rem;/);
     assert.match(styles, /\.toc li:not\(:last-child\)::after \{\s+color: var\(--muted\);\s+content: " \| ";/);
     assert.doesNotMatch(styles, /\.toc \.toc-level-2 a\s*\{/);
@@ -118,15 +122,15 @@ await runTest("about responsive title images are generated with expected dimensi
     try {
         await generateAboutImageAssets(join(aboutDir, "assets"), temporaryOutputDir);
 
-        assert.equal(titleImageWidth, 900);
-        assert.equal(titleImageHeight, 325);
-        assert.equal(titleImageSizes, "min(900px, calc(100vw - 2rem))");
+        assert.equal(titleImageWidth, 750);
+        assert.equal(titleImageHeight, 271);
+        assert.equal(titleImageSizes, "min(750px, calc(100vw - 2rem))");
 
         const expectedDimensions = new Map([
-            ["title-900.png", { width: 900, height: 325 }],
-            ["title-1800.png", { width: 1800, height: 650 }],
-            ["title-900.webp", { width: 900, height: 325 }],
-            ["title-1800.webp", { width: 1800, height: 650 }]
+            ["title-750.png", { width: 750, height: 271 }],
+            ["title-1500.png", { width: 1500, height: 541 }],
+            ["title-750.webp", { width: 750, height: 271 }],
+            ["title-1500.webp", { width: 1500, height: 541 }]
         ]);
 
         for (const [fileName, expected] of expectedDimensions) {

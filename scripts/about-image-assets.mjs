@@ -3,13 +3,13 @@ import { join } from "node:path";
 import sharp from "sharp";
 import { ensureDirectory } from "./build-utils.mjs";
 
-export const titleImageWidth = 900;
-export const titleImageHeight = 325;
-export const titleImageSizes = "min(900px, calc(100vw - 2rem))";
+export const titleImageWidth = 750;
+export const titleImageHeight = 271;
+export const titleImageSizes = "min(750px, calc(100vw - 2rem))";
 
 const titleVariants = [
-    { name: "title-900", width: 900 },
-    { name: "title-1800", width: 1800 }
+    { name: "title-750", width: 750 },
+    { name: "title-1500", width: 1500 }
 ];
 
 async function renderTitleVariant(sourcePath, targetPath, width, format) {

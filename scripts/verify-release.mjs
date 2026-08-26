@@ -137,17 +137,17 @@ function verifyAboutRelease() {
     );
     assert.ok(aboutIndex.includes('<a class="heading-link" href="#controls">Controls</a>'), "About page must render Markdown headings with anchors.");
     assert.ok(aboutIndex.includes('<a class="play-button" href="pwa/?v='), "About page must render the Markdown Play link as the themed button.");
-    assert.ok(aboutIndex.includes("assets/title-900.webp"), "About page must use generated responsive title WebP assets.");
-    assert.ok(aboutIndex.includes("assets/title-900.png"), "About page must use generated responsive title PNG assets.");
+    assert.ok(aboutIndex.includes("assets/title-750.webp"), "About page must use generated responsive title WebP assets.");
+    assert.ok(aboutIndex.includes("assets/title-750.png"), "About page must use generated responsive title PNG assets.");
     assert.equal(/__[A-Z][A-Z0-9_]*__/.test(aboutIndex), false, "About page must not contain unresolved template tokens.");
     assert.equal(/\*\*\[here\]\*\*|\bTODO\b|executable JAR/i.test(aboutIndex), false, "About page must not contain old placeholder content.");
     for (const requiredAsset of [
         "theme.js",
         "styles.css",
-        "assets/title-900.png",
-        "assets/title-1800.png",
-        "assets/title-900.webp",
-        "assets/title-1800.webp",
+        "assets/title-750.png",
+        "assets/title-1500.png",
+        "assets/title-750.webp",
+        "assets/title-1500.webp",
         "assets/title.png",
         "assets/ms-pac-man-2010-screenshot.png",
         "assets/fonts/source-sans-3/SourceSans3VF-Upright.ttf.woff2",
