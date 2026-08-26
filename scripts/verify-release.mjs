@@ -113,11 +113,49 @@ function verifyPwaRelease() {
 
 function verifyAboutRelease() {
     const aboutIndex = readFileSync(join(distDir, "index.html"), "utf8");
+    const encodedBuildStamp = encodeURIComponent(version.buildStamp);
     assert.ok(aboutIndex.includes(`pwa/?v=${encodeURIComponent(cacheIdentity)}`), "About page Play link must use the selected release cache identity.");
+    assert.ok(aboutIndex.includes(`downloads/ms-pac-man-2010-js-source.zip?v=${encodedBuildStamp}`), "About page must link to the generated source archive.");
+    assert.ok(aboutIndex.includes(`downloads/ms-pac-man-2010-desktop.zip?v=${encodedBuildStamp}`), "About page must link to the desktop ZIP.");
+    assert.ok(aboutIndex.includes('download="ms-pac-man-2010-desktop.zip"'), "About page desktop ZIP link must use a download attribute.");
+    assert.ok(aboutIndex.includes('download="ms-pac-man-2010-js-source.zip"'), "About page source ZIP link must use a download attribute.");
+    assert.ok(aboutIndex.includes('<link rel="canonical" href="https://meatfighter.com/ms-pac-man-2010/" />'), "About page must include canonical metadata.");
     assert.ok(
-        aboutIndex.includes(`downloads/ms-pac-man-2010-js-source.zip?v=${encodeURIComponent(version.buildStamp)}`),
-        "About page must link to the generated source archive."
+        aboutIndex.includes('<meta property="og:image" content="https://meatfighter.com/ms-pac-man-2010/assets/ms-pac-man-2010-screenshot.png" />'),
+        "About page must include social preview image metadata."
     );
+    assert.ok(aboutIndex.includes('<nav class="toc" aria-labelledby="toc-heading">'), "About page must include the generated top contents index.");
+    assert.ok(
+        aboutIndex.includes('<li class="toc-level-1"><a href="#browser-menu">Browser Menu</a></li>'),
+        "About page contents index must link to Markdown headings."
+    );
+    assert.ok(aboutIndex.includes('<article class="article" aria-label="About Ms. Pac-Man 2010">'), "About page must include generated article content.");
+    assert.ok(
+        aboutIndex.indexOf('<nav class="toc" aria-labelledby="toc-heading">') <
+            aboutIndex.indexOf('<article class="article" aria-label="About Ms. Pac-Man 2010">'),
+        "About page contents index must appear before the generated article body."
+    );
+    assert.ok(aboutIndex.includes('<a class="heading-link" href="#controls">Controls</a>'), "About page must render Markdown headings with anchors.");
+    assert.ok(aboutIndex.includes('<a class="play-button" href="pwa/?v='), "About page must render the Markdown Play link as the themed button.");
+    assert.ok(aboutIndex.includes("assets/title-900.webp"), "About page must use generated responsive title WebP assets.");
+    assert.ok(aboutIndex.includes("assets/title-900.png"), "About page must use generated responsive title PNG assets.");
+    assert.equal(/__[A-Z][A-Z0-9_]*__/.test(aboutIndex), false, "About page must not contain unresolved template tokens.");
+    assert.equal(/\*\*\[here\]\*\*|\bTODO\b|executable JAR/i.test(aboutIndex), false, "About page must not contain old placeholder content.");
+    for (const requiredAsset of [
+        "theme.js",
+        "styles.css",
+        "assets/title-900.png",
+        "assets/title-1800.png",
+        "assets/title-900.webp",
+        "assets/title-1800.webp",
+        "assets/title.png",
+        "assets/ms-pac-man-2010-screenshot.png",
+        "assets/fonts/source-sans-3/SourceSans3VF-Upright.ttf.woff2",
+        "assets/fonts/source-sans-3/SourceSans3VF-Italic.ttf.woff2",
+        "assets/fonts/source-sans-3/LICENSE.md"
+    ]) {
+        assert.ok(existsSync(join(distDir, requiredAsset)), `About release must include ${requiredAsset}.`);
+    }
 }
 
 function verifyDesktopRelease() {
@@ -345,12 +383,14 @@ function verifyGeneratedRuntimeDoesNotContainHardcodedDeploymentRoots(root) {
         return;
     }
     for (const path of listFiles(root)) {
+        const relativePath = relative(root, path).replaceAll("\\", "/");
         if (!shouldScanRuntimeTextFile(path)) {
             continue;
         }
         const content = readFileSync(path, "utf8").replaceAll("/api/ms-pac-man-2010/", "");
+        const scannedContent = root === distDir && relativePath === "index.html" ? content.replaceAll("https://meatfighter.com/ms-pac-man-2010/", "") : content;
         for (const { label, pattern } of forbiddenDeploymentRootPatterns) {
-            const match = pattern.exec(content);
+            const match = pattern.exec(scannedContent);
             assert.equal(match, null, `Generated runtime file contains hard-coded deployment root ${label}: ${relative(rootDir, path)}`);
         }
     }

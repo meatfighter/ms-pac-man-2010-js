@@ -9,6 +9,16 @@ export default tseslint.config(
     js.configs.recommended,
     ...tseslint.configs.recommended,
     {
+        files: ["about/theme.js"],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: "script",
+            globals: {
+                ...globals.browser
+            }
+        }
+    },
+    {
         files: ["pwa/src/**/*.ts"],
         languageOptions: {
             ecmaVersion: 2022,
