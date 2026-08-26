@@ -140,6 +140,7 @@ public class HumanInput implements IInput {
   private long lastControllerPollNanos = Long.MIN_VALUE;
   private long lastControllerRefreshNanos = Long.MIN_VALUE;
   private boolean controllerRefreshInProgress = false;
+  private boolean controllerRefreshEnabled = false;
 
   public HumanInput(GameContainer gc) {
     installJInputPollFailureFilter();
@@ -162,6 +163,10 @@ public class HumanInput implements IInput {
 
   public void reset() {
     syncControllerState();
+  }
+
+  public void setControllerRefreshEnabled(boolean enabled) {
+    controllerRefreshEnabled = enabled;
   }
 
   public boolean isUp() {
@@ -1145,7 +1150,9 @@ public class HumanInput implements IInput {
   }
 
   private boolean refreshControllersIfNeeded() {
-    if (controllerRefreshInProgress || hasUsableControllerWithoutPolling()) {
+    if (!controllerRefreshEnabled
+        || controllerRefreshInProgress
+        || hasUsableControllerWithoutPolling()) {
       return false;
     }
 
@@ -1381,11 +1388,13 @@ public class HumanInput implements IInput {
           || (text.startsWith("Failed to poll component:")
           && (text.indexOf("Failed to poll device") != -1
           || text.indexOf("Failed to get device state") != -1));
+      boolean pluginLoadNotice = text.equals(
+          "Loading: net.java.games.input.DirectAndRawInputEnvironmentPlugin");
       if (pollFailure) {
         suppressedPollFailure = true;
         globalPollFailureDetected = true;
       }
-      return pollFailure;
+      return pollFailure || pluginLoadNotice;
     }
 
     boolean hasSuppressedPollFailure() {
