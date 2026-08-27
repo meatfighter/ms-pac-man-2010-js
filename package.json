@@ -72,7 +72,7 @@
         "run:desktop": "node scripts/run-desktop.mjs"
     },
     "dependencies": {
-        "slick2d-ts": "git+https://github.com/meatfighter/slick2d-ts.git#semver:^1.0.0"
+        "slick2d-ts": "git+https://github.com/meatfighter/slick2d-ts.git#v1.0.3"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
