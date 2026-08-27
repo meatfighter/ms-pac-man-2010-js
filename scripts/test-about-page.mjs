@@ -18,7 +18,7 @@ const buildAboutSource = readFileSync(new URL("./build-about.mjs", import.meta.u
 await runTest("about Markdown content is the user-facing source of truth", () => {
     assert.match(contentMarkdown, /\[Play\]\(__PWA_URL__\)/);
     assert.match(contentMarkdown, /\[source ZIP\]\(__SOURCE_ZIP__\)/);
-    assert.match(contentMarkdown, /\[desktop ZIP\]\(__DESKTOP_ZIP__\)/);
+    assert.match(contentMarkdown, /\[ZIP file\]\(__DESKTOP_ZIP__\)/);
     assert.match(contentMarkdown, /Windows: `run-windows\.cmd`/);
     assert.match(contentMarkdown, /Linux: `run-linux\.sh`/);
     assert.match(contentMarkdown, /macOS: `run-macos\.sh`/);

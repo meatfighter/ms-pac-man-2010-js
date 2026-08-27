@@ -22,7 +22,7 @@ const explicitDistDir = process.env.MSPACMAN_INTERNAL_DIST_DIR !== undefined && 
 const outputDir = explicitDistDir ? distDir : join(releaseComponentsDir, "about");
 const canonicalUrl = "https://meatfighter.com/mspacman2010/";
 const description =
-    "Play Ms. Pac-Man 2010 in the browser and read about its Java origins, TypeScript rewrite, controls, high-score system, and desktop ZIP download.";
+    "Play Ms. Pac-Man 2010 in the browser and read about its Java origins, TypeScript rewrite, controls, high-score system, and Java desktop download.";
 const cacheBust = process.env.MSPACMAN_CACHE_VERSION ?? `${version.version}-${version.buildStamp}-unsigned`;
 const encodedBuildStamp = encodeURIComponent(version.buildStamp);
 const encodedCacheBust = encodeURIComponent(cacheBust);

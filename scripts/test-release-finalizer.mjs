@@ -147,7 +147,7 @@ try {
     await runTest("finalize rejects candidate artifact verification failure without changing state", () => {
         withFinalizeFixture((fixture) => {
             rmSync(join(fixture.candidateDir, "downloads", `ms-pac-man-2010-desktop-${fixture.version}.zip`), { force: true });
-            assertFinalizeFailsWithoutStateChange(fixture, "Desktop versioned release ZIP must exist");
+            assertFinalizeFailsWithoutStateChange(fixture, "versioned desktop ZIP");
         });
     });
 

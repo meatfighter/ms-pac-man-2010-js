@@ -10,22 +10,22 @@ Press the **Play** button below to launch the desktop browser version of _Ms. Pa
 
 _Ms. Pac-Man 2010_ supports both keyboard and gamepad input. The controls are:
 
-| Action            | Keyboard                       | Gamepad                    |
-| ----------------- | ------------------------------ | -------------------------- |
-| Up                | Up Arrow, W, I, 8, Numpad 8    | D-pad, stick, or hat up    |
-| Down              | Down Arrow, S, K, 2, Numpad 2  | D-pad, stick, or hat down  |
-| Left              | Left Arrow, A, J, 4, Numpad 4  | D-pad, stick, or hat left  |
-| Right             | Right Arrow, D, L, 6, Numpad 6 | D-pad, stick, or hat right |
-| Start             | Enter                          | Any non-direction button   |
-| Pause             | Enter, P                       | Any non-direction button   |
-| Toggle fullscreen | Space                          | None                       |
-| Exit fullscreen   | Esc                            | None                       |
+| Action            | Keyboard                       | Gamepad     |
+| ----------------- | ------------------------------ | ----------- |
+| Up                | Up Arrow, W, I, 8, Numpad 8    | D-pad Up    |
+| Down              | Down Arrow, S, K, 2, Numpad 2  | D-pad Down  |
+| Left              | Left Arrow, A, J, 4, Numpad 4  | D-pad Left  |
+| Right             | Right Arrow, D, L, 6, Numpad 6 | D-pad Right |
+| Start             | Enter                          | Any         |
+| Pause             | Enter, P                       | Any         |
+| Toggle fullscreen | Space                          | —           |
+| Exit fullscreen   | Esc                            | —           |
 
 ## Browser Menu
 
 _Ms. Pac-Man 2010_ opens with a browser menu that provides **New Game** and **Continue** buttons.
 
-**New Game** starts a new game. **Continue** resumes your previous game. _Ms. Pac-Man 2010_ saves your progress so you can close the tab, close the browser entirely, and return later to continue playing.
+**New Game** starts a new game. **Continue** resumes your previous game. _Ms. Pac-Man 2010_ saves your progress so you can close the tab—or even close the browser entirely—and return later to continue playing.
 
 While playing outside fullscreen mode, a hamburger button appears in the upper-left corner of the game. Pressing it pauses the game and returns you to the browser menu.
 
@@ -59,7 +59,7 @@ _Ms. Pac-Man 2010_ is a reimplementation of the _Ms. Pac-Man_ arcade game, not a
 
 The source code for the project is available as a [source ZIP](__SOURCE_ZIP__).
 
-The Java desktop version is available as a [desktop ZIP](__DESKTOP_ZIP__). Download and extract the ZIP, then run the launcher for your operating system:
+The Java desktop version is available as a [ZIP file](__DESKTOP_ZIP__). Download and extract the ZIP, then run the launcher for your operating system:
 
 - Windows: `run-windows.cmd`
 - Linux: `run-linux.sh`

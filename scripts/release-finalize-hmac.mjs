@@ -250,6 +250,7 @@ function runVerifyRelease(releaseDir, keyHex, gitCommit) {
         ["scripts/verify-release.mjs", "--key-source=env", "--expected-release-kind=rotation-candidate", "--expected-hmac-key-source=next"],
         {
             cwd: rootDir,
+            encoding: "utf8",
             env: {
                 ...process.env,
                 MSPACMAN_HMAC_KEY_HEX: keyHex,
@@ -258,13 +259,29 @@ function runVerifyRelease(releaseDir, keyHex, gitCommit) {
                 MSPACMAN_RELEASE_GIT_COMMIT: gitCommit,
                 MSPACMAN_RELEASE_VERIFY_TARGET: "full"
             },
-            stdio: "inherit",
+            maxBuffer: 96 * 1024 * 1024,
             windowsHide: true
         }
     );
     if (result.status !== 0 || result.error) {
-        throw result.error ?? new Error("Recovered rotation release verification failed.");
+        throw result.error ?? new Error(formatVerifyReleaseFailure(result));
     }
+    if (result.stdout) {
+        process.stdout.write(result.stdout);
+    }
+    if (result.stderr) {
+        process.stderr.write(result.stderr);
+    }
+}
+
+function formatVerifyReleaseFailure(result) {
+    return [
+        "Rotation release verification failed.",
+        result.stdout === "" ? "" : `stdout:\n${result.stdout.trimEnd()}`,
+        result.stderr === "" ? "" : `stderr:\n${result.stderr.trimEnd()}`
+    ]
+        .filter(Boolean)
+        .join("\n");
 }
 
 function cleanupFinalizeTransaction(transaction) {
