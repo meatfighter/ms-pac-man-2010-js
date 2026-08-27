@@ -16,6 +16,7 @@ import {
 import { getHmacNextCandidateDir, rootDir, versionPath } from "./build-utils.mjs";
 
 const originalVersionJson = readFileSync(versionPath, "utf8");
+const originalVersion = JSON.parse(originalVersionJson);
 const originalGitStatus = readGitStatus();
 const originalAllowPathOverrides = process.env.MSPACMAN_ENABLE_TEST_PATH_OVERRIDES;
 
@@ -165,6 +166,15 @@ try {
                 existsSync(join(tempComponentsDir, "web", "downloads", "ms-pac-man-2010-js-source.zip")),
                 true,
                 "Component web release build must write source artifacts."
+            );
+            const webDesktopZip = join(tempComponentsDir, "web", "downloads", "ms-pac-man-2010-desktop.zip");
+            const webVersionedDesktopZip = join(tempComponentsDir, "web", "downloads", `ms-pac-man-2010-desktop-${originalVersion.version}.zip`);
+            assert.equal(existsSync(webDesktopZip), true, "Component web release build must write the stable desktop ZIP linked by the about page.");
+            assert.equal(existsSync(webVersionedDesktopZip), true, "Component web release build must write the versioned desktop ZIP.");
+            assert.equal(
+                createHash("sha256").update(readFileSync(webDesktopZip)).digest("hex"),
+                createHash("sha256").update(readFileSync(webVersionedDesktopZip)).digest("hex"),
+                "Component web release stable and versioned desktop ZIPs must be identical."
             );
         } finally {
             rmSync(tempComponentsDir, { recursive: true, force: true });

@@ -65,7 +65,7 @@ if (target === "web" || target === "full") {
     verifyReleaseMetadata();
 }
 
-if (target === "desktop" || target === "full") {
+if (target === "web" || target === "desktop" || target === "full") {
     verifyDesktopRelease();
 }
 
@@ -119,6 +119,11 @@ function verifyAboutRelease() {
     assert.ok(aboutIndex.includes(`downloads/ms-pac-man-2010-desktop.zip?v=${encodedBuildStamp}`), "About page must link to the desktop ZIP.");
     assert.ok(aboutIndex.includes('download="ms-pac-man-2010-desktop.zip"'), "About page desktop ZIP link must use a download attribute.");
     assert.ok(aboutIndex.includes('download="ms-pac-man-2010-js-source.zip"'), "About page source ZIP link must use a download attribute.");
+    assert.ok(existsSync(join(distDir, "downloads", "ms-pac-man-2010-desktop.zip")), "About page desktop ZIP link target must exist.");
+    assert.ok(
+        existsSync(join(distDir, "downloads", `ms-pac-man-2010-desktop-${version.version}.zip`)),
+        "About page versioned desktop ZIP link target must exist."
+    );
     assert.ok(aboutIndex.includes('<link rel="canonical" href="https://meatfighter.com/mspacman2010/" />'), "About page must include canonical metadata.");
     assert.ok(
         aboutIndex.includes('<meta property="og:image" content="https://meatfighter.com/mspacman2010/assets/ms-pac-man-2010-screenshot.png" />'),
@@ -160,7 +165,7 @@ function verifyAboutRelease() {
 
 function verifyDesktopRelease() {
     const distributionName = "ms-pac-man-2010-desktop";
-    const desktopReleaseDir = target === "full" ? join(distDir, "downloads") : join(rootDir, "desktop", "target");
+    const desktopReleaseDir = target === "web" || target === "full" ? join(distDir, "downloads") : join(rootDir, "desktop", "target");
     const stableZipPath = join(desktopReleaseDir, `${distributionName}.zip`);
     const versionedZipPath = join(desktopReleaseDir, `${distributionName}-${version.version}.zip`);
     assert.ok(existsSync(stableZipPath), `Desktop release ZIP must exist: ${stableZipPath}`);

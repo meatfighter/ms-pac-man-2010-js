@@ -593,7 +593,7 @@ Output:
 npm run build:web:release
 ```
 
-This builds the about page + PWA with active-key release provenance, but still does not replace the full canonical release.
+This builds the about page, PWA, source archive, and desktop ZIP download with active-key release provenance, but still does not replace the full canonical release.
 
 ### Build the unsigned desktop version
 
@@ -1074,8 +1074,8 @@ Then launch the **generated ZIP** on every platform/JVM combination you intend t
 | `npm run lint`                                         | Run ESLint.                                                                    |
 | `npm run build:pwa:unsigned`                           | Build unsigned PWA component.                                                  |
 | `npm run build:pwa:release`                            | Build active-key PWA component.                                                |
-| `npm run build:web:unsigned`                           | Build unsigned about + PWA component.                                          |
-| `npm run build:web:release`                            | Build active-key about + PWA component.                                        |
+| `npm run build:web:unsigned`                           | Build unsigned about + PWA + downloads component.                              |
+| `npm run build:web:release`                            | Build active-key about + PWA + downloads component.                            |
 | `npm run build:desktop`                                | Build unsigned desktop output.                                                 |
 | `npm run build:desktop:release`                        | Build active-key desktop output.                                               |
 | `npm run release:desktop`                              | Stage a verified standalone desktop release ZIP.                               |

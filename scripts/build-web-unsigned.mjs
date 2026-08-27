@@ -20,6 +20,8 @@ try {
     cleanDirectory(outputDir);
     runNpmScript("_build:pwa:unsigned", env);
     runNpmScript("_build:about", env);
+    runNpmScript("build:desktop:unsigned", env);
+    runNpmScript("_assemble", env);
     runNodeScript("write-source-archive.mjs", env);
     console.log(`Built unsigned web component artifact in ${outputDir}.`);
 } finally {

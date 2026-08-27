@@ -106,13 +106,13 @@ try {
         runNpmScript("_build:about", releaseEnv);
     }
 
-    if (target === "desktop" || target === "full") {
+    if (target === "web" || target === "desktop" || target === "full") {
         cleanDesktopTarget();
         runNpmScript("_build:desktop:release", releaseEnv);
         runNpmScript("test:desktop-high-score", releaseEnv);
     }
 
-    if (target === "full") {
+    if (target === "web" || target === "full") {
         runNpmScript("_assemble", releaseEnv);
     }
 
