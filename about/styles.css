@@ -19,7 +19,7 @@
     --bg: #f7f8fa;
     --surface: #ffffff;
     --surface-soft: #fff0fa;
-    --text: #171114;
+    --text: #161b22;
     --muted: #5d4d56;
     --border: #ecd2e3;
     --border-strong: #c497b7;
@@ -51,7 +51,7 @@ html[data-theme="dark"] {
     --bg: #111419;
     --surface: #101010;
     --surface-soft: #171017;
-    --text: #ffffff;
+    --text: #f3f5f7;
     --muted: #d3c7d0;
     --border: #302433;
     --border-strong: #604260;

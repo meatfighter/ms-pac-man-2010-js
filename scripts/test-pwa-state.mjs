@@ -8,7 +8,7 @@ const pwaRoot = resolve(rootDir, "pwa");
 const APP_VERSION = "test-version";
 const STAGE_URL = "https://meatfighter.com/ms-pac-man-2010-staging/pwa/?v=1.0.0-stage";
 const STAGE_ROTATED_URL = "https://meatfighter.com/ms-pac-man-2010-staging/pwa/?v=1.0.1-krotated";
-const PRODUCTION_URL = "https://meatfighter.com/ms-pac-man-2010/pwa/?v=1.0.0-production";
+const PRODUCTION_URL = "https://meatfighter.com/mspacman2010/pwa/?v=1.0.0-production";
 const originalApiUrl = process.env.MSPACMAN_SCORE_API_URL;
 const originalCacheVersion = process.env.MSPACMAN_CACHE_VERSION;
 const originalHmacKey = process.env.MSPACMAN_HMAC_KEY_HEX;

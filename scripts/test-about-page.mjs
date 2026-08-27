@@ -48,11 +48,11 @@ await runTest("about Markdown renderer creates expected article features", () =>
     assert.match(rendered.articleHtml, /href="downloads\/ms-pac-man-2010-desktop\.zip\?v=test-build" download="ms-pac-man-2010-desktop\.zip"/);
     assert.match(rendered.articleHtml, /href="downloads\/ms-pac-man-2010-js-source\.zip\?v=test-build" download="ms-pac-man-2010-js-source\.zip"/);
     assert.doesNotMatch(rendered.articleHtml, /downloads\/ms-pac-man-2010-desktop\.zip\?v=test-build" target="_blank"/);
-    assert.ok(rendered.headings.some((heading) => heading.slug === "browser-menu" && heading.level === 1));
+    assert.ok(rendered.headings.some((heading) => heading.slug === "browser-menu" && heading.level === 2));
     assert.match(rendered.tocHtml, /<nav class="toc" aria-labelledby="toc-heading">/);
     assert.match(rendered.tocHtml, /<h2 id="toc-heading">Contents<\/h2>/);
     assert.match(rendered.tocHtml, /<li class="toc-level-1"><a href="#about">About<\/a><\/li>/);
-    assert.match(rendered.tocHtml, /<li class="toc-level-1"><a href="#browser-menu">Browser Menu<\/a><\/li>/);
+    assert.match(rendered.tocHtml, /<li class="toc-level-2"><a href="#browser-menu">Browser Menu<\/a><\/li>/);
     assert.match(rendered.tocHtml, /<li class="toc-level-1"><a href="#acknowledgements">Acknowledgements<\/a><\/li>/);
     assert.doesNotMatch(rendered.tocHtml, /class="toc-level-3"/);
 });
@@ -81,6 +81,8 @@ await runTest("about page shell carries SEO, theme, footer, and generated-conten
     assert.match(styles, /SourceSans3VF-Italic\.ttf\.woff2\?v=__BUILD_STAMP_ENCODED__/);
     assert.match(styles, /--bg: #f7f8fa;/);
     assert.match(styles, /--bg: #111419;/);
+    assert.match(styles, /--text: #161b22;/);
+    assert.match(styles, /--text: #f3f5f7;/);
     assert.match(styles, /--link: #fd47b9;/);
     assert.match(styles, /--measure: 750px;/);
     assert.match(styles, /--switch-knob: var\(--pac-yellow\);/);
@@ -100,7 +102,7 @@ await runTest("about build uses constrained Markdown and generated responsive im
     assert.match(buildAboutSource, /__TOC_HTML__/);
     assert.match(buildAboutSource, /generateAboutImageAssets/);
     assert.match(buildAboutSource, /__TITLE_WEBP_SRCSET__/);
-    assert.match(buildAboutSource, /https:\/\/meatfighter\.com\/ms-pac-man-2010\//);
+    assert.match(buildAboutSource, /https:\/\/meatfighter\.com\/mspacman2010\//);
     assert.doesNotMatch(buildAboutSource, /__SOURCE_URL__/);
 });
 

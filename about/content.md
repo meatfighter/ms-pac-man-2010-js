@@ -21,7 +21,7 @@ _Ms. Pac-Man 2010_ supports both keyboard and gamepad input. The controls are:
 | Toggle fullscreen | Space                          | None                       |
 | Exit fullscreen   | Esc                            | None                       |
 
-# Browser Menu
+## Browser Menu
 
 _Ms. Pac-Man 2010_ opens with a browser menu that provides **New Game** and **Continue** buttons.
 

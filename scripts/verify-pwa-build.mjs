@@ -11,7 +11,7 @@ const assetsDir = join(pwaDistDir, "assets");
 const serviceWorkerPath = join(pwaDistDir, "sw.js");
 const indexPath = join(pwaDistDir, "index.html");
 const relocationTestBases = [
-    "https://example.invalid/ms-pac-man-2010/pwa/",
+    "https://example.invalid/mspacman2010/pwa/",
     "https://example.invalid/ms-pac-man-2010-staging/pwa/",
     "https://example.invalid/foo/bar/baz/pwa/"
 ];

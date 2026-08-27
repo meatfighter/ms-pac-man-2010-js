@@ -119,14 +119,14 @@ function verifyAboutRelease() {
     assert.ok(aboutIndex.includes(`downloads/ms-pac-man-2010-desktop.zip?v=${encodedBuildStamp}`), "About page must link to the desktop ZIP.");
     assert.ok(aboutIndex.includes('download="ms-pac-man-2010-desktop.zip"'), "About page desktop ZIP link must use a download attribute.");
     assert.ok(aboutIndex.includes('download="ms-pac-man-2010-js-source.zip"'), "About page source ZIP link must use a download attribute.");
-    assert.ok(aboutIndex.includes('<link rel="canonical" href="https://meatfighter.com/ms-pac-man-2010/" />'), "About page must include canonical metadata.");
+    assert.ok(aboutIndex.includes('<link rel="canonical" href="https://meatfighter.com/mspacman2010/" />'), "About page must include canonical metadata.");
     assert.ok(
-        aboutIndex.includes('<meta property="og:image" content="https://meatfighter.com/ms-pac-man-2010/assets/ms-pac-man-2010-screenshot.png" />'),
+        aboutIndex.includes('<meta property="og:image" content="https://meatfighter.com/mspacman2010/assets/ms-pac-man-2010-screenshot.png" />'),
         "About page must include social preview image metadata."
     );
     assert.ok(aboutIndex.includes('<nav class="toc" aria-labelledby="toc-heading">'), "About page must include the generated top contents index.");
     assert.ok(
-        aboutIndex.includes('<li class="toc-level-1"><a href="#browser-menu">Browser Menu</a></li>'),
+        aboutIndex.includes('<li class="toc-level-2"><a href="#browser-menu">Browser Menu</a></li>'),
         "About page contents index must link to Markdown headings."
     );
     assert.ok(aboutIndex.includes('<article class="article" aria-label="About Ms. Pac-Man 2010">'), "About page must include generated article content.");
@@ -388,7 +388,7 @@ function verifyGeneratedRuntimeDoesNotContainHardcodedDeploymentRoots(root) {
             continue;
         }
         const content = readFileSync(path, "utf8").replaceAll("/api/ms-pac-man-2010/", "");
-        const scannedContent = root === distDir && relativePath === "index.html" ? content.replaceAll("https://meatfighter.com/ms-pac-man-2010/", "") : content;
+        const scannedContent = root === distDir && relativePath === "index.html" ? content.replaceAll("https://meatfighter.com/mspacman2010/", "") : content;
         for (const { label, pattern } of forbiddenDeploymentRootPatterns) {
             const match = pattern.exec(scannedContent);
             assert.equal(match, null, `Generated runtime file contains hard-coded deployment root ${label}: ${relative(rootDir, path)}`);
