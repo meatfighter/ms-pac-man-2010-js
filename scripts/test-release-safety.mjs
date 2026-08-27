@@ -636,8 +636,17 @@ function withCleanGitFixture(fn) {
         runGit(fixtureRoot, ["-c", "user.name=Ms Pac-Man Release Test", "-c", "user.email=release-test@example.invalid", "commit", "-m", "fixture"]);
         fn(fixtureRoot);
     } finally {
-        rmSync(fixtureRoot, { recursive: true, force: true });
+        removeTemporaryGitFixture(fixtureRoot);
     }
+}
+
+function removeTemporaryGitFixture(path) {
+    rmSync(path, {
+        force: true,
+        maxRetries: 10,
+        recursive: true,
+        retryDelay: 100
+    });
 }
 
 function copyWorkingSourceToFixture(fixtureRoot) {

@@ -290,8 +290,17 @@ function withFinalizeFixture(fn) {
         });
     } finally {
         rmSync(stateRoot, { recursive: true, force: true });
-        rmSync(fixtureRoot, { recursive: true, force: true });
+        removeTemporaryGitFixture(fixtureRoot);
     }
+}
+
+function removeTemporaryGitFixture(path) {
+    rmSync(path, {
+        force: true,
+        maxRetries: 10,
+        recursive: true,
+        retryDelay: 100
+    });
 }
 
 function prepareCandidateForFixture(fixtureRoot, candidateDir, gitCommit) {

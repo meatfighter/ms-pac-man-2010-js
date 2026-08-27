@@ -18,8 +18,8 @@ _Ms. Pac-Man 2010_ supports both keyboard and gamepad input. The controls are:
 | Right             | Right Arrow, D, L, 6, Numpad 6 | D-pad Right |
 | Start             | Enter                          | Any         |
 | Pause             | Enter, P                       | Any         |
-| Toggle fullscreen | Space                          | —           |
-| Exit fullscreen   | Esc                            | —           |
+| Toggle fullscreen | Space                          |             |
+| Exit fullscreen   | Esc                            |             |
 
 ## Browser Menu
 
