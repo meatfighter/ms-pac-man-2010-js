@@ -82,7 +82,7 @@ input {
 .theme-picker-button:hover,
 .theme-picker-button:focus-visible,
 .theme-picker[data-open="true"] .theme-picker-button {
-    border-color: #ffea02;
+    border-color: #fd47b9;
     outline: none;
 }
 
@@ -101,7 +101,7 @@ input {
     box-sizing: border-box;
     padding: 4px;
     overflow: hidden;
-    border: 2px solid #ffea02;
+    border: 2px solid #fd47b9;
     border-radius: 8px;
     background: #000000;
 }
@@ -150,8 +150,8 @@ input {
 
 .theme-picker-option:hover,
 .theme-picker-option:focus-visible {
-    background: #ffea02;
-    color: #050505;
+    background: #fd47b9;
+    color: #ffffff;
     outline: none;
 }
 
