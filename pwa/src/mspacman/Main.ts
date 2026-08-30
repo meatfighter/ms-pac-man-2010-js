@@ -37,7 +37,6 @@ import type { IMode } from "./IMode";
 import { IntroMode } from "./IntroMode";
 import type { ModeId, SubmittedScoreSnapshot } from "./persistence/GameStateSnapshot";
 import { RobotInput } from "./RobotInput";
-import { ScalableGame2 } from "./ScalableGame2";
 import { SelectWorldMode } from "./SelectWorldMode";
 import { Stage } from "./Stage";
 import { charCode, intDiv, make3D } from "./JavaMath";
@@ -105,7 +104,6 @@ export class Main extends BasicGame {
     public nativeDisplayMode: DisplayMode;
     public appGameContainer: AppGameContainer;
     public appletGameContainer: AppletGameContainer2;
-    public scalableGame: ScalableGame2;
     public nextFrameTime = 0;
     public mode: IMode;
     public worldIndex = 0;
@@ -628,13 +626,11 @@ export class Main extends BasicGame {
                 if (this.appGameContainer) {
                     const displayMode = this.getWindowedDisplayMode();
                     void this.appGameContainer.setDisplayMode(displayMode.width, displayMode.height, false);
-                    this.scalableGame?.containerSizeChanged(gc);
                 }
             } else if (!isEscape) {
                 this.hideMouseCursor();
                 if (this.appGameContainer) {
                     void this.appGameContainer.setDisplayMode(this.maxWidth, this.maxHeight, true);
-                    this.scalableGame?.containerSizeChanged(gc);
                 }
             }
             this.resetNextFrameTime();

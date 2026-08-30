@@ -4,6 +4,7 @@ const DEFAULT_LOCATION_HREF = "https://localhost/";
 export interface BrowserStorageKeys {
     readonly deploymentId: string;
     readonly gameState: string;
+    readonly scaling: string;
     readonly volume: string;
 }
 
@@ -12,6 +13,7 @@ export function createBrowserStorageKeys(locationHref = getCurrentLocationHref()
     return {
         deploymentId,
         gameState: createStorageKey(deploymentId, "game-state"),
+        scaling: createStorageKey(deploymentId, "scaling"),
         volume: createStorageKey(deploymentId, "volume")
     };
 }

@@ -255,9 +255,16 @@ try {
 
         assert.equal(stageKeys.deploymentId, stageRotatedKeys.deploymentId);
         assert.equal(stageKeys.gameState, stageRotatedKeys.gameState);
+        assert.equal(stageKeys.scaling, stageRotatedKeys.scaling);
         assert.equal(stageKeys.volume, stageRotatedKeys.volume);
         assert.notEqual(stageKeys.deploymentId, productionKeys.deploymentId);
+        assert.notEqual(stageKeys.scaling, productionKeys.scaling);
         assert.notEqual(stageKeys.volume, productionKeys.volume);
+
+        storage.setItem(stageKeys.scaling, "crisp");
+        storage.setItem(productionKeys.scaling, "smooth");
+        assert.equal(storage.getItem(stageRotatedKeys.scaling), "crisp");
+        assert.equal(storage.getItem(productionKeys.scaling), "smooth");
 
         storage.setItem(stageKeys.volume, "10");
         storage.setItem(productionKeys.volume, "80");
