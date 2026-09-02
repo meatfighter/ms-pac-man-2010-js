@@ -66,5 +66,3 @@ const desktopBuild = read("scripts/build-desktop.mjs");
 if (/Maven|\bmvn\b|pom\.xml|assembly\.xml/.test(desktopBuild)) {
     throw new Error("Ms. Pac-Man canonical desktop builder unexpectedly depends on Maven metadata.");
 }
-
-console.log("Ms. Pac-Man 2010 Java desktop build modernization applied.");
