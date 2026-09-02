@@ -54,7 +54,7 @@ function assertVersionMismatchFailsBeforeReleaseBuild() {
             maxBuffer: 32 * 1024 * 1024,
             windowsHide: true
         });
-        assert.notEqual(result.status, 0, "Release builds must fail when package.json, version.json, and desktop/pom.xml versions do not match.");
+        assert.notEqual(result.status, 0, "Release builds must fail when package.json and version.json versions do not match.");
         assert.equal(
             `${result.stdout}\n${result.stderr}`.includes("Release versions must match before building."),
             true,

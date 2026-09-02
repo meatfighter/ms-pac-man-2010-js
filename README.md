@@ -2,7 +2,7 @@
 
 This repository contains the browser and desktop release project for **Ms. Pac-Man 2010**.
 
-The browser version is a TypeScript Progressive Web App (PWA) port of the original Java game and uses `slick2d-ts` as its Slick2D-style runtime layer. The desktop tree preserves the Java game as a buildable and distributable legacy artifact. A static project/about page is built alongside both clients.
+The browser version is a TypeScript Progressive Web App (PWA) port of the original Java game and uses `slick2d-ts` as its Slick2D-style runtime layer. The desktop tree contains the maintained Java/Slick2D reference implementation used for gameplay comparison and downloadable desktop builds. A static project/about page is built alongside both clients.
 
 This repository also owns the **client release pipeline**. A production release is more than a Vite build: it contains the public project page, PWA, Java desktop download, source archives, release metadata, checksums, high-score client configuration, and the verification/recovery machinery used to produce one canonical `dist/` tree.
 
@@ -15,7 +15,7 @@ The high-score **server is a separate project**. This repository builds and veri
 If you are new to the repository, keep these points in mind:
 
 1. **`pwa/` is the browser game.** It contains the TypeScript port and browser integration code.
-2. **`desktop/` is the preserved Java game.** Production releases include a downloadable desktop ZIP built from it.
+2. **`desktop/` is the Java/Slick2D reference implementation.** Production releases include a downloadable desktop ZIP built from it.
 3. **`about/` is the public project page.** It is assembled into the same release but is separate from the PWA.
 4. **`scripts/` is the release system.** It builds, verifies, packages, signs score submissions, locks release operations, promotes artifacts, and recovers interrupted release state.
 5. **`dist/` is the canonical production artifact.** Do not manually assemble production output from source or component-build directories.
@@ -43,7 +43,7 @@ The repository has three layers:
 SOURCE
   about/        static project page
   pwa/          TypeScript browser game
-  desktop/      preserved Java desktop game
+  desktop/      Java/Slick2D reference implementation
   assets/       shared source assets
        |
        v
@@ -157,16 +157,14 @@ The project uses TypeScript, Vite, ESLint, Prettier, `sharp`, and `slick2d-ts`.
 
 ### Java desktop toolchain
 
-Desktop builds require a JDK with at least:
+Use JDK 21 LTS for current desktop builds and smoke tests. The supported desktop build requires:
 
 ```text
 javac
 jar
 ```
 
-The release tooling emits Java 8-compatible bytecode for compatibility with the legacy Slick2D/LWJGL desktop stack.
-
-Maven metadata is retained in `desktop/pom.xml`. If Maven is installed, Java-only development can also use the desktop project directly, but the canonical production desktop ZIP is still produced and verified through the **root release pipeline**.
+Repository tooling invokes the JDK directly against the vendored runtime jars and emits Java 8-compatible bytecode for compatibility with the legacy Slick2D/LWJGL desktop stack. Use `npm run build:desktop` for the normal unsigned desktop client and the root release commands for production artifacts.
 
 See:
 
@@ -185,22 +183,22 @@ Production release provenance depends on Git. Active-key and next-key release bu
 
 ### Source and configuration
 
-| Path                            | Purpose                                                                                             |
-| ------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `about/`                        | Source for the static public project/about page.                                                    |
-| `assets/`                       | Shared source assets used by generated public pages/icons.                                          |
-| `pwa/`                          | TypeScript browser PWA.                                                                             |
-| `pwa/src/app/`                  | Browser shell, bootstrap, storage scoping, resource inventory, styles, and version integration.     |
-| `pwa/src/mspacman/`             | Main TypeScript game port and high-score client code.                                               |
-| `pwa/src/mspacman/persistence/` | Save-state snapshot, serialization, validation, and storage.                                        |
-| `pwa/public/`                   | Manifest, service worker source, icons, stages/demos, and static PWA resources.                     |
-| `desktop/`                      | Preserved Java project, packaging metadata, launchers, licenses, and corresponding-source material. |
-| `scripts/`                      | Build, verification, HMAC, release, preview, smoke-test, recovery, and packaging tooling.           |
-| `version.json`                  | Checked-in application version/build-stamp source.                                                  |
-| `package.json`                  | Root command surface and JavaScript dependencies.                                                   |
-| `package-lock.json`             | Reproducible JavaScript dependency resolution.                                                      |
-| `THIRD_PARTY_NOTICES.md`        | Root third-party notices.                                                                           |
-| `LICENSE`                       | Project license.                                                                                    |
+| Path                            | Purpose                                                                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `about/`                        | Source for the static public project/about page.                                                          |
+| `assets/`                       | Shared source assets used by generated public pages/icons.                                                |
+| `pwa/`                          | TypeScript browser PWA.                                                                                   |
+| `pwa/src/app/`                  | Browser shell, bootstrap, storage scoping, resource inventory, styles, and version integration.           |
+| `pwa/src/mspacman/`             | Main TypeScript game port and high-score client code.                                                     |
+| `pwa/src/mspacman/persistence/` | Save-state snapshot, serialization, validation, and storage.                                              |
+| `pwa/public/`                   | Manifest, service worker source, icons, stages/demos, and static PWA resources.                           |
+| `desktop/`                      | Maintained Java/Slick2D reference implementation, launchers, licenses, and corresponding-source material. |
+| `scripts/`                      | Build, verification, HMAC, release, preview, smoke-test, recovery, and packaging tooling.                 |
+| `version.json`                  | Checked-in application version/build-stamp source.                                                        |
+| `package.json`                  | Root command surface and JavaScript dependencies.                                                         |
+| `package-lock.json`             | Reproducible JavaScript dependency resolution.                                                            |
+| `THIRD_PARTY_NOTICES.md`        | Root third-party notices.                                                                                 |
+| `LICENSE`                       | Project license.                                                                                          |
 
 ### Generated and local state
 
@@ -274,20 +272,20 @@ The browser save/continue implementation is explicit rather than based on string
 
 Treat the snapshot format as a compatibility contract. Changes to saved state should be deliberate and tested.
 
-### `desktop/` — Preserved Java desktop project
+### `desktop/` — Java/Slick2D reference implementation
 
-The desktop tree preserves the Java game as a runnable legacy artifact and provides a behavioral reference for the TypeScript port.
+The desktop tree contains the maintained Java implementation used as a behavioral reference for the TypeScript port and as the source of the downloadable desktop client.
 
 It contains:
 
-- Java source;
-- Maven/assembly metadata;
+- Java source and resources;
 - platform launchers;
+- vendored runtime/native material;
 - desktop dependency licenses;
 - corresponding-source material required by redistributed dependencies;
 - desktop-specific README/runtime documentation.
 
-The full desktop distribution includes the legacy runtime/native material required by Slick2D/LWJGL/JInput. Stripped review archives can omit large runtime/resource files; do not weaken release verification simply because a review archive is intentionally incomplete.
+The maintained tree uses one supported JDK-based build path rather than carrying a second project/build description. Current repository tooling invokes JDK 21 `javac` and `jar` directly, packages the exact runtime dependencies, and verifies the generated desktop artifact.
 
 Production release builds generate and verify the desktop JAR/ZIP, embed the selected release HMAC key in generated output, and include required licensing/source material.
 

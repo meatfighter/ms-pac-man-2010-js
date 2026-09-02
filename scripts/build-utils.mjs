@@ -21,7 +21,6 @@ export const releaseComponentsDir = readManagedTestPathOverride(
 );
 export const versionPath = join(rootDir, "version.json");
 export const packageJsonPath = join(rootDir, "package.json");
-export const desktopPomPath = join(rootDir, "desktop", "pom.xml");
 
 export function getHmacNextCandidateDir() {
     const path = readManagedTestPathOverride("MSPACMAN_TEST_HMAC_NEXT_CANDIDATE_DIR", canonicalHmacNextCandidateDir, "HMAC next candidate directory");
@@ -52,28 +51,11 @@ export function readPackageJson() {
     return JSON.parse(readFileSync(packageJsonPath, "utf8").replace(/^\uFEFF/, ""));
 }
 
-export function readDesktopPomVersion() {
-    const pom = readFileSync(desktopPomPath, "utf8").replace(/^\uFEFF/, "");
-    const match = /<project\b[\s\S]*?<version>([^<]+)<\/version>/.exec(pom);
-    if (match === null || match[1] === undefined) {
-        throw new Error("desktop/pom.xml does not contain a project version.");
-    }
-    return match[1].trim();
-}
-
 export function assertProjectVersionsMatch() {
     const packageVersion = readPackageJson().version;
     const versionJsonVersion = readVersion().version;
-    const desktopVersion = readDesktopPomVersion();
-    if (packageVersion !== versionJsonVersion || packageVersion !== desktopVersion) {
-        throw new Error(
-            [
-                "Release versions must match before building.",
-                `package.json: ${packageVersion}`,
-                `version.json: ${versionJsonVersion}`,
-                `desktop/pom.xml: ${desktopVersion}`
-            ].join("\n")
-        );
+    if (packageVersion !== versionJsonVersion) {
+        throw new Error(["Release versions must match before building.", `package.json: ${packageVersion}`, `version.json: ${versionJsonVersion}`].join("\n"));
     }
 }
 

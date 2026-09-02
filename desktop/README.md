@@ -1,60 +1,46 @@
-# Ms. Pac-Man 2010 Legacy Java Desktop
+# Ms. Pac-Man 2010 Java Reference Implementation
 
-This directory contains the maintained legacy Java desktop build for Ms. Pac-Man 2010. The source and resources keep the original flat `src/` layout, while the build is now Maven-based and no longer includes legacy IDE project metadata.
+This directory contains the maintained Java/Slick2D reference implementation of Ms. Pac-Man 2010. The Java gameplay code is used to validate the TypeScript browser port and is also the source of the downloadable desktop client.
 
-Included desktop materials:
+The source and resources keep the game's existing `desktop/src` layout. Current builds use the JDK tools directly; no separate build-system or IDE-specific project metadata is required.
 
-- `src/` Java sources and runtime resources.
-- `pom.xml` and `assembly.xml` for the Maven build.
-- `lib/` vendored legacy Java dependencies.
-- `licenses/` third-party license texts and binary provenance notes.
-- `natives/` bundled LWJGL/JInput native libraries.
-- `third-party-sources/` corresponding-source artifacts for LGPL desktop dependencies.
-- platform launch scripts that set the required native library paths.
+## Build
 
-Generated build outputs are intentionally ignored:
+Use JDK 21 LTS for current development and release validation. The build requires `javac` and `jar` on `PATH` and emits Java 8-compatible bytecode for the legacy Slick2D/LWJGL runtime.
 
-- `build/`
-- `dist/`
-- `target/`
-- crash logs
+From the repository root, build an unsigned desktop client with:
 
-The desktop build intentionally emits Java 8-compatible bytecode to improve the odds of running the legacy Slick2D/LWJGL stack across older and newer Java installations. The build suppresses the expected modern-JDK warning about Java 8 being an obsolete target, but real compilation errors still fail the build.
-
-The original online high-score service is not restored. This build targets the replacement JSON high-score API. `downloadScores()` performs one bounded best-effort fetch, preserving the local `0 AAA` defaults on any failure. Submitting initials updates the local in-memory table first, then performs one bounded best-effort POST when an HMAC key is configured. Network, HTTP, parsing, and validation failures are silently ignored.
-
-High-score configuration:
-
-- API URL: `MSPACMAN_SCORE_API_URL` or `-Dmspacman.scoreApiUrl=...`; default is `https://meatfighter.com/api/ms-pac-man-2010/scores`.
-- Unsigned desktop builds have no embedded HMAC key. They can download scores, but remote POST is skipped unless a valid runtime override is supplied.
-- Release desktop builds embed the selected deployment HMAC key in the generated JAR. The checked-in Java source never contains that key.
-- Runtime HMAC key precedence is `-Dmspacman.hmacKeyHex`, then `MSPACMAN_HMAC_KEY_HEX`, then the embedded release key. Without any valid key, remote POST is skipped and local high-score behavior remains.
-- Malformed explicit runtime overrides do not fall back. If `-Dmspacman.hmacKeyHex` or `MSPACMAN_HMAC_KEY_HEX` is present but is not exactly 64 lowercase hexadecimal characters, remote POST is disabled for that run.
-
-Build from the repository root:
-
-```text
-npm.cmd run build:desktop
+```sh
+npm run build:desktop
 ```
 
-Build the release desktop component archive from the repository root:
+Build the release desktop component through the root release tooling:
 
-```text
-npm.cmd run build:desktop:release
+```sh
+npm run build:desktop:release
 ```
 
-If Maven is installed, this should also be buildable from this directory:
+The repository build script owns the compile classpath, resource copying, generated high-score release configuration, manifest creation, vendored runtime/native packaging, license/corresponding-source checks, and final ZIP construction. The canonical production desktop client is produced as part of the verified root release pipeline.
 
-```text
-mvn package
+## High-score configuration
+
+The original online high-score service is not restored. The maintained Java client targets the replacement JSON high-score API. Unsigned builds can download scores but do not embed the production HMAC submission key. Release builds inject the selected key into generated output without placing it in checked-in Java source.
+
+Runtime HMAC precedence remains:
+
+1. `-Dmspacman.hmacKeyHex`;
+2. `MSPACMAN_HMAC_KEY_HEX`;
+3. the embedded release key;
+4. no key.
+
+Malformed explicit overrides disable remote submission rather than silently falling back.
+
+## Run
+
+From the repository root:
+
+```sh
+npm run run:desktop
 ```
 
-The Maven package is an unsigned/development-compatible desktop archive unless it has explicitly been integrated into the top-level release orchestration. The canonical production Java desktop release comes from `npm.cmd run build`, which injects the selected deployment HMAC key, assembles the complete web and desktop release candidate, verifies the desktop ZIP from that exact candidate, and then promotes the full bundle to `dist/`.
-
-Launch after building:
-
-```text
-npm.cmd run run:desktop
-```
-
-See `RUNTIME_DEPENDENCIES.md`, `licenses/`, and `third-party-sources/` for the bundled legacy Slick2D/LWJGL runtime notes, third-party license material, and corresponding source artifacts.
+See `RUNTIME_DEPENDENCIES.md`, `licenses/`, and `third-party-sources/` for the vendored runtime, license, provenance, and corresponding-source material.
