@@ -4,6 +4,7 @@ on:
     push:
         paths:
             - ".github/workflows/modernize-java-build.yml"
+            - ".github/scripts/modernize-java-build.mjs"
 
 permissions:
     contents: write
