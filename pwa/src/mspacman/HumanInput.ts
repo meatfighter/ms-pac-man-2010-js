@@ -2,14 +2,11 @@ import { GameContainer, Input } from "slick2d-ts";
 import type { IInput } from "./IInput";
 
 export class HumanInput implements IInput {
-    private static readonly CONTROLLER_INDEX_LIMIT = 16;
-    private static readonly GAMEPAD_BUTTON_INDEX_LIMIT = 100;
     private static readonly GAMEPAD_BUTTON_CONTROL_OFFSET = 4;
-    private static readonly GAMEPAD_AXIS_LIMIT = 16;
-    private static readonly AXIS_THRESHOLD = 0.5;
-    private static readonly AXIS_RECENTER_THRESHOLD = 0.05;
-    private static readonly EXTRA_HORIZONTAL_AXES = [2, 6];
-    private static readonly EXTRA_VERTICAL_AXES = [3, 7];
+    private static readonly EXTRA_DIRECTION_AXES = [
+        { horizontalAxis: 2, verticalAxis: 3 },
+        { horizontalAxis: 6, verticalAxis: 7 }
+    ] as const;
 
     private static readonly UP_KEYS = [Input.KEY_UP, Input.KEY_W, Input.KEY_I, Input.KEY_8, Input.KEY_NUMPAD8];
 
@@ -81,74 +78,54 @@ export class HumanInput implements IInput {
     ];
 
     private readonly input: Input;
-    private extraAxisUpDown = false;
-    private extraAxisDownDown = false;
-    private extraAxisLeftDown = false;
-    private extraAxisRightDown = false;
-    private readonly extraAxisBaselines = new Array<number>(HumanInput.CONTROLLER_INDEX_LIMIT * HumanInput.GAMEPAD_AXIS_LIMIT).fill(Number.NaN);
 
     public constructor(gc: GameContainer) {
         this.input = gc.getInput();
+        this.input.setAdditionalControllerDirectionAxes(HumanInput.EXTRA_DIRECTION_AXES);
     }
 
     public reset(): void {
-        this.syncExtraAxisDirectionState();
+        this.input.setAdditionalControllerDirectionAxes(HumanInput.EXTRA_DIRECTION_AXES);
     }
 
     public isUp(): boolean {
-        return this.isAnyKeyDown(HumanInput.UP_KEYS) || this.input.isControllerUp(Input.ANY_CONTROLLER) || this.isExtraAxisUpDown();
+        return this.isAnyKeyDown(HumanInput.UP_KEYS) || this.input.isControllerUp(Input.ANY_CONTROLLER);
     }
 
     public isDown(): boolean {
-        return this.isAnyKeyDown(HumanInput.DOWN_KEYS) || this.input.isControllerDown(Input.ANY_CONTROLLER) || this.isExtraAxisDownDown();
+        return this.isAnyKeyDown(HumanInput.DOWN_KEYS) || this.input.isControllerDown(Input.ANY_CONTROLLER);
     }
 
     public isLeft(): boolean {
-        return this.isAnyKeyDown(HumanInput.LEFT_KEYS) || this.input.isControllerLeft(Input.ANY_CONTROLLER) || this.isExtraAxisLeftDown();
+        return this.isAnyKeyDown(HumanInput.LEFT_KEYS) || this.input.isControllerLeft(Input.ANY_CONTROLLER);
     }
 
     public isRight(): boolean {
-        return this.isAnyKeyDown(HumanInput.RIGHT_KEYS) || this.input.isControllerRight(Input.ANY_CONTROLLER) || this.isExtraAxisRightDown();
+        return this.isAnyKeyDown(HumanInput.RIGHT_KEYS) || this.input.isControllerRight(Input.ANY_CONTROLLER);
     }
 
     public isUpPressed(): boolean {
-        const keyboard = this.isAnyKeyPressed(HumanInput.UP_KEYS);
-        const controller = this.isControllerDirectionPressed(2);
-        const extraAxis = this.isExtraAxisUpPressed();
-        return keyboard || controller || extraAxis;
+        return this.isAnyKeyPressed(HumanInput.UP_KEYS) || this.isControllerDirectionPressed(2);
     }
 
     public isDownPressed(): boolean {
-        const keyboard = this.isAnyKeyPressed(HumanInput.DOWN_KEYS);
-        const controller = this.isControllerDirectionPressed(3);
-        const extraAxis = this.isExtraAxisDownPressed();
-        return keyboard || controller || extraAxis;
+        return this.isAnyKeyPressed(HumanInput.DOWN_KEYS) || this.isControllerDirectionPressed(3);
     }
 
     public isLeftPressed(): boolean {
-        const keyboard = this.isAnyKeyPressed(HumanInput.LEFT_KEYS);
-        const controller = this.isControllerDirectionPressed(0);
-        const extraAxis = this.isExtraAxisLeftPressed();
-        return keyboard || controller || extraAxis;
+        return this.isAnyKeyPressed(HumanInput.LEFT_KEYS) || this.isControllerDirectionPressed(0);
     }
 
     public isRightPressed(): boolean {
-        const keyboard = this.isAnyKeyPressed(HumanInput.RIGHT_KEYS);
-        const controller = this.isControllerDirectionPressed(1);
-        const extraAxis = this.isExtraAxisRightPressed();
-        return keyboard || controller || extraAxis;
+        return this.isAnyKeyPressed(HumanInput.RIGHT_KEYS) || this.isControllerDirectionPressed(1);
     }
 
     public isMenuStartPressed(): boolean {
-        const keyboard = this.isAnyKeyPressed(HumanInput.MENU_START_KEYS);
-        const controller = this.isGamepadButtonStartPressed();
-        return keyboard || controller;
+        return this.isAnyKeyPressed(HumanInput.MENU_START_KEYS) || this.isGamepadButtonStartPressed();
     }
 
     public isConfirmPressed(): boolean {
-        const keyboard = this.isAnyKeyPressed(HumanInput.CONFIRM_START_KEYS);
-        const controller = this.isGamepadButtonStartPressed();
-        return keyboard || controller;
+        return this.isAnyKeyPressed(HumanInput.CONFIRM_START_KEYS) || this.isGamepadButtonStartPressed();
     }
 
     public isGameplayStartPressed(): boolean {
@@ -170,7 +147,6 @@ export class HumanInput implements IInput {
     public clearKeyPressedRecord(): void {
         this.input.clearKeyPressedRecord();
         this.input.clearControlPressedRecord();
-        this.syncExtraAxisDirectionState();
     }
 
     public update(): boolean {
@@ -196,7 +172,7 @@ export class HumanInput implements IInput {
 
     private isControllerDirectionPressed(control: number): boolean {
         let pressed = false;
-        for (let controller = 0; controller < HumanInput.CONTROLLER_INDEX_LIMIT; controller++) {
+        for (let controller = 0; controller < this.input.getControllerCount(); controller++) {
             pressed = this.input.isControlPressed(control, controller) || pressed;
         }
         return pressed;
@@ -204,103 +180,13 @@ export class HumanInput implements IInput {
 
     private isGamepadButtonStartPressed(): boolean {
         let pressed = false;
-        for (let controller = 0; controller < HumanInput.CONTROLLER_INDEX_LIMIT; controller++) {
-            for (let button = 0; button < HumanInput.GAMEPAD_BUTTON_INDEX_LIMIT; button++) {
+        for (let controller = 0; controller < this.input.getControllerCount(); controller++) {
+            const buttonCount = this.input.getButtonCount(controller);
+            for (let button = 0; button < buttonCount; button++) {
                 const control = HumanInput.GAMEPAD_BUTTON_CONTROL_OFFSET + button;
                 pressed = this.input.isControlPressed(control, controller) || pressed;
             }
         }
         return pressed;
-    }
-
-    private isExtraAxisUpDown(): boolean {
-        return this.isAnyAxisLessThan(HumanInput.EXTRA_VERTICAL_AXES, -HumanInput.AXIS_THRESHOLD);
-    }
-
-    private isExtraAxisDownDown(): boolean {
-        return this.isAnyAxisGreaterThan(HumanInput.EXTRA_VERTICAL_AXES, HumanInput.AXIS_THRESHOLD);
-    }
-
-    private isExtraAxisLeftDown(): boolean {
-        return this.isAnyAxisLessThan(HumanInput.EXTRA_HORIZONTAL_AXES, -HumanInput.AXIS_THRESHOLD);
-    }
-
-    private isExtraAxisRightDown(): boolean {
-        return this.isAnyAxisGreaterThan(HumanInput.EXTRA_HORIZONTAL_AXES, HumanInput.AXIS_THRESHOLD);
-    }
-
-    private isExtraAxisUpPressed(): boolean {
-        const down = this.isExtraAxisUpDown();
-        const pressed = down && !this.extraAxisUpDown;
-        this.extraAxisUpDown = down;
-        return pressed;
-    }
-
-    private isExtraAxisDownPressed(): boolean {
-        const down = this.isExtraAxisDownDown();
-        const pressed = down && !this.extraAxisDownDown;
-        this.extraAxisDownDown = down;
-        return pressed;
-    }
-
-    private isExtraAxisLeftPressed(): boolean {
-        const down = this.isExtraAxisLeftDown();
-        const pressed = down && !this.extraAxisLeftDown;
-        this.extraAxisLeftDown = down;
-        return pressed;
-    }
-
-    private isExtraAxisRightPressed(): boolean {
-        const down = this.isExtraAxisRightDown();
-        const pressed = down && !this.extraAxisRightDown;
-        this.extraAxisRightDown = down;
-        return pressed;
-    }
-
-    private isAnyAxisLessThan(axes: readonly number[], threshold: number): boolean {
-        for (let controller = 0; controller < HumanInput.CONTROLLER_INDEX_LIMIT; controller++) {
-            for (let i = 0; i < axes.length; i++) {
-                if (this.readExtraAxisValue(controller, axes[i]) < threshold) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private isAnyAxisGreaterThan(axes: readonly number[], threshold: number): boolean {
-        for (let controller = 0; controller < HumanInput.CONTROLLER_INDEX_LIMIT; controller++) {
-            for (let i = 0; i < axes.length; i++) {
-                if (this.readExtraAxisValue(controller, axes[i]) > threshold) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private readExtraAxisValue(controller: number, axis: number): number {
-        if (this.input.getAxisCount(controller) <= axis) {
-            return 0;
-        }
-        const value = this.input.getAxisValue(controller, axis);
-        const baselineIndex = controller * HumanInput.GAMEPAD_AXIS_LIMIT + axis;
-        let baseline = this.extraAxisBaselines[baselineIndex];
-        if (Number.isNaN(baseline)) {
-            baseline = value;
-            this.extraAxisBaselines[baselineIndex] = baseline;
-        }
-        if (Math.abs(value) <= HumanInput.AXIS_RECENTER_THRESHOLD) {
-            baseline = 0;
-            this.extraAxisBaselines[baselineIndex] = baseline;
-        }
-        return value - baseline;
-    }
-
-    private syncExtraAxisDirectionState(): void {
-        this.extraAxisUpDown = this.isExtraAxisUpDown();
-        this.extraAxisDownDown = this.isExtraAxisDownDown();
-        this.extraAxisLeftDown = this.isExtraAxisLeftDown();
-        this.extraAxisRightDown = this.isExtraAxisRightDown();
     }
 }

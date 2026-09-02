@@ -777,7 +777,22 @@ function createInput() {
 }
 
 function createRandom(variant) {
-    return variant === "target" ? { seed0: 444, seed1: 555, seed2: 666 } : { seed0: 111, seed1: 222, seed2: 333 };
+    const random = variant === "target" ? { seed0: 444, seed1: 555, seed2: 666 } : { seed0: 111, seed1: 222, seed2: 333 };
+    Object.defineProperties(random, {
+        getState: {
+            value() {
+                return { seed0: this.seed0, seed1: this.seed1, seed2: this.seed2 };
+            }
+        },
+        setState: {
+            value(state) {
+                this.seed0 = state.seed0;
+                this.seed1 = state.seed1;
+                this.seed2 = state.seed2;
+            }
+        }
+    });
+    return random;
 }
 
 function createRobotInputs(variant) {
@@ -812,6 +827,18 @@ function createMusic() {
         playCalls: [],
         loopCalls: [],
         pauseCalls: 0,
+        isLooped() {
+            return this.looped;
+        },
+        isPaused() {
+            return this.paused;
+        },
+        getPlaybackRate() {
+            return this.playbackRate;
+        },
+        getDuration() {
+            return this.buffer?.duration ?? null;
+        },
         playing() {
             return this.playingState;
         },
@@ -829,15 +856,21 @@ function createMusic() {
         },
         play(rate, volume) {
             this.playCalls.push({ rate, volume });
+            this.playbackRate = rate;
+            this.paused = false;
+            this.looped = false;
             this.playingState = true;
         },
         loop(rate, volume) {
             this.loopCalls.push({ rate, volume });
+            this.playbackRate = rate;
+            this.paused = false;
             this.looped = true;
             this.playingState = true;
         },
         stop() {
             this.stopCalls++;
+            this.paused = false;
             this.playingState = false;
         },
         pause() {

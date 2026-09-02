@@ -1,9 +1,8 @@
 import "./styles.css";
-import type { GameContainer } from "slick2d-ts";
-import { SoundStore } from "slick2d-ts/slick/openal/SoundStore";
-import { ResourceLoader } from "slick2d-ts/slick/util/ResourceLoader";
+import { ResourceLoader, SoundStore, type GameContainer } from "slick2d-ts";
 import { createBrowserStorageKeys } from "./BrowserStorageKeys";
 import { RESOURCE_REFS } from "./resourceManifest";
+import { getResourceVersion } from "./ResourceVersions";
 import { APP_VERSION, CACHE_BUST } from "./version";
 import type { Main as MsPacManMain } from "../mspacman/Main";
 import type { MsPacManGameStateStore } from "../mspacman/persistence/MsPacManGameStateStore";
@@ -56,6 +55,8 @@ const HIGH_DPI_ENABLED = true;
 const MAX_DEVICE_PIXEL_RATIO = 4;
 const RESOURCE_CACHE_RETRY_COUNT = 3;
 const RESOURCE_CACHE_RETRY_DELAY_MS = 300;
+const RESOURCE_PRELOAD_CONCURRENCY = 6;
+const AUDIO_PRELOAD_CONCURRENCY = 4;
 const DEFAULT_VOLUME = 0.1;
 const DEFAULT_SCALING_PREFERENCE: MsPacManScalingPreference = "crisp";
 const SCALING_MODE_DEFINITIONS: readonly { value: MsPacManScalingPreference; label: string }[] = [
@@ -86,6 +87,7 @@ let suspendedByVisibilityLoss = document.visibilityState !== "visible";
 let suspendedByFocusLoss = !document.hasFocus();
 let preparedRuntime: PreparedRuntime | null = null;
 let preparationPromise: Promise<PreparedRuntime> | null = null;
+let preparationAbortController: AbortController | null = null;
 let preparationError: unknown = null;
 let preparationProgress = 0;
 let backgroundPreparationScheduled = false;
@@ -221,9 +223,11 @@ function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: stri
 
     volumeInput?.addEventListener("input", () => {
         volume = Number(volumeInput.value) / 100;
-        writeVolume(volume);
         updateVolumeUi(volumeInput, volumeValue);
         applyVolume();
+    });
+    volumeInput?.addEventListener("change", () => {
+        writeVolume(volume);
     });
     if (volumeInput) {
         updateVolumeUi(volumeInput, volumeValue);
@@ -379,7 +383,6 @@ async function unlockAudio(): Promise<void> {
 }
 
 function applyVolume(): void {
-    writeVolume(volume);
     applyVolumeToRuntime();
 }
 
@@ -407,10 +410,14 @@ async function ensureRuntimePrepared(forceRetry = false): Promise<PreparedRuntim
         throw preparationError;
     }
 
+    preparationAbortController?.abort();
+    const abortController = new AbortController();
+    preparationAbortController = abortController;
     ResourceLoader.clearFailures();
-    ResourceLoader.setCacheBust(CACHE_BUST);
+    ResourceLoader.setCacheBust(null);
+    ResourceLoader.setCacheVersionResolver(getResourceVersion);
     ResourceLoader.setRetryOptions(RESOURCE_CACHE_RETRY_COUNT, RESOURCE_CACHE_RETRY_DELAY_MS);
-    preparationPromise = prepareRuntime()
+    preparationPromise = prepareRuntime(abortController.signal)
         .then((runtime) => {
             preparedRuntime = runtime;
             preparationError = null;
@@ -424,17 +431,20 @@ async function ensureRuntimePrepared(forceRetry = false): Promise<PreparedRuntim
         })
         .finally(() => {
             preparationPromise = null;
+            if (preparationAbortController === abortController) {
+                preparationAbortController = null;
+            }
         });
     return preparationPromise;
 }
 
-async function prepareRuntime(): Promise<PreparedRuntime> {
+async function prepareRuntime(signal: AbortSignal): Promise<PreparedRuntime> {
     const [slick, mainModule, scalableGameModule, gameStateStoreModule] = await Promise.all([
         import("slick2d-ts"),
         import("../mspacman/Main"),
         import("../mspacman/ScalableGame2"),
         import("../mspacman/persistence/MsPacManGameStateStore"),
-        preloadPreparedResources(Array.from(new Set(RESOURCE_REFS)))
+        preloadPreparedResources(Array.from(new Set(RESOURCE_REFS)), signal)
     ]);
 
     return {
@@ -445,7 +455,7 @@ async function prepareRuntime(): Promise<PreparedRuntime> {
     };
 }
 
-async function preloadPreparedResources(resourceRefs: readonly string[]): Promise<void> {
+async function preloadPreparedResources(resourceRefs: readonly string[], signal: AbortSignal): Promise<void> {
     const audioRefs = resourceRefs.filter(isAudioResourceRef);
     const nonAudioRefs = resourceRefs.filter((ref) => !isAudioResourceRef(ref));
     const total = audioRefs.length + nonAudioRefs.length;
@@ -458,13 +468,21 @@ async function preloadPreparedResources(resourceRefs: readonly string[]): Promis
 
     updateProgress();
     await Promise.all([
-        ResourceLoader.preloadResources(nonAudioRefs, (progress) => {
-            nonAudioLoaded = progress.loaded;
-            updateProgress();
+        ResourceLoader.preloadResources(nonAudioRefs, {
+            concurrency: RESOURCE_PRELOAD_CONCURRENCY,
+            signal,
+            onProgress: (progress) => {
+                nonAudioLoaded = progress.loaded;
+                updateProgress();
+            }
         }),
-        SoundStore.get().preloadAudioBuffers(audioRefs, (progress) => {
-            audioLoaded = progress.loaded;
-            updateProgress();
+        SoundStore.get().preloadAudioBuffers(audioRefs, {
+            concurrency: AUDIO_PRELOAD_CONCURRENCY,
+            signal,
+            onProgress: (progress) => {
+                audioLoaded = progress.loaded;
+                updateProgress();
+            }
         })
     ]);
     preparationProgress = 1;
@@ -811,7 +829,7 @@ function showLiveMenuOverlay(): void {
     }
 
     liveMenuOpen = true;
-    saveCurrentGameState();
+    const saved = saveCurrentGameState();
     game.setBrowserSuspended(true);
     container.stopSoundEffects();
     container.setLoopSuspended(true);
@@ -820,7 +838,7 @@ function showLiveMenuOverlay(): void {
     stopHamburgerVisibilityMonitor();
     setHamburgerHidden(true);
     stopGameCursorAutoHide();
-    menuOverlay = renderMenuUi(app, true, "", true);
+    menuOverlay = renderMenuUi(app, true, saved ? "" : "Unable to save game state.", true);
 }
 
 function resumeLiveGameFromMenu(): void {
@@ -1167,9 +1185,6 @@ function safeReadScalingPreference(): MsPacManScalingPreference {
         const value = localStorage.getItem(createBrowserStorageKeys().scaling);
         if (isScalingPreference(value)) {
             return value;
-        }
-        if (value !== null) {
-            writeScalingPreference(DEFAULT_SCALING_PREFERENCE);
         }
         return DEFAULT_SCALING_PREFERENCE;
     } catch {

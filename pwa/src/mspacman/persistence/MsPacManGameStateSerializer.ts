@@ -899,14 +899,14 @@ export class MsPacManGameStateSerializer {
             return null;
         }
 
-        const looped = Boolean(this.getField(music, "looped"));
+        const looped = music.isLooped();
 
         return {
             id,
             looped,
-            paused: Boolean(this.getField(music, "paused")),
+            paused: music.isPaused(),
             playing: music.playing(),
-            playbackRate: this.numberField(music, "playbackRate", 1),
+            playbackRate: music.getPlaybackRate(),
             position: this.normalizeMusicPosition(music, music.getPosition(), looped),
             volume: music.getVolume()
         };
@@ -980,9 +980,8 @@ export class MsPacManGameStateSerializer {
             return sanitized;
         }
 
-        const buffer = this.getField(music, "buffer") as { duration?: unknown } | null;
-        const duration = typeof buffer?.duration === "number" ? buffer.duration : 0;
-        if (!Number.isFinite(duration) || duration <= 0) {
+        const duration = music.getDuration();
+        if (duration === null || duration <= 0) {
             return sanitized;
         }
 
@@ -990,17 +989,11 @@ export class MsPacManGameStateSerializer {
     }
 
     private captureRandom(main: Main): RandomSnapshot {
-        return {
-            seed0: this.numberField(main.random, "seed0", 0),
-            seed1: this.numberField(main.random, "seed1", 0),
-            seed2: this.numberField(main.random, "seed2", 0)
-        };
+        return main.random.getState();
     }
 
     private restoreRandom(main: Main, snapshot: RandomSnapshot): void {
-        this.setField(main.random, "seed0", snapshot.seed0);
-        this.setField(main.random, "seed1", snapshot.seed1);
-        this.setField(main.random, "seed2", snapshot.seed2);
+        main.random.setState(snapshot);
     }
 
     private captureRobotInput(input: object): RobotInputSnapshot {

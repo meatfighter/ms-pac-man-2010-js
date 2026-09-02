@@ -16,8 +16,8 @@
         "build:pwa": "npm run build:pwa:release",
         "build:pwa:unsigned": "node scripts/build-pwa-unsigned.mjs",
         "build:pwa:release": "node scripts/build-release.mjs --target=pwa --key-source=active",
-        "_build:pwa:unsigned": "npm run generate:icons && tsc --project pwa/tsconfig.json && vite build --config pwa/vite.config.ts && npm run verify:pwa-build",
-        "_build:pwa:release": "npm run generate:icons && tsc --project pwa/tsconfig.json && vite build --mode release --config pwa/vite.config.ts && npm run verify:pwa-build",
+        "_build:pwa:unsigned": "npm run generate:icons && npm run generate:resource-versions && tsc --project pwa/tsconfig.json && vite build --config pwa/vite.config.ts && npm run verify:pwa-build",
+        "_build:pwa:release": "npm run generate:icons && npm run generate:resource-versions && tsc --project pwa/tsconfig.json && vite build --mode release --config pwa/vite.config.ts && npm run verify:pwa-build",
         "build:about": "npm run _build:about",
         "_build:about": "npm run generate:icons && node scripts/build-about.mjs",
         "build:desktop": "npm run build:desktop:unsigned",
@@ -44,7 +44,7 @@
         "format": "prettier . --write",
         "format:check": "prettier . --check",
         "lint": "eslint .",
-        "test": "npm run test:pwa-state && npm run test:pwa-high-score && npm run test:pwa-build-config && npm run test:pwa-release-scripts && npm run test:pwa-unsigned-build && npm run test:about-page && npm run test:release-output-plan && npm run test:release-io && npm run test:release-lock && npm run test:release-dist-promotion && npm run test:hmac-config && npm run test:preview-release && npm run test:release-safety && npm run test:release-finalizer && npm run test:production-api-smoke && npm run test:desktop-controller-refresh && npm run test:desktop-high-score",
+        "test": "npm run test:pwa-state && npm run test:pwa-tech-debt && npm run check:resource-versions && npm run test:pwa-high-score && npm run test:pwa-build-config && npm run test:pwa-release-scripts && npm run test:pwa-unsigned-build && npm run test:about-page && npm run test:release-output-plan && npm run test:release-io && npm run test:release-lock && npm run test:release-dist-promotion && npm run test:hmac-config && npm run test:preview-release && npm run test:release-safety && npm run test:release-finalizer && npm run test:production-api-smoke && npm run test:desktop-controller-refresh && npm run test:desktop-high-score",
         "test:pwa-state": "node scripts/test-pwa-state.mjs",
         "test:pwa-high-score": "node scripts/test-pwa-high-score.mjs",
         "test:pwa-build-config": "node scripts/test-pwa-build-config.mjs",
@@ -69,10 +69,14 @@
         "preview:dist": "vite preview --host 127.0.0.1 --outDir dist",
         "preview:release": "node scripts/preview-release.mjs",
         "release:desktop": "node scripts/release-desktop.mjs",
-        "run:desktop": "node scripts/run-desktop.mjs"
+        "run:desktop": "node scripts/run-desktop.mjs",
+        "generate:resource-versions": "node scripts/generate-resource-versions.mjs",
+        "check:resource-versions": "node scripts/generate-resource-versions.mjs --check",
+        "test:pwa-tech-debt": "node scripts/test-pwa-tech-debt.mjs",
+        "verify:browser": "node scripts/run-browser-verification.mjs"
     },
     "dependencies": {
-        "slick2d-ts": "git+https://github.com/meatfighter/slick2d-ts.git#semver:^1.5.2"
+        "slick2d-ts": "git+https://github.com/meatfighter/slick2d-ts.git#39689c01a336c7620a7e80f992fe33558ef9652a"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
