@@ -1,0 +1,67 @@
+name: Modernize Java desktop build
+
+on:
+    push:
+        paths:
+            - ".github/workflows/modernize-java-build.yml"
+
+permissions:
+    contents: write
+
+jobs:
+    modernize:
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+
+            - name: Set up Node
+              uses: actions/setup-node@v7
+              with:
+                  node-version: 22.13.0
+                  cache: npm
+
+            - name: Set up Java
+              uses: actions/setup-java@v6
+              with:
+                  distribution: temurin
+                  java-version: "21"
+
+            - name: Install dependencies
+              run: npm ci --ignore-scripts
+
+            - name: Apply modernization
+              run: node .github/scripts/modernize-java-build.mjs
+
+            - name: Format
+              run: npm run format
+
+            - name: Check patch
+              run: git diff --check
+
+            - name: Format check
+              run: npm run format:check
+
+            - name: Lint
+              run: npm run lint
+
+            - name: Test
+              run: npm test
+
+            - name: Synthetic release build
+              env:
+                  MSPACMAN_HMAC_KEY_HEX: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+              run: node scripts/build-release.mjs --target=full --key-source=env
+
+            - name: Commit validated changes
+              shell: bash
+              run: |
+                  git add -A
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git commit -m "Modernize Java desktop build"
+                  git push
