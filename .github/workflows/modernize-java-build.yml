@@ -5,6 +5,7 @@ on:
         paths:
             - ".github/workflows/modernize-java-build.yml"
             - ".github/scripts/modernize-java-build.mjs"
+            - ".github/scripts/modernize-java-build-fixups.mjs"
 
 permissions:
     contents: write
@@ -36,7 +37,9 @@ jobs:
               run: npm ci --ignore-scripts
 
             - name: Apply modernization
-              run: node .github/scripts/modernize-java-build.mjs
+              run: |
+                  node .github/scripts/modernize-java-build.mjs
+                  node .github/scripts/modernize-java-build-fixups.mjs
 
             - name: Format
               run: npm run format
