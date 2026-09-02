@@ -28,7 +28,7 @@ if (!versionCheckPattern.test(buildUtils)) {
 }
 buildUtils = buildUtils.replace(
     versionCheckPattern,
-    `export function assertProjectVersionsMatch() {\n    const packageVersion = readPackageJson().version;\n    const versionJsonVersion = readVersion().version;\n    if (packageVersion !== versionJsonVersion) {\n        throw new Error(\n            [\"Release versions must match before building.\", \`package.json: \${packageVersion}\`, \`version.json: \${versionJsonVersion}\`].join(\"\\n\")\n        );\n    }\n}\n\nexport function writeVersion`
+    `export function assertProjectVersionsMatch() {\n    const packageVersion = readPackageJson().version;\n    const versionJsonVersion = readVersion().version;\n    if (packageVersion !== versionJsonVersion) {\n        throw new Error(\n            ["Release versions must match before building.", \`package.json: \${packageVersion}\`, \`version.json: \${versionJsonVersion}\`].join("\\n")\n        );\n    }\n}\n\nexport function writeVersion`
 );
 if (/desktopPomPath|readDesktopPomVersion|desktop\/pom\.xml/.test(buildUtils)) {
     throw new Error("Obsolete desktop POM coupling remains in build-utils.mjs.");
