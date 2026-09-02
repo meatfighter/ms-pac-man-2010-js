@@ -31,9 +31,12 @@ jobs:
 
                   const dependency13 = "git+https://github.com/meatfighter/slick2d-ts.git#semver:^1.3.1";
                   const dependency15 = "git+https://github.com/meatfighter/slick2d-ts.git#semver:^1.5.2";
+                  const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+                  if (packageJson.dependencies?.["slick2d-ts"] !== dependency15) {
+                      throw new Error("package.json must already request slick2d-ts ^1.5.2.");
+                  }
 
                   replaceExactlyOnce("pwa/src/app/main.ts", "const MAX_DEVICE_PIXEL_RATIO = 2;", "const MAX_DEVICE_PIXEL_RATIO = 4;");
-                  replaceExactlyOnce("package.json", dependency13, dependency15);
 
                   const lockPath = "package-lock.json";
                   const lock = JSON.parse(readFileSync(lockPath, "utf8"));
@@ -56,7 +59,7 @@ jobs:
                   git config user.name "github-actions[bot]"
                   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
                   git rm .github/workflows/apply-slick-dpr-maintenance.yml
-                  git add pwa/src/app/main.ts package.json package-lock.json
+                  git add pwa/src/app/main.ts package-lock.json
                   git diff --cached --check
-                  git commit -m "Update Slick baseline and DPR presentation"
+                  git commit -m "Update Slick lock and DPR presentation"
                   git push
