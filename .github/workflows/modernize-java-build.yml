@@ -44,6 +44,14 @@ jobs:
             - name: Check patch
               run: git diff --check
 
+            - name: Prepare candidate commit
+              shell: bash
+              run: |
+                  git add -A
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git commit -m "Modernize Java desktop build"
+
             - name: Format check
               run: npm run format:check
 
@@ -58,11 +66,5 @@ jobs:
                   MSPACMAN_HMAC_KEY_HEX: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
               run: node scripts/build-release.mjs --target=full --key-source=env
 
-            - name: Commit validated changes
-              shell: bash
-              run: |
-                  git add -A
-                  git config user.name "github-actions[bot]"
-                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-                  git commit -m "Modernize Java desktop build"
-                  git push
+            - name: Publish validated candidate
+              run: git push
