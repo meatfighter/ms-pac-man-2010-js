@@ -33,21 +33,29 @@ jobs:
                   distribution: temurin
                   java-version: "21"
 
-            - name: Verify Slick dependency is current
+            - name: Verify Slick dependency pin
               run: |
-                  slick_head="$(git ls-remote https://github.com/meatfighter/slick2d-ts.git refs/heads/main | awk '{print $1}')"
-                  SLICK_HEAD="$slick_head" node --input-type=module <<'NODE'
+                  node --input-type=module <<'NODE'
                   import { readFileSync } from "node:fs";
-                  const expected = `git+https://github.com/meatfighter/slick2d-ts.git#${process.env.SLICK_HEAD}`;
                   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
                   const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
-                  if (pkg.dependencies?.["slick2d-ts"] !== expected) throw new Error(`package.json Slick pin is stale: ${pkg.dependencies?.["slick2d-ts"]} != ${expected}`);
-                  if (lock.packages?.[""]?.dependencies?.["slick2d-ts"] !== expected) throw new Error("package-lock.json root Slick dependency is stale.");
-                  if (lock.packages?.["node_modules/slick2d-ts"]?.resolved !== expected) throw new Error(`package-lock.json Slick resolution is stale or not HTTPS: ${lock.packages?.["node_modules/slick2d-ts"]?.resolved}`);
+                  const dependency = pkg.dependencies?.["slick2d-ts"];
+                  if (typeof dependency !== "string" || !/^git\+https:\/\/github\.com\/meatfighter\/slick2d-ts\.git#[0-9a-f]{40}$/.test(dependency)) {
+                      throw new Error(`package.json Slick dependency must be an immutable HTTPS commit pin: ${dependency}`);
+                  }
+                  if (lock.packages?.[""]?.dependencies?.["slick2d-ts"] !== dependency) {
+                      throw new Error("package-lock.json root Slick dependency does not match package.json.");
+                  }
+                  if (lock.packages?.["node_modules/slick2d-ts"]?.resolved !== dependency) {
+                      throw new Error("package-lock.json Slick resolution does not match the immutable package.json pin.");
+                  }
                   NODE
 
             - name: Install Dependencies
               run: npm ci --ignore-scripts
+
+            - name: Dependency Audit
+              run: npm run verify:dependencies
 
             - name: Format
               run: npm run format:check
