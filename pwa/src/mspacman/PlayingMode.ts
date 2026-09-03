@@ -200,6 +200,8 @@ export class PlayingMode implements IMode {
         this.fadeIndex = 0;
         this.fadeState = PlayingMode.FADE_IN;
         this.fadeReason = PlayingMode.FADE_REASON_KILLED;
+        this.gameOver = false;
+        this.gameOverTimer = 0;
 
         for (let i = this.regionCounts.length - 1; i >= 0; i--) {
             this.regionCounts[i] = 0;

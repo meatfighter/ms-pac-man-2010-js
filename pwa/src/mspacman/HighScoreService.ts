@@ -68,14 +68,17 @@ async function requestScores(method: "GET" | "POST", body?: unknown): Promise<Re
             headers["Content-Type"] = "application/json";
         }
         try {
-            const response = await fetch(HIGH_SCORE_URL, {
+            const request: RequestInit = {
                 method,
                 cache: "no-store",
                 credentials: "omit",
                 headers,
-                body: method === "POST" ? JSON.stringify(body) : undefined,
                 signal: controller.signal
-            });
+            };
+            if (method === "POST") {
+                request.body = JSON.stringify(body);
+            }
+            const response = await fetch(HIGH_SCORE_URL, request);
 
             if (response.status !== 200 || response.headers.get("MsPacMan-Protocol-Version") !== String(PROTOCOL_VERSION)) {
                 return null;
@@ -168,5 +171,9 @@ function bytesToHex(bytes: Uint8Array): string {
 }
 
 function isJsonContentType(value: string | null): boolean {
-    return value !== null && value.toLowerCase().split(";")[0].trim() === "application/json";
+    if (value === null) {
+        return false;
+    }
+    const [mediaType] = value.toLowerCase().split(";");
+    return mediaType?.trim() === "application/json";
 }

@@ -47,6 +47,22 @@ export default tseslint.config(
         }
     },
     {
+        files: [
+            "pwa/src/app/**/*.ts",
+            "pwa/src/mspacman/HighScoreProtocol.ts",
+            "pwa/src/mspacman/HighScoreService.ts",
+            "pwa/src/mspacman/HumanInput.ts",
+            "pwa/src/mspacman/RobotInput.ts",
+            "pwa/src/mspacman/persistence/**/*.ts",
+            "pwa/src/browser-verify.ts"
+        ],
+        rules: {
+            "@typescript-eslint/no-explicit-any": "error",
+            "@typescript-eslint/no-non-null-assertion": "error",
+            "prefer-const": "error"
+        }
+    },
+    {
         files: ["pwa/vite.config.ts"],
         languageOptions: {
             ecmaVersion: 2022,

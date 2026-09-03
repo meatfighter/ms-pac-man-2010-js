@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { runInNewContext } from "node:vm";
-import { distDir, readBuildVersion } from "./build-utils.mjs";
+import { distDir, readBuildVersion, rootDir } from "./build-utils.mjs";
 import { createCacheIdentity, readEnvHmacKey } from "./hmac-config.mjs";
 import { listFilesStrict } from "./release-io.mjs";
 
@@ -10,6 +10,8 @@ const pwaDistDir = join(distDir, "pwa");
 const assetsDir = join(pwaDistDir, "assets");
 const serviceWorkerPath = join(pwaDistDir, "sw.js");
 const indexPath = join(pwaDistDir, "index.html");
+const resourceVersions = readGeneratedResourceVersions();
+
 const relocationTestBases = [
     "https://example.invalid/mspacman2010/pwa/",
     "https://example.invalid/ms-pac-man-2010-staging/pwa/",
@@ -55,6 +57,22 @@ async function main() {
     await assertRelocatablePwaBuild(indexHtml, manifest, serviceWorker, resources, cacheBust);
 
     console.log(`PWA build verified: ${builtAssets.length} built assets are precached.`);
+}
+
+function readGeneratedResourceVersions() {
+    const source = readFileSync(join(rootDirForVerification(), "pwa", "src", "app", "ResourceVersions.ts"), "utf8");
+    const match = /RESOURCE_VERSIONS:[^=]*= (\{[\s\S]*?\});/.exec(source);
+    assert.ok(match?.[1], "Unable to parse generated ResourceVersions.ts.");
+    return JSON.parse(match[1]);
+}
+
+function rootDirForVerification() {
+    return rootDir;
+}
+
+function expectedResourceVersion(resource, cacheBust) {
+    const ref = resource.replace(/^\.\//, "").split("?", 1)[0];
+    return resourceVersions[ref] ?? cacheBust;
 }
 
 function readExpectedCacheBust(versionInfo) {
@@ -147,7 +165,10 @@ async function assertVersionedServiceWorkerCacheKeys(serviceWorker, cacheBust) {
     );
     assert.ok(serviceWorker.includes("cache.match(createCacheUrl(requestOrUrl))"), "Service worker runtime cache reads must use normalized cache keys.");
     assert.ok(serviceWorker.includes('!url.searchParams.has("v")'), "Service worker must preserve explicitly supplied build versions.");
-    assert.ok(serviceWorker.includes('url.searchParams.set("v", VERSION)'), "Service worker must stamp unversioned app resource cache keys.");
+    assert.ok(
+        serviceWorker.includes('url.searchParams.set("v", resourceVersionForUrl(url))'),
+        "Service worker must select content or release versions for unversioned cache keys."
+    );
     assert.equal(serviceWorker.includes("IGNORED_CACHE_SEARCH_PARAMS"), false, "Service worker must not strip build-stamp cache keys.");
     assert.equal(serviceWorker.includes('searchParams.delete("v")'), false, "Service worker must not delete build-stamp cache keys.");
     assert.equal(serviceWorker.includes("ignoreSearch"), false, "Service worker should use normalized cache keys instead of ignoreSearch.");
@@ -166,8 +187,17 @@ async function assertVersionedServiceWorkerCacheKeys(serviceWorker, cacheBust) {
 
     for (const resource of worker.APP_STATIC_RESOURCES) {
         const url = new URL(worker.createCacheUrl(resource));
-        assert.equal(url.searchParams.get("v"), cacheBust, `Install-time precache URL is missing the current version: ${resource}`);
+        assert.equal(url.searchParams.get("v"), expectedResourceVersion(resource, cacheBust), `Install-time precache URL has the wrong version: ${resource}`);
     }
+
+    const firstContentVersion = Object.entries(resourceVersions)[0];
+    assert.ok(firstContentVersion, "Generated resource versions must not be empty.");
+    const [contentRef, contentVersion] = firstContentVersion;
+    assert.equal(
+        new URL(worker.createCacheUrl(`./${contentRef}`)).searchParams.get("v"),
+        contentVersion,
+        "Known Java resource must use its content hash in the service-worker cache key."
+    );
 
     await dispatchServiceWorkerInstall(worker);
     assert.deepEqual(
@@ -182,9 +212,11 @@ async function assertVersionedServiceWorkerCacheKeys(serviceWorker, cacheBust) {
     );
     assert.equal(worker.skipWaitingCalls, 0, "Install must not call self.skipWaiting().");
     assert.ok(worker.addAllUrls.length > 0, "Install must precache the generated PWA resources.");
-    for (const urlText of worker.addAllUrls) {
+    for (let i = 0; i < worker.addAllUrls.length; i++) {
+        const urlText = worker.addAllUrls[i];
+        const resource = worker.APP_STATIC_RESOURCES[i];
         const url = new URL(urlText);
-        assert.equal(url.searchParams.get("v"), cacheBust, `Install precache request must use the embedded current version: ${urlText}`);
+        assert.equal(url.searchParams.get("v"), expectedResourceVersion(resource, cacheBust), `Install precache request has the wrong version: ${urlText}`);
     }
 
     const oldVersion = "1.0.0-old";
@@ -323,7 +355,7 @@ function assertServiceWorkerResolvesWithinScope(serviceWorker, resources, base, 
     for (const resource of resources) {
         const cacheUrl = new URL(worker.createCacheUrl(resource));
         assert.ok(cacheUrl.href.startsWith(base), `Precache resource must resolve under ${base}: ${resource}`);
-        assert.equal(cacheUrl.searchParams.get("v"), cacheBust, `Precache resource is missing the release cache key: ${resource}`);
+        assert.equal(cacheUrl.searchParams.get("v"), expectedResourceVersion(resource, cacheBust), `Precache resource has the wrong cache key: ${resource}`);
     }
 }
 

@@ -70,8 +70,9 @@ export function validateScoreTable(value: unknown[]): RemoteHighScore[] | null {
             score: entry.score,
             initials: entry.initials
         };
-        counts[score.world]++;
-        if (counts[score.world] > ROWS_PER_WORLD) {
+        const worldCount = (counts[score.world] ?? 0) + 1;
+        counts[score.world] = worldCount;
+        if (worldCount > ROWS_PER_WORLD) {
             return null;
         }
         if (score.world < previousWorld) {

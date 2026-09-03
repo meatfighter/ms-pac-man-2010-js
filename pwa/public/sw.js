@@ -1,4 +1,6 @@
 const VERSION = "__SERVICE_WORKER_VERSION__";
+/* global __RESOURCE_VERSIONS__ */
+const RESOURCE_VERSIONS = __RESOURCE_VERSIONS__;
 const CACHE_SCOPE_ID = createCacheScopeId();
 const CACHE_PREFIX = `ms-pac-man-2010-pwa|${CACHE_SCOPE_ID}|`;
 const CACHE_NAME = `${CACHE_PREFIX}${VERSION}`;
@@ -31,12 +33,21 @@ function canUseCacheApi(request) {
     );
 }
 
+function resourceVersionForUrl(url) {
+    const scope = new URL(self.registration.scope);
+    if (url.origin === self.location.origin && url.href.startsWith(scope.href)) {
+        const relativePath = decodeURIComponent(url.pathname.slice(scope.pathname.length)).replace(/^\/+/, "");
+        return RESOURCE_VERSIONS[relativePath] ?? VERSION;
+    }
+    return VERSION;
+}
+
 function createCacheUrl(requestOrUrl) {
     const rawUrl = typeof requestOrUrl === "string" ? requestOrUrl : requestOrUrl.url;
     const url = new URL(rawUrl, self.registration.scope);
 
     if (url.origin === self.location.origin && url.href.startsWith(self.registration.scope) && !url.searchParams.has("v")) {
-        url.searchParams.set("v", VERSION);
+        url.searchParams.set("v", resourceVersionForUrl(url));
     }
 
     url.hash = "";

@@ -1,4 +1,8 @@
-import { AppGameContainer, BasicGame, Display, Image, ResourceLoader, type GameContainer, type Graphics } from "slick2d-ts";
+import { AppGameContainer, Display, ResourceLoader, SoundStore } from "slick2d-ts";
+import { RESOURCE_REFS } from "./app/resourceManifest.js";
+import { getResourceVersion } from "./app/ResourceVersions.js";
+import { Main } from "./mspacman/Main.js";
+import { MsPacManGameStateStore } from "./mspacman/persistence/MsPacManGameStateStore.js";
 import { ScalableGame2 } from "./mspacman/ScalableGame2.js";
 
 const result = document.querySelector<HTMLElement>("#result");
@@ -13,67 +17,87 @@ function assert(condition: unknown, message: string): asserts condition {
     }
 }
 
-class MsPacManSmokeGame extends BasicGame {
-    public rendered = false;
-
-    public constructor(private readonly spriteSheet: Image) {
-        super("Ms. Pac-Man 2010 browser verification");
-    }
-
-    public init(_gc: GameContainer): void {}
-
-    public update(_gc: GameContainer, _delta: number): void {}
-
-    public render(_gc: GameContainer, g: Graphics): void {
-        g.drawImage(this.spriteSheet, 0, 0);
-        this.rendered = true;
-    }
-}
-
-async function waitForRender(game: MsPacManSmokeGame): Promise<void> {
-    const deadline = performance.now() + 5000;
-    while (!game.rendered && performance.now() < deadline) {
-        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    }
-    assert(game.rendered, "Buffered Ms. Pac-Man fixture did not render a browser frame.");
-}
-
-async function verify(): Promise<void> {
+async function preloadRuntimeResources(): Promise<void> {
     ResourceLoader.clearCache();
     ResourceLoader.removeAllResourceLocations();
     ResourceLoader.addResourceLocation(new URL("./", window.location.href));
     ResourceLoader.setCacheBust(null);
-    await ResourceLoader.preloadResources(["images/pack_1.png"], { concurrency: 2 });
+    ResourceLoader.setCacheVersionResolver(getResourceVersion);
+    const refs = Array.from(new Set(RESOURCE_REFS));
+    const audio = refs.filter((ref) => ref.endsWith(".ogg"));
+    const other = refs.filter((ref) => !ref.endsWith(".ogg"));
+    await Promise.all([ResourceLoader.preloadResources(other, { concurrency: 6 }), SoundStore.get().preloadAudioBuffers(audio, { concurrency: 4 })]);
+}
 
-    const spriteSheet = new Image("images/pack_1.png");
-    await ResourceLoader.waitForAll();
-    assert(spriteSheet.getWidth() > 0 && spriteSheet.getHeight() > 0, "Ms. Pac-Man sprite sheet did not decode.");
+async function waitForGameReady(main: Main): Promise<void> {
+    const deadline = performance.now() + 15_000;
+    while (main.isLoadingScreenActive() && performance.now() < deadline) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    }
+    assert(!main.isLoadingScreenActive(), "Real Ms. Pac-Man Main did not complete browser startup.");
+}
 
+async function mountMain(restore: ((main: Main, container: AppGameContainer) => boolean) | null): Promise<{
+    main: Main;
+    buffered: ScalableGame2;
+    container: AppGameContainer;
+}> {
+    host.replaceChildren();
     Display.setParent(host);
-    const game = new MsPacManSmokeGame(spriteSheet);
-    const buffered = new ScalableGame2(game, 800, 600, true);
+    const main = new Main();
+    const buffered = new ScalableGame2(main, 800, 600, true);
     const container = new AppGameContainer(buffered, 1000, 750, false);
+    container.setPreserveAudioCacheOnDestroy(true);
     container.setLoopSuspended(false);
     container.setHighDpiEnabled(true);
     container.setMaxDevicePixelRatio(2);
-    try {
-        await container.start();
-        await waitForRender(game);
-        assert(buffered.getPresentationInfo().physicalWidth > 0, "Buffered presentation did not acquire a physical width.");
-        buffered.setScalingPreference("smooth");
-        buffered.setScalingPreference("pixel-perfect");
-        buffered.setScalingPreference("crisp");
-    } finally {
-        container.destroy();
-        spriteSheet.destroy();
-        Display.setParent(null);
+    container.setAlwaysRender(true);
+    container.setVSync(true);
+    container.setSmoothDeltas(false);
+    container.setShowFPS(false);
+    container.setClearEachFrame(true);
+    main.appGameContainer = container;
+    main.windowedDisplayModeProvider = () => ({ width: 1000, height: 750 });
+    if (restore !== null) {
+        main.loadingCompleteHandler = () => restore(main, container);
     }
+    await container.setDisplayMode(1000, 750, false);
+    await container.start();
+    await ResourceLoader.waitForAll();
+    await waitForGameReady(main);
+    assert(buffered.getPresentationInfo().physicalWidth > 0, "Buffered presentation did not acquire a physical width.");
+    return { main, buffered, container };
+}
+
+async function verify(): Promise<void> {
+    localStorage.clear();
+    await preloadRuntimeResources();
+
+    const store = new MsPacManGameStateStore("browser-verify");
+    const first = await mountMain(null);
+    const savedMode = first.main.getCurrentModeIdForState();
+    assert(savedMode === "attract", `Expected the real game to start in attract mode, got ${savedMode}.`);
+    assert(store.save(first.main), "Real browser Main could not create a save-state snapshot.");
+    first.buffered.setScalingPreference("smooth");
+    first.buffered.setScalingPreference("pixel-perfect");
+    first.buffered.setScalingPreference("crisp");
+    first.main.invalidateBrowserLifetime();
+    first.container.destroy();
+    Display.setParent(null);
+
+    const second = await mountMain((main, container) => store.restore(main, container));
+    assert(second.main.getCurrentModeIdForState() === savedMode, "A fresh browser Main did not restore the saved mode.");
+    assert(second.main.isStateSaveReady(), "Restored browser Main is not save-state ready.");
+    second.main.invalidateBrowserLifetime();
+    second.container.destroy();
+    Display.setParent(null);
+    store.clear();
 }
 
 void verify().then(
     () => {
         result.dataset.status = "passed";
-        result.textContent = "Ms. Pac-Man 2010 browser verification passed.";
+        result.textContent = "Real Ms. Pac-Man 2010 browser boot/save/restore verification passed.";
     },
     (error: unknown) => {
         console.error(error);

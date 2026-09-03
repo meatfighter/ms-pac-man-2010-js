@@ -18,309 +18,9 @@ import {
     type RobotInputSnapshot,
     type SubmittedScoreSnapshot
 } from "./GameStateSnapshot";
+import { FRUIT_TARGET_FIELDS, GHOST_FIELDS, MAIN_FIELDS, MODE_FIELDS, MSPACMAN_FIELDS, PLAYING_MODE_FIELDS } from "./StateFieldPolicy";
 
 type FieldBag = Record<string, unknown>;
-
-const MAIN_FIELDS = [
-    "worldIndex",
-    "stageIndex",
-    "score",
-    "lives",
-    "paused",
-    "musicVolume",
-    "musicVolumeFadeStep",
-    "fadeMusicFlag",
-    "uploadComplete",
-    "demoIndex",
-    "demoMode"
-] as const;
-
-const THING_FIELDS = ["x", "y", "speed", "speedRemainder", "direction"] as const;
-
-const MSPACMAN_FIELDS = [
-    ...THING_FIELDS,
-    "spriteIndex",
-    "spriteIndexIncrementor",
-    "pellotDampensSpeed",
-    "pellotDampensSpeedCount",
-    "corneringEnhancesSpeed",
-    "corneringEnhancesSpeedCount",
-    "speedBoost",
-    "speedBoostTimer"
-] as const;
-
-const GHOST_FIELDS = [
-    ...THING_FIELDS,
-    "blue",
-    "eyeBalls",
-    "ghostIndex",
-    "spriteIndex",
-    "spriteIndexIncrementor",
-    "targetX",
-    "targetY",
-    "inHome",
-    "exitingHome",
-    "enteringHome"
-] as const;
-
-const FRUIT_TARGET_FIELDS = [
-    ...THING_FIELDS,
-    "fruitIndex",
-    "yOffset",
-    "yOffsetAngle",
-    "goingAroundHome",
-    "clockwise",
-    "aroundHomeIndex",
-    "exiting",
-    "eatenTimer",
-    "eaten"
-] as const;
-
-const PLAYING_MODE_FIELDS = [
-    "pelletCountFraction",
-    "pelletCount",
-    "pelletsRemaining",
-    "tileMap",
-    "typeMap",
-    "regionCounts",
-    "exitIndex",
-    "exitDelay",
-    "chaseMode",
-    "chaseModeToggleDelay",
-    "ghostsBlue",
-    "ghostsBlueOffset",
-    "ghostsBlueTimer",
-    "showGhostPoints",
-    "showGhostPointsTimer",
-    "ghostPointsIndex",
-    "energizerLocations",
-    "energizersVisible",
-    "energizersVisibleTimer",
-    "finished",
-    "finishedTimer",
-    "finishedWhite",
-    "finishedBlinkTimer",
-    "fruitTargetPresent",
-    "fruitTargetTimer",
-    "redEnergizerPresent",
-    "greenEnergizerPresent",
-    "energizerTimer",
-    "playerKilledFlag",
-    "musicFadeOutTimer",
-    "playerSpiraling",
-    "spiralTimer",
-    "readyTimer",
-    "stageMessage",
-    "fruitOdds",
-    "redPelletOdds",
-    "exitDelayTarget",
-    "fadeIndex",
-    "fadeState",
-    "fadeReason",
-    "gameOver",
-    "gameOverTimer"
-] as const;
-
-const MODE_FIELDS: Partial<Record<ModeId, readonly string[]>> = {
-    act1: [
-        "state",
-        "nextState",
-        "substate",
-        "topClapperIndex",
-        "timer",
-        "cyanX",
-        "pacmanX",
-        "pinkX",
-        "mspacmanX",
-        "mspacmanY",
-        "ghostSpriteIndex",
-        "ghostSpriteIndexIncrementor",
-        "chompSpriteIndex",
-        "chompSpriteIndexIncrementor",
-        "bumped",
-        "showHeart",
-        "bumpedAlpha",
-        "bumpedSpeed",
-        "ghostY",
-        "ghostYAngle",
-        "fadeIndex",
-        "fadeState"
-    ],
-    act2: [
-        "state",
-        "substate",
-        "topClapperIndex",
-        "timer",
-        "fadeIndex",
-        "fadeState",
-        "mspacmanX",
-        "pacmanX",
-        "chompSpriteIndex",
-        "chompSpriteIndexIncrementor"
-    ],
-    act3: [
-        "state",
-        "substate",
-        "topClapperIndex",
-        "timer",
-        "fadeIndex",
-        "fadeState",
-        "storkX",
-        "storkSpriteIndex",
-        "storkSpriteIndexIncrementor",
-        "juniorBagX",
-        "juniorBagY",
-        "juniorBagVy",
-        "juniorY",
-        "juniorVy"
-    ],
-    act4: [
-        "state",
-        "substate",
-        "topClapperIndex",
-        "timer",
-        "fadeIndex",
-        "fadeState",
-        "mspacmanX",
-        "chompSpriteIndex",
-        "chompSpriteIndexIncrementor",
-        "storkSpriteIndex",
-        "storkSpriteIndexIncrementor",
-        "pellotOffset",
-        "storkX",
-        "storkY",
-        "storkYAngle"
-    ],
-    act5: [
-        "state",
-        "substate",
-        "topClapperIndex",
-        "timer",
-        "fadeIndex",
-        "fadeState",
-        "dialogIndex",
-        "stringIndex",
-        "stringDone",
-        "stringTimer",
-        "tone",
-        "mspacmanIndex",
-        "pacmanIndex"
-    ],
-    act6: [
-        "state",
-        "substate",
-        "topClapperIndex",
-        "timer",
-        "ghostSpriteIndex",
-        "ghostSpriteIndexIncrementor",
-        "chompSpriteIndex",
-        "chompSpriteIndexIncrementor",
-        "fadeIndex",
-        "fadeState",
-        "mspacmanX",
-        "ghostX"
-    ],
-    act7: [
-        "state",
-        "substate",
-        "topClapperIndex",
-        "timer",
-        "fadeIndex",
-        "fadeState",
-        "dialogIndex",
-        "stringIndex",
-        "stringDone",
-        "stringTimer",
-        "tone",
-        "mspacmanIndex",
-        "pacmanIndex"
-    ],
-    attract: [
-        "dotsOffset",
-        "redOffset",
-        "fadeIndex",
-        "fadeState",
-        "state",
-        "titleZ",
-        "titleY",
-        "titleVy",
-        "y2010",
-        "barsY",
-        "pressEnterDelay",
-        "pressEnterVisible",
-        "ghostSpriteIndex",
-        "ghostSpriteIndexIncrementor",
-        "ghostsVisible",
-        "ghostX",
-        "enterPressed",
-        "ticks",
-        "countDown"
-    ],
-    ending: [
-        "state",
-        "fadeIndex",
-        "fadeState",
-        "dialogIndex",
-        "stringIndex",
-        "stringDone",
-        "stringTimer",
-        "dotsOffset",
-        "redOffset",
-        "fadeIndex2",
-        "fadeState2",
-        "ghostSpriteIndex",
-        "ghostSpriteIndexIncrementor",
-        "chompSpriteIndex",
-        "chompSpriteIndexIncrementor",
-        "delay",
-        "creditsY",
-        "mspacmanX",
-        "juniorReturning",
-        "juniorX",
-        "juniorFruits",
-        "fruitData"
-    ],
-    enterInitials: [
-        "fadeIndex",
-        "fadeState",
-        "dotsOffset",
-        "redOffset",
-        "editingIndex",
-        "initials",
-        "blinkingInitials",
-        "editVisible",
-        "blinkTimer",
-        "enterPressed",
-        "newScoreOf"
-    ],
-    hallOfFame: ["pressEnterDelay", "pressEnterVisible", "dotsOffset", "redOffset", "enterPressed", "fadeIndex", "fadeState", "ticks", "countDown"],
-    intro: [
-        "dotsOffset",
-        "redOffset",
-        "fadeIndex",
-        "fadeState",
-        "mspacmanX",
-        "ghostSpriteIndex",
-        "ghostSpriteIndexIncrementor",
-        "chompSpriteIndex",
-        "chompSpriteIndexIncrementor"
-    ],
-    selectWorld: [
-        "fadeIndex",
-        "fadeState",
-        "ghostSpriteIndex",
-        "ghostSpriteIndexIncrementor",
-        "angleOffset",
-        "selection",
-        "selectY",
-        "selecting",
-        "selectOffset",
-        "selectAngle",
-        "selectMag",
-        "selectIndex",
-        "countDown"
-    ]
-};
 
 const MODE_IDS: ModeId[] = [
     "act1",
@@ -950,10 +650,14 @@ export class MsPacManGameStateSerializer {
     }
 
     private seekRestoredMusic(main: Main, gc: GameContainer, music: Music, position: number, snapshot: MusicSnapshot): void {
+        const lifetimeGeneration = main.captureBrowserLifetimeGeneration();
         void music
             .ready()
             .then(() => {
                 globalThis.setTimeout(() => {
+                    if (!main.isBrowserLifetimeGenerationCurrent(lifetimeGeneration)) {
+                        return;
+                    }
                     if (main.currentMusic !== music) {
                         gc.setMusicOn(!main.paused);
                         return;
@@ -968,7 +672,7 @@ export class MsPacManGameStateSerializer {
                 }, 0);
             })
             .catch(() => {
-                if (main.currentMusic === music) {
+                if (main.isBrowserLifetimeGenerationCurrent(lifetimeGeneration) && main.currentMusic === music) {
                     gc.setMusicOn(!main.paused);
                 }
             });
@@ -996,10 +700,8 @@ export class MsPacManGameStateSerializer {
         main.random.setState(snapshot);
     }
 
-    private captureRobotInput(input: object): RobotInputSnapshot {
-        return {
-            index: this.numberField(input, "index", 0)
-        };
+    private captureRobotInput(input: { getState(): RobotInputSnapshot }): RobotInputSnapshot {
+        return input.getState();
     }
 
     private restoreRobotInputs(main: Main, snapshots: RobotInputSnapshot[]): void {
@@ -1008,7 +710,7 @@ export class MsPacManGameStateSerializer {
             if (!snapshot || !main.robotInputs[i]) {
                 continue;
             }
-            this.setField(main.robotInputs[i], "index", snapshot.index);
+            main.robotInputs[i].setState(snapshot);
         }
     }
 
@@ -1061,11 +763,6 @@ export class MsPacManGameStateSerializer {
 
     private setField(target: object, field: string, value: unknown): void {
         (target as FieldBag)[field] = value;
-    }
-
-    private numberField(target: object, field: string, fallback: number): number {
-        const value = this.getField(target, field);
-        return typeof value === "number" && Number.isFinite(value) ? value : fallback;
     }
 
     private musicIdForMusic(main: Main, music: Music): MusicId | null {

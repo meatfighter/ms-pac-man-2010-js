@@ -8,5 +8,6 @@ declare const __HIGH_SCORE_HMAC_KEY_HEX__: string;
 
 interface Window {
     __msPacManBooted?: boolean;
+    __msPacManResourcesPrepared?: boolean;
     __msPacManBootFailed?: boolean;
 }

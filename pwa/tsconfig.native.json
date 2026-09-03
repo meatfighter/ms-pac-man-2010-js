@@ -1,0 +1,21 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true
+    },
+    "files": [
+        "src/vite-env.d.ts",
+        "src/app/BrowserStorageKeys.ts",
+        "src/app/BrowserPreferences.ts",
+        "src/app/ResourceVersions.ts",
+        "src/app/ServiceWorkerRegistrar.ts",
+        "src/app/SessionGeneration.ts",
+        "src/mspacman/HighScoreProtocol.ts",
+        "src/mspacman/HighScoreService.ts"
+    ],
+    "include": []
+}

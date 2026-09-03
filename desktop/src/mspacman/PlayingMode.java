@@ -184,6 +184,8 @@ public class PlayingMode implements IMode {
     fadeIndex = 0;
     fadeState = FADE_IN;
     fadeReason = FADE_REASON_KILLED;
+    gameOver = false;
+    gameOverTimer = 0;
 
     for(int i = regionCounts.length - 1; i >= 0; i--) {
       regionCounts[i] = 0;

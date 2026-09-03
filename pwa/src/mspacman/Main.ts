@@ -130,6 +130,7 @@ export class Main extends BasicGame {
     public windowedDisplayModeProvider: WindowedDisplayModeProvider | null = null;
     public pauseStateChangeHandler: PauseStateChangeHandler | null = null;
     private leaderboardRevision = 0;
+    private browserLifetimeGeneration = 0;
 
     public symbols = imageGrid<Image | null>(6, 256);
     public ghostSprites = imageCube<Image>(4, 4, 2);
@@ -376,6 +377,8 @@ export class Main extends BasicGame {
     }
 
     public stopSound(sound: Sound): void {
+        // Intentional Java parity: the original method ignores its parameter and stops blueGhostsSound.
+        void sound;
         this.blueGhostsSound.stop();
     }
 
@@ -395,6 +398,18 @@ export class Main extends BasicGame {
     public stopAllSounds(): void {
         this.stopMusic();
         this.stopAllSoundEffects();
+    }
+
+    public invalidateBrowserLifetime(): void {
+        this.browserLifetimeGeneration++;
+    }
+
+    public captureBrowserLifetimeGeneration(): number {
+        return this.browserLifetimeGeneration;
+    }
+
+    public isBrowserLifetimeGenerationCurrent(generation: number): boolean {
+        return generation === this.browserLifetimeGeneration;
     }
 
     public setBrowserSuspended(suspended: boolean): void {
@@ -582,6 +597,7 @@ export class Main extends BasicGame {
     }
 
     public override closeRequested(): boolean {
+        this.invalidateBrowserLifetime();
         this.stopAllSounds();
         return super.closeRequested();
     }

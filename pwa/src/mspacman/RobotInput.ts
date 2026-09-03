@@ -77,6 +77,14 @@ export class RobotInput implements IInput {
         this.input.clearControlPressedRecord();
     }
 
+    public getState(): { index: number } {
+        return { index: this.index };
+    }
+
+    public setState(state: { readonly index: number }): void {
+        this.index = Math.max(0, Math.min(this.data.length, Math.trunc(state.index)));
+    }
+
     public update(): boolean {
         return ++this.index < this.data.length;
     }

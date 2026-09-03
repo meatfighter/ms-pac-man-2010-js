@@ -3,6 +3,7 @@ import { existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type PluginOption } from "vite";
+import { RESOURCE_VERSIONS } from "./src/app/ResourceVersions";
 
 interface VersionInfo {
     readonly version: string;
@@ -181,6 +182,7 @@ function collectPrecacheResources(dir: string, baseDir = dir): string[] {
 function renderServiceWorker(sw: string, pwaDistDir: string, cacheBust: string): string {
     const resources = Array.from(new Set(["./", ...collectPrecacheResources(pwaDistDir)]));
     return sw
+        .replace("const RESOURCE_VERSIONS = __RESOURCE_VERSIONS__;", `const RESOURCE_VERSIONS = ${JSON.stringify(RESOURCE_VERSIONS, null, 4)};`)
         .replaceAll(SERVICE_WORKER_VERSION_PLACEHOLDER, JSON.stringify(cacheBust))
         .replace(/const APP_STATIC_RESOURCES = \[[^\]]*\];/, `const APP_STATIC_RESOURCES = ${JSON.stringify(resources, null, 4)};`);
 }

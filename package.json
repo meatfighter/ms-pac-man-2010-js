@@ -44,7 +44,7 @@
         "format": "prettier . --write",
         "format:check": "prettier . --check",
         "lint": "eslint .",
-        "test": "npm run test:pwa-state && npm run test:pwa-tech-debt && npm run check:resource-versions && npm run test:pwa-high-score && npm run test:pwa-build-config && npm run test:pwa-release-scripts && npm run test:pwa-unsigned-build && npm run test:about-page && npm run test:release-output-plan && npm run test:release-io && npm run test:release-lock && npm run test:release-dist-promotion && npm run test:hmac-config && npm run test:preview-release && npm run test:release-safety && npm run test:release-finalizer && npm run test:production-api-smoke && npm run test:desktop-controller-refresh && npm run test:desktop-high-score",
+        "test": "npm run typecheck:native && npm run check:java-parity-metadata && npm run check:state-fields && npm run test:pwa-parity && npm run test:pwa-mode-reset && npm run test:pwa-state && npm run test:pwa-tech-debt && npm run check:resource-versions && npm run test:pwa-high-score && npm run test:pwa-build-config && npm run test:pwa-release-scripts && npm run test:pwa-unsigned-build && npm run test:about-page && npm run test:release-output-plan && npm run test:release-io && npm run test:release-lock && npm run test:release-dist-promotion && npm run test:hmac-config && npm run test:preview-release && npm run test:release-safety && npm run test:release-finalizer && npm run test:production-api-smoke && npm run test:desktop-controller-refresh && npm run test:desktop-high-score",
         "test:pwa-state": "node scripts/test-pwa-state.mjs",
         "test:pwa-high-score": "node scripts/test-pwa-high-score.mjs",
         "test:pwa-build-config": "node scripts/test-pwa-build-config.mjs",
@@ -73,7 +73,15 @@
         "generate:resource-versions": "node scripts/generate-resource-versions.mjs",
         "check:resource-versions": "node scripts/generate-resource-versions.mjs --check",
         "test:pwa-tech-debt": "node scripts/test-pwa-tech-debt.mjs",
-        "verify:browser": "node scripts/run-browser-verification.mjs"
+        "verify:browser": "node scripts/run-browser-verification.mjs",
+        "typecheck:native": "tsc --project pwa/tsconfig.native.json",
+        "generate:java-parity-metadata": "node scripts/generate-java-parity-metadata.mjs",
+        "check:java-parity-metadata": "node scripts/generate-java-parity-metadata.mjs --check",
+        "generate:state-fields": "node scripts/generate-state-field-registry.mjs",
+        "check:state-fields": "node scripts/generate-state-field-registry.mjs --check",
+        "test:pwa-parity": "node scripts/test-pwa-parity.mjs",
+        "test:pwa-mode-reset": "node scripts/test-mode-reset-contract.mjs",
+        "verify:offline": "node scripts/run-offline-verification.mjs"
     },
     "dependencies": {
         "slick2d-ts": "git+https://github.com/meatfighter/slick2d-ts.git#39689c01a336c7620a7e80f992fe33558ef9652a"

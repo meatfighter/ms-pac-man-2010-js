@@ -42,10 +42,10 @@ try {
     });
 
     await runTest("development service-worker cleanup is scoped to this app", () => {
-        const mainSource = readFileSync(join(rootDir, "pwa", "src", "app", "main.ts"), "utf8");
-        assert.match(mainSource, /const appScope = new URL\("\.\/", window\.location\.href\)\.href;/);
-        assert.match(mainSource, /registration\.scope === appScope/);
-        assert.doesNotMatch(mainSource, /registrations\.map\(\(registration\) => registration\.unregister\(\)\)/);
+        const registrarSource = readFileSync(join(rootDir, "pwa", "src", "app", "ServiceWorkerRegistrar.ts"), "utf8");
+        assert.match(registrarSource, /const appScope = new URL\("\.\/", window\.location\.href\)\.href;/);
+        assert.match(registrarSource, /registration\.scope === appScope/);
+        assert.doesNotMatch(registrarSource, /registrations\.map\(\(registration\) => registration\.unregister\(\)\)/);
     });
 } finally {
     restoreEnv();

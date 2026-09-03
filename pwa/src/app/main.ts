@@ -1,65 +1,21 @@
 import "./styles.css";
-import { ResourceLoader, SoundStore, type GameContainer } from "slick2d-ts";
+import { SoundStore, type AppGameContainer, type GameContainer } from "slick2d-ts";
+import { BrowserPreferences, DEFAULT_SCALING_PREFERENCE, DEFAULT_VOLUME, type ScalingPreference } from "./BrowserPreferences";
 import { createBrowserStorageKeys } from "./BrowserStorageKeys";
-import { RESOURCE_REFS } from "./resourceManifest";
-import { getResourceVersion } from "./ResourceVersions";
+import { RuntimeLoader, type PreparedRuntime } from "./RuntimeLoader";
+import { registerServiceWorker } from "./ServiceWorkerRegistrar";
+import { SessionGeneration } from "./SessionGeneration";
 import { APP_VERSION, CACHE_BUST } from "./version";
 import type { Main as MsPacManMain } from "../mspacman/Main";
+import type { ScalableGame2 } from "../mspacman/ScalableGame2";
 import type { MsPacManGameStateStore } from "../mspacman/persistence/MsPacManGameStateStore";
 import { isFutureMsPacManGameStateSnapshot, isValidMsPacManGameStateSnapshot } from "../mspacman/persistence/MsPacManGameStateSerializer";
-
-type SlickRuntime = typeof import("slick2d-ts");
-type MainConstructor = typeof import("../mspacman/Main").Main;
-type ScalableGame2Constructor = typeof import("../mspacman/ScalableGame2").ScalableGame2;
-type ScalableGame2Instance = InstanceType<ScalableGame2Constructor>;
-type MsPacManScalingPreference = import("../mspacman/ScalableGame2").MsPacManScalingPreference;
-type MsPacManGameStateStoreConstructor = typeof import("../mspacman/persistence/MsPacManGameStateStore").MsPacManGameStateStore;
-
-type PreparedRuntime = {
-    slick: SlickRuntime;
-    Main: MainConstructor;
-    ScalableGame2: ScalableGame2Constructor;
-    MsPacManGameStateStore: MsPacManGameStateStoreConstructor;
-};
-
-type RuntimeInput = {
-    clearKeyPressedRecord(): void;
-    pause(): void;
-    resume(): void;
-};
-
-type RuntimeContainer = {
-    destroy(): void;
-    getInput(): RuntimeInput;
-    isFullscreen(): boolean;
-    setAlwaysRender(alwaysRender: boolean): void;
-    setClearEachFrame(clearEachFrame: boolean): void;
-    setDisplayMode(width: number, height: number, fullscreen: boolean): Promise<void> | void;
-    setErrorHandler(errorHandler: (error: unknown) => void): void;
-    setHighDpiEnabled(enabled: boolean): void;
-    setLoopSuspended(suspended: boolean): void;
-    setMaxDevicePixelRatio(maxDevicePixelRatio: number): void;
-    setPreserveAudioCacheOnDestroy(preserve: boolean): void;
-    setMusicVolume(volume: number): void;
-    setShowFPS(showFPS: boolean): void;
-    setSmoothDeltas(smoothDeltas: boolean): void;
-    setSoundVolume(volume: number): void;
-    setVSync(vsync: boolean): void;
-    start(): Promise<void>;
-    stopSoundEffects(): void;
-};
 
 const app = document.querySelector<HTMLDivElement>("#app");
 const GAME_CURSOR_HIDE_DELAY_MS = 3000;
 const HIGH_DPI_ENABLED = true;
 const MAX_DEVICE_PIXEL_RATIO = 4;
-const RESOURCE_CACHE_RETRY_COUNT = 3;
-const RESOURCE_CACHE_RETRY_DELAY_MS = 300;
-const RESOURCE_PRELOAD_CONCURRENCY = 6;
-const AUDIO_PRELOAD_CONCURRENCY = 4;
-const DEFAULT_VOLUME = 0.1;
-const DEFAULT_SCALING_PREFERENCE: MsPacManScalingPreference = "crisp";
-const SCALING_MODE_DEFINITIONS: readonly { value: MsPacManScalingPreference; label: string }[] = [
+const SCALING_MODE_DEFINITIONS: readonly { value: ScalingPreference; label: string }[] = [
     { value: "smooth", label: "Smooth" },
     { value: "crisp", label: "Crisp" },
     { value: "pixel-perfect", label: "Pixel Perfect" }
@@ -71,9 +27,9 @@ if (!app) {
     throw new Error("Missing #app root.");
 }
 
-let container: RuntimeContainer | null = null;
+let container: AppGameContainer | null = null;
 let game: MsPacManMain | null = null;
-let activeScalableGame: ScalableGame2Instance | null = null;
+let activeScalableGame: ScalableGame2 | null = null;
 let activeGameHost: HTMLElement | null = null;
 let menuOverlay: HTMLElement | null = null;
 let resizeObserver: ResizeObserver | null = null;
@@ -85,20 +41,18 @@ let pointerOverGameHost = false;
 let liveMenuOpen = false;
 let suspendedByVisibilityLoss = document.visibilityState !== "visible";
 let suspendedByFocusLoss = !document.hasFocus();
-let preparedRuntime: PreparedRuntime | null = null;
-let preparationPromise: Promise<PreparedRuntime> | null = null;
-let preparationAbortController: AbortController | null = null;
-let preparationError: unknown = null;
-let preparationProgress = 0;
-let backgroundPreparationScheduled = false;
+const preferences = new BrowserPreferences();
+const sessionGeneration = new SessionGeneration();
+const runtimeLoader = new RuntimeLoader(refreshVisibleBootProgress);
 let gameStateStore: MsPacManGameStateStore | null = null;
-let volume = safeReadVolume();
-let scalingPreference = safeReadScalingPreference();
-
+let volume = preferences.volume;
+let scalingPreference: ScalingPreference = preferences.scaling;
+let activeSessionGeneration = 0;
+window.__msPacManResourcesPrepared = false;
 if (!window.__msPacManBootFailed) {
     setupGlobalErrorHandlers();
     setupPageLifecycleHandlers();
-    void registerServiceWorker();
+    void registerServiceWorker(CACHE_BUST);
     renderMenu();
     window.__msPacManBooted = true;
 }
@@ -223,11 +177,12 @@ function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: stri
 
     volumeInput?.addEventListener("input", () => {
         volume = Number(volumeInput.value) / 100;
+        preferences.setVolume(volume, false);
         updateVolumeUi(volumeInput, volumeValue);
         applyVolume();
     });
     volumeInput?.addEventListener("change", () => {
-        writeVolume(volume);
+        preferences.setVolume(volume, true);
     });
     if (volumeInput) {
         updateVolumeUi(volumeInput, volumeValue);
@@ -254,18 +209,31 @@ function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: stri
 
 async function startGame(restoreSavedGame: boolean): Promise<void> {
     const audioUnlockPromise = unlockAudio();
-    let runtimePrepared = false;
     destroyGame();
-    if (preparedRuntime === null) {
-        renderBoot(preparationProgress);
+    const generation = sessionGeneration.begin();
+    let runtimePrepared = false;
+    if (runtimeLoader.prepared === null) {
+        renderBoot(runtimeLoader.progress);
     }
     try {
-        const runtime = await ensureRuntimePrepared(preparationError !== null);
+        const runtime = await runtimeLoader.prepare(runtimeLoader.error !== null);
+        if (!sessionGeneration.isCurrent(generation)) {
+            return;
+        }
         runtimePrepared = true;
         await audioUnlockPromise;
+        if (!sessionGeneration.isCurrent(generation)) {
+            return;
+        }
         renderGameHost();
-        await mountGame(runtime, restoreSavedGame);
+        if (!sessionGeneration.isCurrent(generation)) {
+            return;
+        }
+        await mountGame(runtime, restoreSavedGame, generation);
     } catch (error) {
+        if (!sessionGeneration.isCurrent(generation)) {
+            return;
+        }
         console.error(error);
         destroyGame();
         if (restoreSavedGame && runtimePrepared) {
@@ -325,7 +293,10 @@ function renderGameHost(): void {
     });
 }
 
-async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean): Promise<void> {
+async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean, generation: number): Promise<void> {
+    if (!sessionGeneration.isCurrent(generation)) {
+        return;
+    }
     const host = document.querySelector<HTMLDivElement>("#gameHost");
     if (!host) {
         throw new Error("Missing game host.");
@@ -351,31 +322,64 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean): P
         };
     }
 
-    runtime.slick.Display.setParent(host);
-    activeGameHost = host;
-    const displayMode = getResponsiveWindowedDisplayMode();
-    await appContainer.setDisplayMode(displayMode.width, displayMode.height, false);
-    appContainer.setAlwaysRender(true);
-    appContainer.setVSync(true);
-    appContainer.setSmoothDeltas(false);
-    appContainer.setShowFPS(false);
-    appContainer.setClearEachFrame(true);
-    await appContainer.start();
-    container = appContainer;
-    game = mainGame;
-    await ResourceLoader.waitForAll();
-    activeScalableGame = scalableGame;
-    appContainer.setErrorHandler((error) => {
-        console.error(error);
-        destroyGame();
-        renderLoadError(error, restoreSavedGame);
-    });
-    startResponsiveGameSizing(host);
-    startGameCursorAutoHide(host);
-    startHamburgerVisibilityMonitor();
-    applyVolume();
-    focusGameCanvas();
-    syncCurrentGameLifecycleState();
+    try {
+        if (!sessionGeneration.isCurrent(generation)) {
+            mainGame.invalidateBrowserLifetime();
+            appContainer.destroy();
+            return;
+        }
+        runtime.slick.Display.setParent(host);
+        const displayMode = getResponsiveWindowedDisplayMode();
+        await appContainer.setDisplayMode(displayMode.width, displayMode.height, false);
+        if (!sessionGeneration.isCurrent(generation)) {
+            mainGame.invalidateBrowserLifetime();
+            appContainer.destroy();
+            return;
+        }
+        appContainer.setAlwaysRender(true);
+        appContainer.setVSync(true);
+        appContainer.setSmoothDeltas(false);
+        appContainer.setShowFPS(false);
+        appContainer.setClearEachFrame(true);
+        await appContainer.start();
+        if (!sessionGeneration.isCurrent(generation)) {
+            mainGame.invalidateBrowserLifetime();
+            appContainer.destroy();
+            return;
+        }
+        await runtime.slick.ResourceLoader.waitForAll();
+        if (!sessionGeneration.isCurrent(generation)) {
+            mainGame.invalidateBrowserLifetime();
+            appContainer.destroy();
+            return;
+        }
+        container = appContainer;
+        game = mainGame;
+        activeScalableGame = scalableGame;
+        activeGameHost = host;
+        activeSessionGeneration = generation;
+        appContainer.setErrorHandler((error) => {
+            if (!sessionGeneration.isCurrent(generation)) {
+                return;
+            }
+            console.error(error);
+            destroyGame();
+            renderLoadError(error, restoreSavedGame);
+        });
+        startResponsiveGameSizing(host);
+        startGameCursorAutoHide(host);
+        startHamburgerVisibilityMonitor();
+        applyVolume();
+        focusGameCanvas();
+        syncCurrentGameLifecycleState();
+    } catch (error) {
+        mainGame.invalidateBrowserLifetime();
+        appContainer.destroy();
+        if (sessionGeneration.isCurrent(generation)) {
+            runtime.slick.Display.setParent(null);
+        }
+        throw error;
+    }
 }
 
 async function unlockAudio(): Promise<void> {
@@ -395,128 +399,20 @@ function applyVolumeToRuntime(): void {
     container?.setSoundVolume(soundVolume);
 }
 
-async function ensureRuntimePrepared(forceRetry = false): Promise<PreparedRuntime> {
-    if (preparedRuntime !== null) {
-        return preparedRuntime;
-    }
-    if (preparationPromise !== null) {
-        return preparationPromise;
-    }
-    if (forceRetry) {
-        preparationError = null;
-        preparationProgress = 0;
-        refreshVisibleBootProgress();
-    } else if (preparationError !== null) {
-        throw preparationError;
-    }
-
-    preparationAbortController?.abort();
-    const abortController = new AbortController();
-    preparationAbortController = abortController;
-    ResourceLoader.clearFailures();
-    ResourceLoader.setCacheBust(null);
-    ResourceLoader.setCacheVersionResolver(getResourceVersion);
-    ResourceLoader.setRetryOptions(RESOURCE_CACHE_RETRY_COUNT, RESOURCE_CACHE_RETRY_DELAY_MS);
-    preparationPromise = prepareRuntime(abortController.signal)
-        .then((runtime) => {
-            preparedRuntime = runtime;
-            preparationError = null;
-            preparationProgress = 1;
-            refreshVisibleBootProgress();
-            return runtime;
-        })
-        .catch((error) => {
-            preparationError = error;
-            throw error;
-        })
-        .finally(() => {
-            preparationPromise = null;
-            if (preparationAbortController === abortController) {
-                preparationAbortController = null;
-            }
-        });
-    return preparationPromise;
-}
-
-async function prepareRuntime(signal: AbortSignal): Promise<PreparedRuntime> {
-    const [slick, mainModule, scalableGameModule, gameStateStoreModule] = await Promise.all([
-        import("slick2d-ts"),
-        import("../mspacman/Main"),
-        import("../mspacman/ScalableGame2"),
-        import("../mspacman/persistence/MsPacManGameStateStore"),
-        preloadPreparedResources(Array.from(new Set(RESOURCE_REFS)), signal)
-    ]);
-
-    return {
-        slick,
-        Main: mainModule.Main,
-        ScalableGame2: scalableGameModule.ScalableGame2,
-        MsPacManGameStateStore: gameStateStoreModule.MsPacManGameStateStore
-    };
-}
-
-async function preloadPreparedResources(resourceRefs: readonly string[], signal: AbortSignal): Promise<void> {
-    const audioRefs = resourceRefs.filter(isAudioResourceRef);
-    const nonAudioRefs = resourceRefs.filter((ref) => !isAudioResourceRef(ref));
-    const total = audioRefs.length + nonAudioRefs.length;
-    let audioLoaded = 0;
-    let nonAudioLoaded = 0;
-    const updateProgress = () => {
-        preparationProgress = total === 0 ? 1 : (audioLoaded + nonAudioLoaded) / total;
-        refreshVisibleBootProgress();
-    };
-
-    updateProgress();
-    await Promise.all([
-        ResourceLoader.preloadResources(nonAudioRefs, {
-            concurrency: RESOURCE_PRELOAD_CONCURRENCY,
-            signal,
-            onProgress: (progress) => {
-                nonAudioLoaded = progress.loaded;
-                updateProgress();
-            }
-        }),
-        SoundStore.get().preloadAudioBuffers(audioRefs, {
-            concurrency: AUDIO_PRELOAD_CONCURRENCY,
-            signal,
-            onProgress: (progress) => {
-                audioLoaded = progress.loaded;
-                updateProgress();
-            }
-        })
-    ]);
-    preparationProgress = 1;
-    refreshVisibleBootProgress();
-}
-
 function scheduleBackgroundPreparation(): void {
-    if (backgroundPreparationScheduled || preparedRuntime !== null || preparationPromise !== null || preparationError !== null) {
-        return;
-    }
-    backgroundPreparationScheduled = true;
-    requestAnimationFrame(() => {
-        window.setTimeout(() => {
-            backgroundPreparationScheduled = false;
-            void ensureRuntimePrepared().catch((error) => {
-                console.warn("MS Pac-Man background preparation failed.", error);
-            });
-        }, 0);
-    });
+    runtimeLoader.scheduleBackgroundPreparation();
 }
 
 function refreshVisibleBootProgress(): void {
+    window.__msPacManResourcesPrepared = runtimeLoader.progress >= 1;
     if (app.querySelector("[data-boot-progress='true']") !== null) {
-        renderBoot(preparationProgress);
+        renderBoot(runtimeLoader.progress);
     }
 }
 
-function isAudioResourceRef(ref: string): boolean {
-    return ref.toLowerCase().endsWith(".ogg");
-}
-
-function setScalingPreference(value: MsPacManScalingPreference): void {
+function setScalingPreference(value: ScalingPreference): void {
     scalingPreference = value;
-    writeScalingPreference(value);
+    preferences.setScaling(value);
     activeScalableGame?.setScalingPreference(value);
     scheduleResponsiveGameResize();
 }
@@ -556,12 +452,12 @@ function scalingOptionHtml(definition: ScalingModeDefinition): string {
         </button>`;
 }
 
-function getScalingDefinition(value: MsPacManScalingPreference): ScalingModeDefinition {
+function getScalingDefinition(value: ScalingPreference): ScalingModeDefinition {
     return SCALING_MODE_DEFINITIONS.find((definition) => definition.value === value) ?? SCALING_MODE_DEFINITIONS[0];
 }
 
-function isScalingPreference(value: unknown): value is MsPacManScalingPreference {
-    return typeof value === "string" && SCALING_MODE_DEFINITIONS.some((definition) => definition.value === value);
+function isScalingPreference(value: unknown): value is ScalingPreference {
+    return BrowserPreferences.isScaling(value);
 }
 
 function measureScalingPickerWidth(scalingPicker: HTMLElement, scalingButton: HTMLButtonElement, scalingPopup: HTMLElement, scalingList: HTMLElement): void {
@@ -718,6 +614,9 @@ function volumeIcon(value: number): string {
 }
 
 function destroyGame(): void {
+    sessionGeneration.invalidate();
+    activeSessionGeneration = 0;
+    game?.invalidateBrowserLifetime();
     removeMenuOverlay();
     stopHamburgerVisibilityMonitor();
     stopGameCursorAutoHide();
@@ -732,7 +631,7 @@ function destroyGame(): void {
     }
     game = null;
     activeGameHost = null;
-    preparedRuntime?.slick.Display.setParent(null);
+    runtimeLoader.prepared?.slick.Display.setParent(null);
 }
 
 function saveCurrentGameState(): boolean {
@@ -757,10 +656,10 @@ function getLoadedGameStateStore(): MsPacManGameStateStore | null {
     if (gameStateStore !== null) {
         return gameStateStore;
     }
-    if (preparedRuntime === null) {
+    if (runtimeLoader.prepared === null) {
         return null;
     }
-    return getGameStateStore(preparedRuntime);
+    return getGameStateStore(runtimeLoader.prepared);
 }
 
 function hasPotentialSavedGameState(): boolean {
@@ -793,30 +692,19 @@ function hasPotentialSavedGameState(): boolean {
 }
 
 function clearStoredGameState(): void {
-    try {
-        localStorage.removeItem(createBrowserStorageKeys().gameState);
-    } catch {}
+    preferences.clearGameState();
     gameStateStore?.clear();
 }
 
 function resetPwaState(): void {
     destroyGame();
-    clearPwaStorage();
+    preferences.reset();
+    gameStateStore?.clear();
     volume = DEFAULT_VOLUME;
     scalingPreference = DEFAULT_SCALING_PREFERENCE;
     applyVolumeToRuntime();
     renderMenuUi(app, false, "", false);
     scheduleBackgroundPreparation();
-}
-
-function clearPwaStorage(): void {
-    const storageKeys = createBrowserStorageKeys();
-    for (const key of [storageKeys.gameState, storageKeys.volume, storageKeys.scaling]) {
-        try {
-            localStorage.removeItem(key);
-        } catch {}
-    }
-    gameStateStore?.clear();
 }
 
 function hasLiveSuspendedGame(): boolean {
@@ -1071,26 +959,34 @@ function scheduleResponsiveGameResize(): void {
     if (resizeAnimationFrame !== 0) {
         return;
     }
+    const generation = activeSessionGeneration;
     resizeAnimationFrame = requestAnimationFrame(() => {
         resizeAnimationFrame = 0;
-        applyResponsiveWindowedDisplayMode();
+        if (generation !== 0 && sessionGeneration.isCurrent(generation)) {
+            applyResponsiveWindowedDisplayMode(generation);
+        }
     });
 }
 
-function applyResponsiveWindowedDisplayMode(): void {
-    if (!container || !activeGameHost || container.isFullscreen() || document.fullscreenElement !== null) {
+function applyResponsiveWindowedDisplayMode(generation: number): void {
+    if (!sessionGeneration.isCurrent(generation) || !container || !activeGameHost || container.isFullscreen() || document.fullscreenElement !== null) {
         return;
     }
 
     const displayMode = getResponsiveWindowedDisplayMode();
     try {
-        void Promise.resolve(container.setDisplayMode(displayMode.width, displayMode.height, false)).catch(reportResponsiveResizeError);
+        void Promise.resolve(container.setDisplayMode(displayMode.width, displayMode.height, false)).catch((error) =>
+            reportResponsiveResizeError(error, generation)
+        );
     } catch (error) {
-        reportResponsiveResizeError(error);
+        reportResponsiveResizeError(error, generation);
     }
 }
 
-function reportResponsiveResizeError(error: unknown): void {
+function reportResponsiveResizeError(error: unknown, generation: number): void {
+    if (!sessionGeneration.isCurrent(generation)) {
+        return;
+    }
     console.error(error);
     const restoreSavedGame = saveCurrentGameState();
     destroyGame();
@@ -1153,77 +1049,6 @@ function setupPageLifecycleHandlers(): void {
 function showStartupError(error: unknown): void {
     if (app.childElementCount === 0) {
         renderMenu(formatError(error));
-    }
-}
-
-function safeReadVolume(): number {
-    try {
-        return readVolume();
-    } catch {
-        return DEFAULT_VOLUME;
-    }
-}
-
-function readVolume(): number {
-    const value = Number.parseInt(localStorage.getItem(createBrowserStorageKeys().volume) ?? String(Math.round(DEFAULT_VOLUME * 100)), 10);
-    if (!Number.isFinite(value)) {
-        return DEFAULT_VOLUME;
-    }
-    return Math.max(0, Math.min(1, value / 100));
-}
-
-function writeVolume(value: number): void {
-    try {
-        localStorage.setItem(createBrowserStorageKeys().volume, String(Math.round(value * 100)));
-    } catch {
-        // Local storage is optional; audio volume still applies in memory.
-    }
-}
-
-function safeReadScalingPreference(): MsPacManScalingPreference {
-    try {
-        const value = localStorage.getItem(createBrowserStorageKeys().scaling);
-        if (isScalingPreference(value)) {
-            return value;
-        }
-        return DEFAULT_SCALING_PREFERENCE;
-    } catch {
-        return DEFAULT_SCALING_PREFERENCE;
-    }
-}
-
-function writeScalingPreference(value: MsPacManScalingPreference): void {
-    try {
-        localStorage.setItem(createBrowserStorageKeys().scaling, value);
-    } catch {
-        // Local storage is optional; the current scaling preference still applies in memory.
-    }
-}
-
-async function registerServiceWorker(): Promise<void> {
-    if (!("serviceWorker" in navigator)) {
-        return;
-    }
-    if (import.meta.env.DEV) {
-        await unregisterDevelopmentServiceWorker();
-        return;
-    }
-    try {
-        await navigator.serviceWorker.register(`./sw.js?v=${encodeURIComponent(CACHE_BUST)}`, {
-            scope: "./"
-        });
-    } catch {
-        // The game still runs without PWA registration.
-    }
-}
-
-async function unregisterDevelopmentServiceWorker(): Promise<void> {
-    try {
-        const appScope = new URL("./", window.location.href).href;
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(registrations.filter((registration) => registration.scope === appScope).map((registration) => registration.unregister()));
-    } catch (error) {
-        console.warn("Unable to unregister development service worker:", error);
     }
 }
 

@@ -1,0 +1,2030 @@
+{
+    "version": 1,
+    "classes": [
+        {
+            "file": "Act1Mode.java",
+            "className": "Act1Mode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "boolean",
+                    "name": "bumped"
+                },
+                {
+                    "type": "float",
+                    "name": "bumpedAlpha"
+                },
+                {
+                    "type": "float",
+                    "name": "bumpedSpeed"
+                },
+                {
+                    "type": "int",
+                    "name": "chompSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "chompSpriteIndexIncrementor"
+                },
+                {
+                    "type": "float",
+                    "name": "cyanX"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostSpriteIndexIncrementor"
+                },
+                {
+                    "type": "float",
+                    "name": "ghostY"
+                },
+                {
+                    "type": "float",
+                    "name": "ghostYAngle"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "float",
+                    "name": "mspacmanX"
+                },
+                {
+                    "type": "float",
+                    "name": "mspacmanY"
+                },
+                {
+                    "type": "int",
+                    "name": "nextState"
+                },
+                {
+                    "type": "float",
+                    "name": "pacmanX"
+                },
+                {
+                    "type": "float",
+                    "name": "pinkX"
+                },
+                {
+                    "type": "boolean",
+                    "name": "showHeart"
+                },
+                {
+                    "type": "int",
+                    "name": "state"
+                },
+                {
+                    "type": "int",
+                    "name": "substate"
+                },
+                {
+                    "type": "int",
+                    "name": "timer"
+                },
+                {
+                    "type": "int",
+                    "name": "topClapperIndex"
+                }
+            ],
+            "floatFields": ["bumpedAlpha", "bumpedSpeed", "cyanX", "ghostY", "ghostYAngle", "mspacmanX", "mspacmanY", "pacmanX", "pinkX"],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "Act2Mode.java",
+            "className": "Act2Mode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "int",
+                    "name": "chompSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "chompSpriteIndexIncrementor"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "float",
+                    "name": "mspacmanX"
+                },
+                {
+                    "type": "float",
+                    "name": "pacmanX"
+                },
+                {
+                    "type": "int",
+                    "name": "state"
+                },
+                {
+                    "type": "int",
+                    "name": "substate"
+                },
+                {
+                    "type": "int",
+                    "name": "timer"
+                },
+                {
+                    "type": "int",
+                    "name": "topClapperIndex"
+                }
+            ],
+            "floatFields": ["mspacmanX", "pacmanX"],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "Act3Mode.java",
+            "className": "Act3Mode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "float",
+                    "name": "juniorBagVy"
+                },
+                {
+                    "type": "float",
+                    "name": "juniorBagX"
+                },
+                {
+                    "type": "float",
+                    "name": "juniorBagY"
+                },
+                {
+                    "type": "float",
+                    "name": "juniorVy"
+                },
+                {
+                    "type": "float",
+                    "name": "juniorY"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "int",
+                    "name": "state"
+                },
+                {
+                    "type": "int",
+                    "name": "storkSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "storkSpriteIndexIncrementor"
+                },
+                {
+                    "type": "float",
+                    "name": "storkX"
+                },
+                {
+                    "type": "int",
+                    "name": "substate"
+                },
+                {
+                    "type": "int",
+                    "name": "timer"
+                },
+                {
+                    "type": "int",
+                    "name": "topClapperIndex"
+                }
+            ],
+            "floatFields": ["juniorBagVy", "juniorBagX", "juniorBagY", "juniorVy", "juniorY", "storkX"],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "Act4Mode.java",
+            "className": "Act4Mode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "int",
+                    "name": "chompSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "chompSpriteIndexIncrementor"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "float",
+                    "name": "mspacmanX"
+                },
+                {
+                    "type": "float",
+                    "name": "pellotOffset"
+                },
+                {
+                    "type": "int",
+                    "name": "state"
+                },
+                {
+                    "type": "int",
+                    "name": "storkSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "storkSpriteIndexIncrementor"
+                },
+                {
+                    "type": "float",
+                    "name": "storkX"
+                },
+                {
+                    "type": "float",
+                    "name": "storkY"
+                },
+                {
+                    "type": "float",
+                    "name": "storkYAngle"
+                },
+                {
+                    "type": "int",
+                    "name": "substate"
+                },
+                {
+                    "type": "int",
+                    "name": "timer"
+                },
+                {
+                    "type": "int",
+                    "name": "topClapperIndex"
+                }
+            ],
+            "floatFields": ["mspacmanX", "pellotOffset", "storkX", "storkY", "storkYAngle"],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "Act5Mode.java",
+            "className": "Act5Mode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "int",
+                    "name": "dialogIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "int",
+                    "name": "mspacmanIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "pacmanIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "state"
+                },
+                {
+                    "type": "boolean",
+                    "name": "stringDone"
+                },
+                {
+                    "type": "int",
+                    "name": "stringIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "stringTimer"
+                },
+                {
+                    "type": "int",
+                    "name": "substate"
+                },
+                {
+                    "type": "int",
+                    "name": "timer"
+                },
+                {
+                    "type": "int",
+                    "name": "tone"
+                },
+                {
+                    "type": "int",
+                    "name": "topClapperIndex"
+                }
+            ],
+            "floatFields": [],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "Act6Mode.java",
+            "className": "Act6Mode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "int",
+                    "name": "chompSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "chompSpriteIndexIncrementor"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostSpriteIndexIncrementor"
+                },
+                {
+                    "type": "float",
+                    "name": "ghostX"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "float",
+                    "name": "mspacmanX"
+                },
+                {
+                    "type": "int",
+                    "name": "state"
+                },
+                {
+                    "type": "int",
+                    "name": "substate"
+                },
+                {
+                    "type": "int",
+                    "name": "timer"
+                },
+                {
+                    "type": "int",
+                    "name": "topClapperIndex"
+                }
+            ],
+            "floatFields": ["ghostX", "mspacmanX"],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "Act7Mode.java",
+            "className": "Act7Mode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "int",
+                    "name": "dialogIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "int",
+                    "name": "mspacmanIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "pacmanIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "state"
+                },
+                {
+                    "type": "boolean",
+                    "name": "stringDone"
+                },
+                {
+                    "type": "int",
+                    "name": "stringIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "stringTimer"
+                },
+                {
+                    "type": "int",
+                    "name": "substate"
+                },
+                {
+                    "type": "int",
+                    "name": "timer"
+                },
+                {
+                    "type": "int",
+                    "name": "tone"
+                },
+                {
+                    "type": "int",
+                    "name": "topClapperIndex"
+                }
+            ],
+            "floatFields": [],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "AttractMode.java",
+            "className": "AttractMode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "float",
+                    "name": "barsY"
+                },
+                {
+                    "type": "int",
+                    "name": "countDown"
+                },
+                {
+                    "type": "float",
+                    "name": "dotsOffset"
+                },
+                {
+                    "type": "boolean",
+                    "name": "enterPressed"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostSpriteIndexIncrementor"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostsVisible"
+                },
+                {
+                    "type": "float",
+                    "name": "ghostX"
+                },
+                {
+                    "type": "IInput",
+                    "name": "input"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "int",
+                    "name": "pressEnterDelay"
+                },
+                {
+                    "type": "boolean",
+                    "name": "pressEnterVisible"
+                },
+                {
+                    "type": "int",
+                    "name": "redOffset"
+                },
+                {
+                    "type": "int",
+                    "name": "state"
+                },
+                {
+                    "type": "int",
+                    "name": "ticks"
+                },
+                {
+                    "type": "float",
+                    "name": "titleVy"
+                },
+                {
+                    "type": "float",
+                    "name": "titleY"
+                },
+                {
+                    "type": "float",
+                    "name": "titleZ"
+                },
+                {
+                    "type": "Image",
+                    "name": "whiteEnergizer"
+                },
+                {
+                    "type": "float",
+                    "name": "y2010"
+                }
+            ],
+            "floatFields": ["barsY", "dotsOffset", "ghostX", "titleVy", "titleY", "titleZ", "y2010"],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "CyanGhost.java",
+            "className": "CyanGhost",
+            "baseClass": "Ghost",
+            "fields": [],
+            "floatFields": [],
+            "publicMethods": ["reset", "updateGhost"]
+        },
+        {
+            "file": "EndingMode.java",
+            "className": "EndingMode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "int",
+                    "name": "chompSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "chompSpriteIndexIncrementor"
+                },
+                {
+                    "type": "float",
+                    "name": "creditsY"
+                },
+                {
+                    "type": "int",
+                    "name": "delay"
+                },
+                {
+                    "type": "int",
+                    "name": "dialogIndex"
+                },
+                {
+                    "type": "float",
+                    "name": "dotsOffset"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex2"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState2"
+                },
+                {
+                    "type": "float[][]",
+                    "name": "fruitData"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostSpriteIndexIncrementor"
+                },
+                {
+                    "type": "boolean",
+                    "name": "juniorFruits"
+                },
+                {
+                    "type": "boolean",
+                    "name": "juniorReturning"
+                },
+                {
+                    "type": "float",
+                    "name": "juniorX"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "float",
+                    "name": "mspacmanX"
+                },
+                {
+                    "type": "int",
+                    "name": "redOffset"
+                },
+                {
+                    "type": "int",
+                    "name": "state"
+                },
+                {
+                    "type": "boolean",
+                    "name": "stringDone"
+                },
+                {
+                    "type": "int",
+                    "name": "stringIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "stringTimer"
+                },
+                {
+                    "type": "Image",
+                    "name": "whiteEnergizer"
+                }
+            ],
+            "floatFields": ["creditsY", "dotsOffset", "juniorX", "mspacmanX"],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "EnterInitialsMode.java",
+            "className": "EnterInitialsMode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "String",
+                    "name": "blinkingInitials"
+                },
+                {
+                    "type": "int",
+                    "name": "blinkTimer"
+                },
+                {
+                    "type": "float",
+                    "name": "dotsOffset"
+                },
+                {
+                    "type": "int",
+                    "name": "editingIndex"
+                },
+                {
+                    "type": "boolean",
+                    "name": "editVisible"
+                },
+                {
+                    "type": "boolean",
+                    "name": "enterPressed"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "String",
+                    "name": "initials"
+                },
+                {
+                    "type": "IInput",
+                    "name": "input"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "String",
+                    "name": "newScoreOf"
+                },
+                {
+                    "type": "int",
+                    "name": "redOffset"
+                },
+                {
+                    "type": "Image",
+                    "name": "whiteEnergizer"
+                }
+            ],
+            "floatFields": ["dotsOffset"],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "FruitTarget.java",
+            "className": "FruitTarget",
+            "baseClass": "Thing",
+            "fields": [
+                {
+                    "type": "int",
+                    "name": "aroundHomeIndex"
+                },
+                {
+                    "type": "boolean",
+                    "name": "clockwise"
+                },
+                {
+                    "type": "boolean",
+                    "name": "eaten"
+                },
+                {
+                    "type": "int",
+                    "name": "eatenTimer"
+                },
+                {
+                    "type": "boolean",
+                    "name": "exiting"
+                },
+                {
+                    "type": "int[][]",
+                    "name": "exitPath"
+                },
+                {
+                    "type": "int",
+                    "name": "fruitIndex"
+                },
+                {
+                    "type": "boolean",
+                    "name": "goingAroundHome"
+                },
+                {
+                    "type": "int",
+                    "name": "yOffset"
+                },
+                {
+                    "type": "float",
+                    "name": "yOffsetAngle"
+                }
+            ],
+            "floatFields": ["yOffsetAngle"],
+            "publicMethods": ["getExitDirection", "render", "reset", "update"]
+        },
+        {
+            "file": "Ghost.java",
+            "className": "Ghost",
+            "baseClass": "Thing",
+            "fields": [
+                {
+                    "type": "boolean",
+                    "name": "blue"
+                },
+                {
+                    "type": "boolean",
+                    "name": "enteringHome"
+                },
+                {
+                    "type": "boolean",
+                    "name": "exitingHome"
+                },
+                {
+                    "type": "boolean",
+                    "name": "eyeBalls"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostIndex"
+                },
+                {
+                    "type": "boolean",
+                    "name": "inHome"
+                },
+                {
+                    "type": "int",
+                    "name": "spriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "spriteIndexIncrementor"
+                },
+                {
+                    "type": "Image[][]",
+                    "name": "sprites"
+                },
+                {
+                    "type": "int",
+                    "name": "targetX"
+                },
+                {
+                    "type": "int",
+                    "name": "targetY"
+                }
+            ],
+            "floatFields": [],
+            "publicMethods": [
+                "chase",
+                "enterHome",
+                "getDist",
+                "intersects",
+                "moveEyeBalls",
+                "moveInHome",
+                "moveRandomly",
+                "render",
+                "reset",
+                "reverseDirection",
+                "update"
+            ]
+        },
+        {
+            "file": "HallOfFameMode.java",
+            "className": "HallOfFameMode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "int",
+                    "name": "countDown"
+                },
+                {
+                    "type": "float",
+                    "name": "dotsOffset"
+                },
+                {
+                    "type": "boolean",
+                    "name": "enterPressed"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "HighScore[][]",
+                    "name": "highScores"
+                },
+                {
+                    "type": "IInput",
+                    "name": "input"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "int",
+                    "name": "pressEnterDelay"
+                },
+                {
+                    "type": "boolean",
+                    "name": "pressEnterVisible"
+                },
+                {
+                    "type": "int",
+                    "name": "redOffset"
+                },
+                {
+                    "type": "int",
+                    "name": "ticks"
+                },
+                {
+                    "type": "Image",
+                    "name": "whiteEnergizer"
+                }
+            ],
+            "floatFields": ["dotsOffset"],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "HighScore.java",
+            "className": "HighScore",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "String",
+                    "name": "initials"
+                },
+                {
+                    "type": "int",
+                    "name": "score"
+                }
+            ],
+            "floatFields": [],
+            "publicMethods": []
+        },
+        {
+            "file": "HighScoreService.java",
+            "className": "HighScoreService",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "Configuration",
+                    "name": "configuration"
+                },
+                {
+                    "type": "String",
+                    "name": "initials"
+                },
+                {
+                    "type": "int",
+                    "name": "score"
+                },
+                {
+                    "type": "int",
+                    "name": "world"
+                }
+            ],
+            "floatFields": [],
+            "publicMethods": ["downloadScores", "getEmbeddedHmacKeyHex", "getEnvironment", "getSystemProperty", "getTimeoutMs", "submitScore"]
+        },
+        {
+            "file": "HumanInput.java",
+            "className": "HumanInput",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "boolean[]",
+                    "name": "controllerCandidate"
+                },
+                {
+                    "type": "boolean[]",
+                    "name": "controllerCandidateKnown"
+                },
+                {
+                    "type": "boolean",
+                    "name": "controllerDownDown"
+                },
+                {
+                    "type": "boolean",
+                    "name": "controllerLeftDown"
+                },
+                {
+                    "type": "boolean",
+                    "name": "controllerRefreshEnabled"
+                },
+                {
+                    "type": "boolean",
+                    "name": "controllerRefreshInProgress"
+                },
+                {
+                    "type": "boolean",
+                    "name": "controllerRightDown"
+                },
+                {
+                    "type": "boolean",
+                    "name": "controllersCreateAttempted"
+                },
+                {
+                    "type": "boolean",
+                    "name": "controllersUnavailable"
+                },
+                {
+                    "type": "boolean",
+                    "name": "controllerUpDown"
+                },
+                {
+                    "type": "boolean",
+                    "name": "gamepadButtonStartDown"
+                },
+                {
+                    "type": "Input",
+                    "name": "input"
+                },
+                {
+                    "type": "long",
+                    "name": "lastControllerPollNanos"
+                },
+                {
+                    "type": "long",
+                    "name": "lastControllerRefreshNanos"
+                },
+                {
+                    "type": "ByteArrayOutputStream",
+                    "name": "lineBuffer"
+                },
+                {
+                    "type": "boolean",
+                    "name": "suppressedPollFailure"
+                },
+                {
+                    "type": "PrintStream",
+                    "name": "target"
+                }
+            ],
+            "floatFields": [],
+            "publicMethods": [
+                "clearKeyPressedRecord",
+                "isConfirmPressed",
+                "isDown",
+                "isDownPressed",
+                "isFullscreenExitPressed",
+                "isFullscreenTogglePressed",
+                "isGameplayStartPressed",
+                "isLeft",
+                "isLeftPressed",
+                "isMenuStartPressed",
+                "isPausePressed",
+                "isRight",
+                "isRightPressed",
+                "isUp",
+                "isUpPressed",
+                "reset",
+                "run",
+                "setControllerRefreshEnabled",
+                "update"
+            ]
+        },
+        {
+            "file": "IntroMode.java",
+            "className": "IntroMode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "int",
+                    "name": "chompSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "chompSpriteIndexIncrementor"
+                },
+                {
+                    "type": "float",
+                    "name": "dotsOffset"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostSpriteIndexIncrementor"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "float",
+                    "name": "mspacmanX"
+                },
+                {
+                    "type": "int",
+                    "name": "redOffset"
+                },
+                {
+                    "type": "Image",
+                    "name": "whiteEnergizer"
+                }
+            ],
+            "floatFields": ["dotsOffset", "mspacmanX"],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "Main.java",
+            "className": "Main",
+            "baseClass": "BasicGame",
+            "fields": [
+                {
+                    "type": "Music[]",
+                    "name": "actMusic"
+                },
+                {
+                    "type": "MsPacManAppGameContainer",
+                    "name": "appGameContainer"
+                },
+                {
+                    "type": "AppletGameContainer2",
+                    "name": "appletGameContainer"
+                },
+                {
+                    "type": "Sound",
+                    "name": "ateEnergizerSound"
+                },
+                {
+                    "type": "Sound",
+                    "name": "ateFruitSound"
+                },
+                {
+                    "type": "Sound",
+                    "name": "ateGhostSound"
+                },
+                {
+                    "type": "Sound",
+                    "name": "atePellotSound"
+                },
+                {
+                    "type": "Image[]",
+                    "name": "blueGhostSprites"
+                },
+                {
+                    "type": "Sound",
+                    "name": "blueGhostsSound"
+                },
+                {
+                    "type": "Image",
+                    "name": "clapperBottomSprite"
+                },
+                {
+                    "type": "Image[]",
+                    "name": "clapperTopSprites"
+                },
+                {
+                    "type": "Sound",
+                    "name": "clappingSound"
+                },
+                {
+                    "type": "Music",
+                    "name": "currentMusic"
+                },
+                {
+                    "type": "int",
+                    "name": "demoIndex"
+                },
+                {
+                    "type": "boolean",
+                    "name": "demoMode"
+                },
+                {
+                    "type": "Sound",
+                    "name": "diedSound"
+                },
+                {
+                    "type": "Sound",
+                    "name": "extraLifeSound"
+                },
+                {
+                    "type": "Image[]",
+                    "name": "eyeBallsSprites"
+                },
+                {
+                    "type": "boolean",
+                    "name": "fadeMusic"
+                },
+                {
+                    "type": "Color[]",
+                    "name": "fades"
+                },
+                {
+                    "type": "Sound",
+                    "name": "fruitAppearedSound"
+                },
+                {
+                    "type": "Image[]",
+                    "name": "fruitPointsSprites"
+                },
+                {
+                    "type": "Image[]",
+                    "name": "fruitSprites"
+                },
+                {
+                    "type": "boolean",
+                    "name": "fullscreenFallbackActive"
+                },
+                {
+                    "type": "Music",
+                    "name": "gameOverMusic"
+                },
+                {
+                    "type": "Image[]",
+                    "name": "ghostPointsSprites"
+                },
+                {
+                    "type": "Image[][][]",
+                    "name": "ghostSprites"
+                },
+                {
+                    "type": "Image",
+                    "name": "greenEnergizerSprite"
+                },
+                {
+                    "type": "Image",
+                    "name": "heartSprite"
+                },
+                {
+                    "type": "Cursor",
+                    "name": "hiddenCursor"
+                },
+                {
+                    "type": "Music",
+                    "name": "highScoreMusic"
+                },
+                {
+                    "type": "HighScore[][]",
+                    "name": "highScores"
+                },
+                {
+                    "type": "boolean",
+                    "name": "initialScoresDownloadStarted"
+                },
+                {
+                    "type": "IInput",
+                    "name": "input"
+                },
+                {
+                    "type": "Music",
+                    "name": "introMusic"
+                },
+                {
+                    "type": "Image",
+                    "name": "juniorBagSprite"
+                },
+                {
+                    "type": "Image",
+                    "name": "juniorRightSprite"
+                },
+                {
+                    "type": "Image",
+                    "name": "juniorSprite"
+                },
+                {
+                    "type": "int",
+                    "name": "lastMouseButtonMask"
+                },
+                {
+                    "type": "long",
+                    "name": "lastMouseInputTime"
+                },
+                {
+                    "type": "boolean",
+                    "name": "lastMouseInsideGameArea"
+                },
+                {
+                    "type": "int",
+                    "name": "lastMouseX"
+                },
+                {
+                    "type": "int",
+                    "name": "lastMouseY"
+                },
+                {
+                    "type": "int",
+                    "name": "leaderboardRevision"
+                },
+                {
+                    "type": "Music",
+                    "name": "levelSelectMusic"
+                },
+                {
+                    "type": "int",
+                    "name": "lives"
+                },
+                {
+                    "type": "int",
+                    "name": "maxColorDepth"
+                },
+                {
+                    "type": "int",
+                    "name": "maxHeight"
+                },
+                {
+                    "type": "int",
+                    "name": "maxWidth"
+                },
+                {
+                    "type": "IMode",
+                    "name": "mode"
+                },
+                {
+                    "type": "boolean",
+                    "name": "mouseCursorHidden"
+                },
+                {
+                    "type": "Image[][]",
+                    "name": "mspacmanSprites"
+                },
+                {
+                    "type": "float",
+                    "name": "musicVolume"
+                },
+                {
+                    "type": "float",
+                    "name": "musicVolumeFadeStep"
+                },
+                {
+                    "type": "Cursor",
+                    "name": "nativeCursor"
+                },
+                {
+                    "type": "DisplayMode",
+                    "name": "nativeDisplayMode"
+                },
+                {
+                    "type": "long",
+                    "name": "nextFrameTime"
+                },
+                {
+                    "type": "Image[][]",
+                    "name": "pacmanSprites"
+                },
+                {
+                    "type": "boolean",
+                    "name": "paused"
+                },
+                {
+                    "type": "ArrayList<PendingRemoteScores>",
+                    "name": "pendingRemoteScores"
+                },
+                {
+                    "type": "Sound",
+                    "name": "pressedEnterSound"
+                },
+                {
+                    "type": "Random",
+                    "name": "random"
+                },
+                {
+                    "type": "Image",
+                    "name": "redEnergizerSprite"
+                },
+                {
+                    "type": "Object",
+                    "name": "remoteScoresLock"
+                },
+                {
+                    "type": "int",
+                    "name": "revision"
+                },
+                {
+                    "type": "RobotInput[]",
+                    "name": "robotInputs"
+                },
+                {
+                    "type": "ScalableGame2",
+                    "name": "scalableGame"
+                },
+                {
+                    "type": "int",
+                    "name": "score"
+                },
+                {
+                    "type": "ArrayList<HighScoreService.RemoteHighScore>",
+                    "name": "scores"
+                },
+                {
+                    "type": "Sound[][]",
+                    "name": "speaking"
+                },
+                {
+                    "type": "int",
+                    "name": "stageIndex"
+                },
+                {
+                    "type": "Music[]",
+                    "name": "stageMusic"
+                },
+                {
+                    "type": "Stage[][]",
+                    "name": "stages"
+                },
+                {
+                    "type": "Image",
+                    "name": "storkHeadSprite"
+                },
+                {
+                    "type": "Image[]",
+                    "name": "storkWingsSprites"
+                },
+                {
+                    "type": "Image[][]",
+                    "name": "symbols"
+                },
+                {
+                    "type": "Image[][]",
+                    "name": "tiles"
+                },
+                {
+                    "type": "Music",
+                    "name": "trainingMusic"
+                },
+                {
+                    "type": "Image[]",
+                    "name": "whiteTiles"
+                },
+                {
+                    "type": "int",
+                    "name": "worldIndex"
+                }
+            ],
+            "floatFields": ["musicVolume", "musicVolumeFadeStep"],
+            "publicMethods": [
+                "accessScoresDatabase",
+                "accessScoresDatabaseAsync",
+                "advanceStage",
+                "closeRequested",
+                "downloadScores",
+                "draw",
+                "drawNumber",
+                "drawScaled",
+                "drawString",
+                "fadeMusic",
+                "init",
+                "intersects",
+                "isHighScore",
+                "loopMusic",
+                "playMusic",
+                "playSound",
+                "render",
+                "resetNextFrameTime",
+                "run",
+                "setMode",
+                "stopAllSoundEffects",
+                "stopAllSounds",
+                "stopMusic",
+                "stopSound",
+                "update"
+            ]
+        },
+        {
+            "file": "MsPacMan.java",
+            "className": "MsPacMan",
+            "baseClass": "Thing",
+            "fields": [
+                {
+                    "type": "boolean",
+                    "name": "corneringEnhancesSpeed"
+                },
+                {
+                    "type": "int",
+                    "name": "corneringEnhancesSpeedCount"
+                },
+                {
+                    "type": "IInput",
+                    "name": "input"
+                },
+                {
+                    "type": "boolean",
+                    "name": "pellotDampensSpeed"
+                },
+                {
+                    "type": "int",
+                    "name": "pellotDampensSpeedCount"
+                },
+                {
+                    "type": "boolean",
+                    "name": "speedBoost"
+                },
+                {
+                    "type": "int",
+                    "name": "speedBoostTimer"
+                },
+                {
+                    "type": "int",
+                    "name": "spriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "spriteIndexIncrementor"
+                }
+            ],
+            "floatFields": [],
+            "publicMethods": ["boostSpeed", "render", "reset", "update"]
+        },
+        {
+            "file": "OrangeGhost.java",
+            "className": "OrangeGhost",
+            "baseClass": "Ghost",
+            "fields": [],
+            "floatFields": [],
+            "publicMethods": ["reset", "updateGhost"]
+        },
+        {
+            "file": "PinkGhost.java",
+            "className": "PinkGhost",
+            "baseClass": "Ghost",
+            "fields": [],
+            "floatFields": [],
+            "publicMethods": ["reset", "updateGhost"]
+        },
+        {
+            "file": "PlayingMode.java",
+            "className": "PlayingMode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "boolean",
+                    "name": "chaseMode"
+                },
+                {
+                    "type": "int",
+                    "name": "chaseModeToggleDelay"
+                },
+                {
+                    "type": "Ghost",
+                    "name": "eatenGhost"
+                },
+                {
+                    "type": "int[][]",
+                    "name": "energizerLocations"
+                },
+                {
+                    "type": "boolean",
+                    "name": "energizersVisible"
+                },
+                {
+                    "type": "int",
+                    "name": "energizersVisibleTimer"
+                },
+                {
+                    "type": "int",
+                    "name": "energizerTimer"
+                },
+                {
+                    "type": "int",
+                    "name": "exitDelay"
+                },
+                {
+                    "type": "int",
+                    "name": "exitDelayTarget"
+                },
+                {
+                    "type": "int",
+                    "name": "exitIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeReason"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "boolean",
+                    "name": "finished"
+                },
+                {
+                    "type": "int",
+                    "name": "finishedBlinkTimer"
+                },
+                {
+                    "type": "int",
+                    "name": "finishedTimer"
+                },
+                {
+                    "type": "boolean",
+                    "name": "finishedWhite"
+                },
+                {
+                    "type": "float",
+                    "name": "fruitOdds"
+                },
+                {
+                    "type": "FruitTarget",
+                    "name": "fruitTarget"
+                },
+                {
+                    "type": "int[][]",
+                    "name": "fruitTargetEntries"
+                },
+                {
+                    "type": "boolean",
+                    "name": "fruitTargetPresent"
+                },
+                {
+                    "type": "int",
+                    "name": "fruitTargetTimer"
+                },
+                {
+                    "type": "boolean",
+                    "name": "gameOver"
+                },
+                {
+                    "type": "int",
+                    "name": "gameOverTimer"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostPointsIndex"
+                },
+                {
+                    "type": "Ghost[]",
+                    "name": "ghosts"
+                },
+                {
+                    "type": "boolean",
+                    "name": "ghostsBlue"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostsBlueOffset"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostsBlueTimer"
+                },
+                {
+                    "type": "boolean",
+                    "name": "greenEnergizerPresent"
+                },
+                {
+                    "type": "int[][]",
+                    "name": "homeTree"
+                },
+                {
+                    "type": "IInput",
+                    "name": "input"
+                },
+                {
+                    "type": "int[][][]",
+                    "name": "leftExitMaps"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "MsPacMan",
+                    "name": "mspacman"
+                },
+                {
+                    "type": "int",
+                    "name": "musicFadeOutTimer"
+                },
+                {
+                    "type": "int",
+                    "name": "pelletCount"
+                },
+                {
+                    "type": "float",
+                    "name": "pelletCountFraction"
+                },
+                {
+                    "type": "int",
+                    "name": "pelletsRemaining"
+                },
+                {
+                    "type": "boolean",
+                    "name": "playerKilled"
+                },
+                {
+                    "type": "boolean",
+                    "name": "playerSpiraling"
+                },
+                {
+                    "type": "int",
+                    "name": "readyTimer"
+                },
+                {
+                    "type": "boolean",
+                    "name": "redEnergizerPresent"
+                },
+                {
+                    "type": "float",
+                    "name": "redPelletOdds"
+                },
+                {
+                    "type": "int[]",
+                    "name": "regionCounts"
+                },
+                {
+                    "type": "int[][]",
+                    "name": "regionMap"
+                },
+                {
+                    "type": "int[][][]",
+                    "name": "rightExitMaps"
+                },
+                {
+                    "type": "boolean",
+                    "name": "showGhostPoints"
+                },
+                {
+                    "type": "int",
+                    "name": "showGhostPointsTimer"
+                },
+                {
+                    "type": "int",
+                    "name": "spiralTimer"
+                },
+                {
+                    "type": "String",
+                    "name": "stageMessage"
+                },
+                {
+                    "type": "int[][]",
+                    "name": "tileMap"
+                },
+                {
+                    "type": "Image[]",
+                    "name": "tiles"
+                },
+                {
+                    "type": "int[][]",
+                    "name": "typeMap"
+                }
+            ],
+            "floatFields": ["fruitOdds", "pelletCountFraction", "redPelletOdds"],
+            "publicMethods": [
+                "addPoints",
+                "ateEnergizer",
+                "atePellot",
+                "decrementRegionCount",
+                "distance",
+                "distanceToMsPacMan",
+                "fruitTargetExited",
+                "getRegionCount",
+                "ghostEaten",
+                "incrementRegionCount",
+                "init",
+                "playerKilled",
+                "render",
+                "reset",
+                "update"
+            ]
+        },
+        {
+            "file": "RedGhost.java",
+            "className": "RedGhost",
+            "baseClass": "Ghost",
+            "fields": [],
+            "floatFields": [],
+            "publicMethods": ["reset", "updateGhost"]
+        },
+        {
+            "file": "RobotInput.java",
+            "className": "RobotInput",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "byte[]",
+                    "name": "data"
+                },
+                {
+                    "type": "int",
+                    "name": "index"
+                },
+                {
+                    "type": "Input",
+                    "name": "input"
+                }
+            ],
+            "floatFields": [],
+            "publicMethods": [
+                "clearKeyPressedRecord",
+                "isConfirmPressed",
+                "isDown",
+                "isDownPressed",
+                "isFullscreenExitPressed",
+                "isFullscreenTogglePressed",
+                "isGameplayStartPressed",
+                "isLeft",
+                "isLeftPressed",
+                "isMenuStartPressed",
+                "isPausePressed",
+                "isRight",
+                "isRightPressed",
+                "isUp",
+                "isUpPressed",
+                "reset",
+                "update"
+            ]
+        },
+        {
+            "file": "ScalableGame2.java",
+            "className": "ScalableGame2",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "Game",
+                    "name": "held"
+                },
+                {
+                    "type": "boolean",
+                    "name": "maintainAspect"
+                },
+                {
+                    "type": "float",
+                    "name": "normalHeight"
+                },
+                {
+                    "type": "float",
+                    "name": "normalWidth"
+                },
+                {
+                    "type": "int",
+                    "name": "targetHeight"
+                },
+                {
+                    "type": "int",
+                    "name": "targetWidth"
+                }
+            ],
+            "floatFields": ["normalHeight", "normalWidth"],
+            "publicMethods": ["closeRequested", "containerSizeChanged", "getTitle", "init", "render", "renderOverlay", "update"]
+        },
+        {
+            "file": "SelectWorldMode.java",
+            "className": "SelectWorldMode",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "float",
+                    "name": "angleOffset"
+                },
+                {
+                    "type": "int",
+                    "name": "countDown"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "fadeState"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostSpriteIndex"
+                },
+                {
+                    "type": "int",
+                    "name": "ghostSpriteIndexIncrementor"
+                },
+                {
+                    "type": "IInput",
+                    "name": "input"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "float",
+                    "name": "selectAngle"
+                },
+                {
+                    "type": "int",
+                    "name": "selectIndex"
+                },
+                {
+                    "type": "boolean",
+                    "name": "selecting"
+                },
+                {
+                    "type": "int",
+                    "name": "selection"
+                },
+                {
+                    "type": "float",
+                    "name": "selectMag"
+                },
+                {
+                    "type": "float",
+                    "name": "selectOffset"
+                },
+                {
+                    "type": "float",
+                    "name": "selectY"
+                },
+                {
+                    "type": "Image",
+                    "name": "whiteEnergizer"
+                }
+            ],
+            "floatFields": ["angleOffset", "selectAngle", "selectMag", "selectOffset", "selectY"],
+            "publicMethods": ["init", "render", "update"]
+        },
+        {
+            "file": "Stage.java",
+            "className": "Stage",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "int[][]",
+                    "name": "homeTree"
+                },
+                {
+                    "type": "int[][][]",
+                    "name": "leftExitMaps"
+                },
+                {
+                    "type": "int",
+                    "name": "pelletCount"
+                },
+                {
+                    "type": "int",
+                    "name": "regionCount"
+                },
+                {
+                    "type": "int[][]",
+                    "name": "regionMap"
+                },
+                {
+                    "type": "int[][][]",
+                    "name": "rightExitMaps"
+                },
+                {
+                    "type": "int[][]",
+                    "name": "tileMap"
+                }
+            ],
+            "floatFields": [],
+            "publicMethods": []
+        },
+        {
+            "file": "Thing.java",
+            "className": "Thing",
+            "baseClass": null,
+            "fields": [
+                {
+                    "type": "int",
+                    "name": "direction"
+                },
+                {
+                    "type": "Main",
+                    "name": "main"
+                },
+                {
+                    "type": "PlayingMode",
+                    "name": "playingMode"
+                },
+                {
+                    "type": "float",
+                    "name": "speed"
+                },
+                {
+                    "type": "float",
+                    "name": "speedRemainder"
+                },
+                {
+                    "type": "int",
+                    "name": "x"
+                },
+                {
+                    "type": "int",
+                    "name": "y"
+                }
+            ],
+            "floatFields": ["speed", "speedRemainder"],
+            "publicMethods": [
+                "canMoveDown",
+                "canMoveLeft",
+                "canMoveRight",
+                "canMoveUp",
+                "draw",
+                "getHomeDirection",
+                "getMsPacManDistance",
+                "getTile",
+                "getType",
+                "setTile",
+                "setType"
+            ]
+        }
+    ]
+}

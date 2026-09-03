@@ -797,7 +797,15 @@ function createRandom(variant) {
 
 function createRobotInputs(variant) {
     const offset = variant === "target" ? 100 : 0;
-    return [0, 1, 2, 3].map((index) => ({ index: offset + index + 1 }));
+    return [0, 1, 2, 3].map((index) => ({
+        index: offset + index + 1,
+        getState() {
+            return { index: this.index };
+        },
+        setState(snapshot) {
+            this.index = snapshot.index;
+        }
+    }));
 }
 
 function createHighScores(highScoreOrScores) {

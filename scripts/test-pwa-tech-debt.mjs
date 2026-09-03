@@ -12,6 +12,10 @@ const humanInput = read("pwa/src/mspacman/HumanInput.ts");
 const serializer = read("pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts");
 const snapshot = read("pwa/src/mspacman/persistence/GameStateSnapshot.ts");
 const browserMain = read("pwa/src/app/main.ts");
+const browserPreferences = read("pwa/src/app/BrowserPreferences.ts");
+const runtimeLoader = read("pwa/src/app/RuntimeLoader.ts");
+const sessionGeneration = read("pwa/src/app/SessionGeneration.ts");
+const serviceWorkerRegistrar = read("pwa/src/app/ServiceWorkerRegistrar.ts");
 const tsMain = read("pwa/src/mspacman/Main.ts");
 const javaMain = read("desktop/src/mspacman/Main.java");
 const thingJava = read("desktop/src/mspacman/Thing.java");
@@ -55,16 +59,26 @@ test("persistence uses public Slick random and music state APIs", () => {
     assert.match(serializer, /music\.getDuration\(\)/);
     assert.doesNotMatch(serializer, /getField\(music,\s*["'](?:looped|paused|playbackRate|buffer)["']/);
     assert.doesNotMatch(serializer, /(?:getField|setField|numberField)\(main\.random/);
-    assert.match(snapshot, /GAME_STATE_VERSION = 2/);
+    assert.match(snapshot, /GAME_STATE_VERSION = 3/);
 });
 
-test("browser shell uses Slick public root imports and does not rewrite unknown scaling values", () => {
+test("browser-native responsibilities are decomposed and generation owned", () => {
     assert.doesNotMatch(browserMain, /slick2d-ts\/slick\//);
-    const scalingReader = sliceBetween(browserMain, "function safeReadScalingPreference", "function writeScalingPreference");
-    assert.doesNotMatch(scalingReader, /writeScalingPreference/);
+    assert.match(browserMain, /new BrowserPreferences\(\)/);
+    assert.match(browserMain, /new RuntimeLoader\(/);
+    assert.match(browserMain, /new SessionGeneration\(\)/);
+    assert.match(browserMain, /sessionGeneration\.isCurrent/);
+    assert.doesNotMatch(browserMain, /ResourceLoader\.preloadResources|preloadAudioBuffers/);
+    assert.doesNotMatch(browserMain, /function safeReadVolume|function safeReadScalingPreference|function registerServiceWorker/);
+    assert.match(browserPreferences, /setVolume\(value: number, persist = true\)/);
+    assert.match(browserPreferences, /BrowserPreferences\.isScaling/);
+    assert.match(runtimeLoader, /setCacheVersionResolver\(getResourceVersion\)/);
+    assert.match(runtimeLoader, /concurrency: RESOURCE_PRELOAD_CONCURRENCY/);
+    assert.match(sessionGeneration, /isCurrent\(generation: number\)/);
+    assert.match(serviceWorkerRegistrar, /navigator\.serviceWorker\.register/);
 
     const inputHandler = sliceBetween(browserMain, 'volumeInput?.addEventListener("input"', 'volumeInput?.addEventListener("change"');
-    assert.doesNotMatch(inputHandler, /writeVolume/);
+    assert.doesNotMatch(inputHandler, /setVolume\(volume, true\)/);
     assert.match(browserMain, /volumeInput\?\.addEventListener\("change"/);
 });
 
