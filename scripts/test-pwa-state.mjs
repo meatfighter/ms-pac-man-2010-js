@@ -196,21 +196,31 @@ try {
         assert.equal(store.hasValidSave(), false);
         assert.equal(storage.getItem(storageKey), null);
 
-        storage.setItem(storageKey, JSON.stringify({ version: 1 }));
+        storage.setItem(storageKey, JSON.stringify({ version: 3 }));
         assert.equal(store.hasValidSave(), false);
         assert.equal(storage.getItem(storageKey), null);
     });
 
-    await runTest("store preserves future-version local-storage snapshots", () => {
+    await runTest("store discards obsolete saves and protects future saves from overwrite", () => {
         const storage = installMemoryLocalStorage();
         const store = new MsPacManGameStateStore(APP_VERSION);
         setTestLocation(STAGE_URL);
         const storageKey = createBrowserStorageKeys().gameState;
-        const futureSnapshot = JSON.stringify({ version: 999 });
 
+        storage.setItem(storageKey, JSON.stringify({ version: 1 }));
+        assert.equal(store.hasValidSave(), false);
+        assert.equal(storage.getItem(storageKey), null);
+
+        const futureSnapshot = JSON.stringify({ version: 999, futureShape: true });
         storage.setItem(storageKey, futureSnapshot);
         assert.equal(store.hasValidSave(), false);
         assert.equal(storage.getItem(storageKey), futureSnapshot);
+        assert.equal(store.save(createFakeMain("attract", "source")), false);
+        assert.equal(storage.getItem(storageKey), futureSnapshot);
+
+        store.clear();
+        assert.equal(store.save(createFakeMain("attract", "source")), true);
+        assert.notEqual(storage.getItem(storageKey), futureSnapshot);
     });
 
     await runTest("browser storage keys isolate save state by deployment path", () => {

@@ -15,6 +15,9 @@ export class MsPacManGameStateStore {
         }
 
         try {
+            if (this.hasProtectedStoredSnapshot()) {
+                return false;
+            }
             const snapshot = this.serializer.createSnapshot(main, this.appVersion);
             localStorage.setItem(createBrowserStorageKeys().gameState, JSON.stringify(snapshot));
             return true;
@@ -77,6 +80,18 @@ export class MsPacManGameStateStore {
         }
 
         return snapshot;
+    }
+
+    private hasProtectedStoredSnapshot(): boolean {
+        const text = localStorage.getItem(createBrowserStorageKeys().gameState);
+        if (text === null) {
+            return false;
+        }
+        try {
+            return this.shouldPreserveUnsupportedPublicSnapshot(JSON.parse(text) as unknown);
+        } catch {
+            return false;
+        }
     }
 
     private shouldPreserveUnsupportedPublicSnapshot(snapshot: unknown): boolean {
