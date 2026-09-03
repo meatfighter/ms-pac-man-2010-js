@@ -1,8 +1,8 @@
 import type { GameContainer } from "slick2d-ts";
 import { createBrowserStorageKeys } from "../../app/BrowserStorageKeys";
 import type { Main } from "../Main";
-import type { MsPacManGameStateSnapshot } from "./GameStateSnapshot";
-import { isFutureMsPacManGameStateSnapshot, MsPacManGameStateSerializer } from "./MsPacManGameStateSerializer";
+import { FIRST_PUBLIC_GAME_STATE_VERSION, GAME_STATE_VERSION, type MsPacManGameStateSnapshot } from "./GameStateSnapshot";
+import { MsPacManGameStateSerializer } from "./MsPacManGameStateSerializer";
 
 export class MsPacManGameStateStore {
     private readonly serializer = new MsPacManGameStateSerializer();
@@ -69,7 +69,7 @@ export class MsPacManGameStateStore {
         }
 
         if (!this.serializer.isSupportedSnapshot(snapshot)) {
-            if (isFutureMsPacManGameStateSnapshot(snapshot)) {
+            if (this.shouldPreserveUnsupportedPublicSnapshot(snapshot)) {
                 return null;
             }
             this.clear();
@@ -77,5 +77,13 @@ export class MsPacManGameStateStore {
         }
 
         return snapshot;
+    }
+
+    private shouldPreserveUnsupportedPublicSnapshot(snapshot: unknown): boolean {
+        if (snapshot === null || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+            return false;
+        }
+        const version = Reflect.get(snapshot, "version");
+        return typeof version === "number" && Number.isInteger(version) && version >= FIRST_PUBLIC_GAME_STATE_VERSION && version !== GAME_STATE_VERSION;
     }
 }
