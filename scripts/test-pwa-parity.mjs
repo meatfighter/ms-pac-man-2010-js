@@ -24,12 +24,12 @@ assert.match(javaMain, /nextFrameTime \+= Sys\.getTimerResolution\(\) \/ 91;/);
 assert.match(tsMain, /nextFrameTime \+= intDiv\(Sys\.getTimerResolution\(\), 91\);/);
 assert.equal(Math.trunc(1000 / 91), 10, "The historical /91 loop must remain the Java 10 ms fixed-step cadence.");
 
-const javaStopSound = /public void stopSound\(Sound sound\)\s*\{\s*blueGhostsSound\.stop\(\);\s*\}/s;
+const javaStopSound = /public void stopSound\(Sound sound\)\s*\{\s*sound\.stop\(\);\s*\}/s;
 const tsStopSoundMethod = /public stopSound\(sound: Sound\): void\s*\{([\s\S]*?)\n {4}\}/.exec(tsMain);
-assert.match(javaMain, javaStopSound, "Java stopSound parity anomaly changed; review the TypeScript behavior deliberately.");
+assert.match(javaMain, javaStopSound, "Java stopSound must stop the Sound instance passed by the caller.");
 assert.ok(tsStopSoundMethod, "TypeScript stopSound method is missing.");
-assert.match(tsStopSoundMethod[1], /void sound;/, "TypeScript stopSound must explicitly acknowledge the intentionally unused Java parameter.");
-assert.match(tsStopSoundMethod[1], /this\.blueGhostsSound\.stop\(\);/, "TypeScript stopSound must preserve the Java blueGhostsSound behavior.");
+assert.match(tsStopSoundMethod[1], /sound\.stop\(\);/, "TypeScript stopSound must stop the Sound instance passed by the caller.");
+assert.doesNotMatch(tsStopSoundMethod[1], /blueGhostsSound/, "TypeScript stopSound must not hard-code blueGhostsSound.");
 
 const hotFloatSources = {
     Thing: readFileSync(join(rootDir, "pwa", "src", "mspacman", "Thing.ts"), "utf8"),

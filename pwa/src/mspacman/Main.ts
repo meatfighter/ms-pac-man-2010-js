@@ -377,9 +377,7 @@ export class Main extends BasicGame {
     }
 
     public stopSound(sound: Sound): void {
-        // Intentional Java parity: the original method ignores its parameter and stops blueGhostsSound.
-        void sound;
-        this.blueGhostsSound.stop();
+        sound.stop();
     }
 
     public stopAllSoundEffects(): void {

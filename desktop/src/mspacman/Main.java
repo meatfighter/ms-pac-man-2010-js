@@ -678,7 +678,7 @@ public class Main extends BasicGame {
   }
 
   public void stopSound(Sound sound) {
-    blueGhostsSound.stop();
+    sound.stop();
   }
 
   public void stopAllSoundEffects() {
