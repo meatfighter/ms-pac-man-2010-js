@@ -1,0 +1,145 @@
+name: Sync Slick2D
+
+on:
+    schedule:
+        - cron: "37 10 * * *"
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+concurrency:
+    group: sync-slick2d
+    cancel-in-progress: false
+
+jobs:
+    sync:
+        if: github.ref == 'refs/heads/main'
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+
+            - name: Check Slick main
+              id: slick
+              run: |
+                  slick_head="$(git ls-remote https://github.com/meatfighter/slick2d-ts.git refs/heads/main | awk '{print $1}')"
+                  if ! [[ "$slick_head" =~ ^[0-9a-f]{40}$ ]]; then
+                      echo "Unable to resolve slick2d-ts main." >&2
+                      exit 1
+                  fi
+                  expected="git+https://github.com/meatfighter/slick2d-ts.git#$slick_head"
+                  current="$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("package.json", "utf8")).dependencies?.["slick2d-ts"] ?? "");')"
+                  echo "sha=$slick_head" >> "$GITHUB_OUTPUT"
+                  if [[ "$current" == "$expected" ]]; then
+                      echo "needs_update=false" >> "$GITHUB_OUTPUT"
+                      echo "Ms. Pac-Man already uses Slick $slick_head."
+                  else
+                      echo "needs_update=true" >> "$GITHUB_OUTPUT"
+                      echo "Ms. Pac-Man will test Slick $slick_head."
+                  fi
+
+            - name: Set Up Node
+              if: steps.slick.outputs.needs_update == 'true'
+              uses: actions/setup-node@v7
+              with:
+                  node-version: 22.13.0
+                  cache: npm
+
+            - name: Set Up Java
+              if: steps.slick.outputs.needs_update == 'true'
+              uses: actions/setup-java@v6
+              with:
+                  distribution: temurin
+                  java-version: "21"
+
+            - name: Update locked Slick dependency
+              if: steps.slick.outputs.needs_update == 'true'
+              env:
+                  SLICK_SHA: ${{ steps.slick.outputs.sha }}
+              run: |
+                  node --input-type=module <<'NODE'
+                  import { readFileSync, writeFileSync } from "node:fs";
+                  const dependency = `git+https://github.com/meatfighter/slick2d-ts.git#${process.env.SLICK_SHA}`;
+                  const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+                  pkg.dependencies["slick2d-ts"] = dependency;
+                  writeFileSync("package.json", `${JSON.stringify(pkg, null, 4)}\n`);
+                  NODE
+                  npm install --ignore-scripts
+                  node --input-type=module <<'NODE'
+                  import { readFileSync, writeFileSync } from "node:fs";
+                  const dependency = `git+https://github.com/meatfighter/slick2d-ts.git#${process.env.SLICK_SHA}`;
+                  const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
+                  lock.packages[""].dependencies["slick2d-ts"] = dependency;
+                  const slick = lock.packages["node_modules/slick2d-ts"];
+                  if (!slick || typeof slick.version !== "string") throw new Error("Missing installed slick2d-ts lock entry.");
+                  slick.resolved = dependency;
+                  writeFileSync("package-lock.json", `${JSON.stringify(lock, null, 4)}\n`);
+                  NODE
+                  npx prettier package.json package-lock.json --write
+                  unexpected="$(git diff --name-only | grep -v -E '^(package.json|package-lock.json)$' || true)"
+                  if [[ -n "$unexpected" ]]; then
+                      echo "Slick sync changed unexpected tracked files:" >&2
+                      echo "$unexpected" >&2
+                      exit 1
+                  fi
+                  slick_version="$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("package-lock.json", "utf8")).packages["node_modules/slick2d-ts"].version);')"
+                  echo "SLICK_VERSION=$slick_version" >> "$GITHUB_ENV"
+
+            - name: Commit local candidate
+              if: steps.slick.outputs.needs_update == 'true'
+              run: |
+                  git config user.name 'github-actions[bot]'
+                  git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+                  git add package.json package-lock.json
+                  git commit -m "Update Slick2D to v${SLICK_VERSION}"
+
+            - name: Clean install
+              if: steps.slick.outputs.needs_update == 'true'
+              run: npm ci --ignore-scripts
+
+            - name: Verify formatting
+              if: steps.slick.outputs.needs_update == 'true'
+              run: npm run format:check
+
+            - name: Lint
+              if: steps.slick.outputs.needs_update == 'true'
+              run: npm run lint
+
+            - name: Test
+              if: steps.slick.outputs.needs_update == 'true'
+              run: npm test
+
+            - name: Synthetic full release build
+              if: steps.slick.outputs.needs_update == 'true'
+              env:
+                  MSPACMAN_HMAC_KEY_HEX: 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+              run: node scripts/build-release.mjs --target=full --key-source=env
+
+            - name: Verify real browser
+              if: steps.slick.outputs.needs_update == 'true'
+              run: npm run verify:browser
+
+            - name: Recheck heads
+              if: steps.slick.outputs.needs_update == 'true'
+              env:
+                  TARGET_SLICK_SHA: ${{ steps.slick.outputs.sha }}
+              run: |
+                  slick_head="$(git ls-remote https://github.com/meatfighter/slick2d-ts.git refs/heads/main | awk '{print $1}')"
+                  if [[ "$slick_head" != "$TARGET_SLICK_SHA" ]]; then
+                      echo "slick2d-ts main moved during verification; refusing to publish a stale pin." >&2
+                      exit 1
+                  fi
+                  git fetch origin main
+                  if [[ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]]; then
+                      echo "Ms. Pac-Man main moved during verification; refusing to overwrite newer work." >&2
+                      exit 1
+                  fi
+
+            - name: Publish verified Slick update
+              if: steps.slick.outputs.needs_update == 'true'
+              run: git push origin HEAD:main

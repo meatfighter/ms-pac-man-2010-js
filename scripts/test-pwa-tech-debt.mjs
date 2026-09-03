@@ -6,7 +6,6 @@ function read(path) {
     return readFileSync(path, "utf8").replaceAll("\r\n", "\n");
 }
 
-const SLICK_REVISION = "39689c01a336c7620a7e80f992fe33558ef9652a";
 const packageJson = JSON.parse(read("package.json"));
 const packageLock = JSON.parse(read("package-lock.json"));
 const humanInput = read("pwa/src/mspacman/HumanInput.ts");
@@ -30,11 +29,14 @@ function sliceBetween(source, start, end) {
 }
 
 test("Slick dependency is exact and cloneable over public HTTPS", () => {
-    assert.equal(packageJson.dependencies["slick2d-ts"], `git+https://github.com/meatfighter/slick2d-ts.git#${SLICK_REVISION}`);
-    assert.equal(packageLock.packages[""].dependencies["slick2d-ts"], packageJson.dependencies["slick2d-ts"]);
+    const dependency = packageJson.dependencies["slick2d-ts"];
+    const lockedDependency = packageLock.packages[""].dependencies["slick2d-ts"];
     const locked = packageLock.packages["node_modules/slick2d-ts"];
-    assert.equal(locked.version, "1.5.5");
-    assert.equal(locked.resolved, `git+https://github.com/meatfighter/slick2d-ts.git#${SLICK_REVISION}`);
+
+    assert.equal(dependency, lockedDependency);
+    assert.match(dependency, /^git\+https:\/\/github\.com\/meatfighter\/slick2d-ts\.git#[0-9a-f]{40}$/);
+    assert.equal(locked.resolved, dependency);
+    assert.match(locked.version, /^\d+\.\d+\.\d+$/);
 });
 
 test("browser input delegates controller axis calibration and dense enumeration to Slick", () => {
