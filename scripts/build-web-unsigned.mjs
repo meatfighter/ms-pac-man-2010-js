@@ -22,7 +22,6 @@ try {
     runNpmScript("_build:about", env);
     runNpmScript("build:desktop:unsigned", env);
     runNpmScript("_assemble", env);
-    runNodeScript("write-source-archive.mjs", env);
     console.log(`Built unsigned web component artifact in ${outputDir}.`);
 } finally {
     releaseLock();
@@ -45,17 +44,5 @@ function runNpmScript(scriptName, env) {
               });
     if (result.status !== 0 || result.error) {
         throw result.error ?? new Error(`npm run ${scriptName} failed.`);
-    }
-}
-
-function runNodeScript(scriptName, env) {
-    const result = spawnSync(process.execPath, [`scripts/${scriptName}`], {
-        cwd: rootDir,
-        env,
-        stdio: "inherit",
-        windowsHide: true
-    });
-    if (result.status !== 0 || result.error) {
-        throw result.error ?? new Error(`node scripts/${scriptName} failed.`);
     }
 }

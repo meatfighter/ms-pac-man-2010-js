@@ -17,7 +17,7 @@ const buildAboutSource = readFileSync(new URL("./build-about.mjs", import.meta.u
 
 await runTest("about Markdown content is the user-facing source of truth", () => {
     assert.match(contentMarkdown, /\[Play\]\(__PWA_URL__\)/);
-    assert.match(contentMarkdown, /\[source ZIP\]\(__SOURCE_ZIP__\)/);
+    assert.match(contentMarkdown, /\[meatfighter\/ms-pac-man-2010-js repository\]\(__REPOSITORY_URL__\)/);
     assert.match(contentMarkdown, /\[ZIP file\]\(__DESKTOP_ZIP__\)/);
     assert.match(contentMarkdown, /Windows: `run-windows\.cmd`/);
     assert.match(contentMarkdown, /Linux: `run-linux\.sh`/);
@@ -34,7 +34,7 @@ await runTest("about Markdown renderer creates expected article features", () =>
     const rendered = renderAboutMarkdown(
         contentMarkdown
             .replaceAll("__PWA_URL__", "pwa/?v=test-build")
-            .replaceAll("__SOURCE_ZIP__", "downloads/ms-pac-man-2010-js-source.zip?v=test-build")
+            .replaceAll("__REPOSITORY_URL__", "https://github.com/meatfighter/ms-pac-man-2010-js")
             .replaceAll("__DESKTOP_ZIP__", "downloads/ms-pac-man-2010-desktop.zip?v=test-build")
     );
 
@@ -46,7 +46,7 @@ await runTest("about Markdown renderer creates expected article features", () =>
     assert.match(rendered.articleHtml, /<div class="table-wrap"><table>/);
     assert.match(rendered.articleHtml, /href="https:\/\/jinput\.github\.io\/jinput\/" target="_blank" rel="noopener noreferrer"/);
     assert.match(rendered.articleHtml, /href="downloads\/ms-pac-man-2010-desktop\.zip\?v=test-build" download="ms-pac-man-2010-desktop\.zip"/);
-    assert.match(rendered.articleHtml, /href="downloads\/ms-pac-man-2010-js-source\.zip\?v=test-build" download="ms-pac-man-2010-js-source\.zip"/);
+    assert.match(rendered.articleHtml, /href="https:\/\/github\.com\/meatfighter\/ms-pac-man-2010-js" target="_blank" rel="noopener noreferrer"/);
     assert.doesNotMatch(rendered.articleHtml, /downloads\/ms-pac-man-2010-desktop\.zip\?v=test-build" target="_blank"/);
     assert.ok(rendered.headings.some((heading) => heading.slug === "browser-menu" && heading.level === 2));
     assert.match(rendered.tocHtml, /<nav class="toc" aria-labelledby="toc-heading">/);
@@ -73,7 +73,7 @@ await runTest("about page shell carries SEO, theme, footer, and generated-conten
     assert.match(indexTemplate, /__TOC_HTML__/);
     assert.match(indexTemplate, /__ARTICLE_HTML__/);
     assert.match(indexTemplate, /ms-pac-man-2010-about-theme/);
-    assert.match(indexTemplate, /href="__SOURCE_ZIP__" download="ms-pac-man-2010-js-source\.zip">Source<\/a>/);
+    assert.match(indexTemplate, /href="__REPOSITORY_URL__" target="_blank" rel="noopener noreferrer">Source<\/a>/);
     assert.match(indexTemplate, /<a href="https:\/\/meatfighter\.com\/">Home<\/a>/);
     assert.match(indexTemplate, /https:\/\/creativecommons\.org\/licenses\/by-sa\/4\.0\/\?ref=chooser-v1/);
     assert.match(indexTemplate, /<script src=".\/theme\.js\?v=__BUILD_STAMP_ENCODED__"><\/script>/);
@@ -103,6 +103,7 @@ await runTest("about build uses constrained Markdown and generated responsive im
     assert.match(buildAboutSource, /generateAboutImageAssets/);
     assert.match(buildAboutSource, /__TITLE_WEBP_SRCSET__/);
     assert.match(buildAboutSource, /https:\/\/meatfighter\.com\/mspacman2010\//);
+    assert.match(buildAboutSource, /__REPOSITORY_URL__/);
     assert.doesNotMatch(buildAboutSource, /__SOURCE_URL__/);
 });
 

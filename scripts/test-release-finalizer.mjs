@@ -138,7 +138,6 @@ try {
         withFinalizeFixture((fixture) => {
             const metadata = readReleaseMetadata(fixture.candidateDir);
             metadata.gitCommit = "0".repeat(40);
-            metadata.source.gitCommit = metadata.gitCommit;
             writeReleaseMetadata(fixture.candidateDir, metadata);
             assertFinalizeFailsWithoutStateChange(fixture, "Candidate release commit must match");
         });
@@ -309,8 +308,6 @@ function prepareCandidateForFixture(fixtureRoot, candidateDir, gitCommit) {
     metadata.gitTreeState = "clean";
     metadata.hmacKeySource = "next";
     metadata.releaseKind = "rotation-candidate";
-    metadata.source.gitCommit = gitCommit;
-    metadata.source.gitTreeState = "clean";
     writeReleaseMetadata(candidateDir, metadata);
     const env = {
         ...process.env,
@@ -320,9 +317,7 @@ function prepareCandidateForFixture(fixtureRoot, candidateDir, gitCommit) {
         MSPACMAN_RELEASE_GIT_COMMIT: gitCommit,
         MSPACMAN_RELEASE_GIT_TREE_STATE: "clean"
     };
-    let result = spawnNodeScript(fixtureRoot, "scripts/write-source-archive.mjs", env);
-    assert.equal(result.status, 0, formatFailure("Fixture source archive rewrite failed.", result));
-    result = spawnNodeScript(fixtureRoot, "scripts/write-release-checksums.mjs", env);
+    const result = spawnNodeScript(fixtureRoot, "scripts/write-release-checksums.mjs", env);
     assert.equal(result.status, 0, formatFailure("Fixture checksum rewrite failed.", result));
 }
 

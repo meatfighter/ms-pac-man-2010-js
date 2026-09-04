@@ -69,9 +69,6 @@ function downloadNameForUrl(href) {
         if (path.endsWith("/downloads/ms-pac-man-2010-desktop.zip")) {
             return "ms-pac-man-2010-desktop.zip";
         }
-        if (path.endsWith("/downloads/ms-pac-man-2010-js-source.zip")) {
-            return "ms-pac-man-2010-js-source.zip";
-        }
     } catch {
         return null;
     }

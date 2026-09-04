@@ -117,10 +117,6 @@ try {
     }
 
     if (target === "web" || target === "full") {
-        runNodeScript("write-source-archive.mjs", [], releaseEnv);
-    }
-
-    if (target === "web" || target === "full") {
         runNodeScript("write-release-metadata.mjs", [], releaseEnv);
         runNodeScript("write-release-checksums.mjs", [], releaseEnv);
     }

@@ -22,11 +22,6 @@ const release = {
     hmacKeyFingerprint: getHmacFingerprint(hmacKeyHex),
     releaseKind,
     pwa: serviceWorkerVersion,
-    source: {
-        archiveIncludesCommittedSourceOnly: true,
-        gitCommit,
-        gitTreeState
-    },
     deployment: {
         aboutBase: "./",
         pwaBase: "./",

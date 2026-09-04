@@ -57,7 +57,7 @@ _Ms. Pac-Man 2010_ also includes an online high-score system called the **Hall o
 
 _Ms. Pac-Man 2010_ is a reimplementation of the _Ms. Pac-Man_ arcade game, not an emulation. It does not run or include the original arcade ROM.
 
-The source code for the project is available as a [source ZIP](__SOURCE_ZIP__).
+The source code for the project is available in the [meatfighter/ms-pac-man-2010-js repository](__REPOSITORY_URL__).
 
 The Java desktop version is available as a [ZIP file](__DESKTOP_ZIP__). Download and extract the ZIP, then run the launcher for your operating system:
 

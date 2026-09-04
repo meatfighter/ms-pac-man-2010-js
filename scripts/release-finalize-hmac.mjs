@@ -59,7 +59,6 @@ function validateCandidateMetadata(fingerprints) {
     assert.equal(metadata.releaseKind, "rotation-candidate", "Candidate release kind must be rotation-candidate.");
     assert.equal(metadata.gitCommit, getGitHeadCommit(), "Candidate release commit must match the current clean checkout.");
     assert.equal(metadata.gitTreeState, "clean", "Candidate release must have been built from clean committed source.");
-    assert.equal(metadata.source?.archiveIncludesCommittedSourceOnly, true, "Candidate release must use a committed-source-only source archive.");
 }
 
 function runVerifyCandidate(candidateDir) {

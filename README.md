@@ -295,14 +295,14 @@ The root scripts form a release system, not a miscellaneous utility folder.
 
 They are divided by responsibility:
 
-| Area                      | Representative scripts                                                                                                                                                | Responsibility                                                                                                                         |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Build orchestration       | `build-release.mjs`, `release-output-plan.mjs`, `build-*-unsigned.mjs`, `build-utils.mjs`                                                                             | Select artifact type, key source, legal output location, and child build environment.                                                  |
-| Artifact creation         | `assemble.mjs`, `build-about.mjs`, `build-desktop.mjs`, `generate-icons.mjs`, `write-release-metadata.mjs`, `write-release-checksums.mjs`, `write-source-archive.mjs` | Create release files.                                                                                                                  |
-| Verification              | `verify-pwa-build.mjs`, `verify-release.mjs`                                                                                                                          | Verify PWA output, release structure, metadata, hashes, source archives, desktop package, deployment assumptions, and HMAC provenance. |
-| Filesystem/release safety | `release-io.mjs`, `release-lock.mjs`, `release-dist-promotion.mjs`                                                                                                    | Link-safe walking, atomic writes/copies, release locking, and crash-safe promotion.                                                    |
-| HMAC lifecycle            | `hmac-config.mjs`, `hmac-cli.mjs`, `release-provision.mjs`, `release-rotate-hmac.mjs`, `release-finalize-hmac.mjs`                                                    | Manage active/next key state and exact-candidate promotion.                                                                            |
-| Preview/smoke testing     | `preview-release.mjs`, `smoke-production-api.mjs`, `test-*.mjs`                                                                                                       | Test relocation, application behavior, protocol parity, adversarial release cases, and production API coordination.                    |
+| Area                      | Representative scripts                                                                                                                    | Responsibility                                                                                                                         |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Build orchestration       | `build-release.mjs`, `release-output-plan.mjs`, `build-*-unsigned.mjs`, `build-utils.mjs`                                                 | Select artifact type, key source, legal output location, and child build environment.                                                  |
+| Artifact creation         | `assemble.mjs`, `build-about.mjs`, `build-desktop.mjs`, `generate-icons.mjs`, `write-release-metadata.mjs`, `write-release-checksums.mjs` | Create release files.                                                                                                                  |
+| Verification              | `verify-pwa-build.mjs`, `verify-release.mjs`                                                                                              | Verify PWA output, release structure, metadata, hashes, source archives, desktop package, deployment assumptions, and HMAC provenance. |
+| Filesystem/release safety | `release-io.mjs`, `release-lock.mjs`, `release-dist-promotion.mjs`                                                                        | Link-safe walking, atomic writes/copies, release locking, and crash-safe promotion.                                                    |
+| HMAC lifecycle            | `hmac-config.mjs`, `hmac-cli.mjs`, `release-provision.mjs`, `release-rotate-hmac.mjs`, `release-finalize-hmac.mjs`                        | Manage active/next key state and exact-candidate promotion.                                                                            |
+| Preview/smoke testing     | `preview-release.mjs`, `smoke-production-api.mjs`, `test-*.mjs`                                                                           | Test relocation, application behavior, protocol parity, adversarial release cases, and production API coordination.                    |
 
 When changing release tooling, add a regression test for the failure mode being fixed. Much of this code exists specifically to cover failure modes that ordinary happy-path builds do not exercise.
 
@@ -1091,30 +1091,30 @@ Then launch the **generated ZIP** on every platform/JVM combination you intend t
 
 ## Where Do I Make This Change?
 
-| Goal                                | Start here                                                                  |
-| ----------------------------------- | --------------------------------------------------------------------------- |
-| Game mechanics/modes/entities       | `pwa/src/mspacman/`, compare Java under `desktop/src/`                      |
-| Browser startup/shell               | `pwa/src/app/main.ts`                                                       |
-| Browser persistent-key scoping      | `pwa/src/app/BrowserStorageKeys.ts`                                         |
-| Browser resource inventory          | `pwa/src/app/resourceManifest.ts`                                           |
-| Save/continue serialization         | `pwa/src/mspacman/persistence/`                                             |
-| Browser high-score protocol/service | `pwa/src/mspacman/HighScoreProtocol.ts`, `HighScoreService.ts`              |
-| Static service-worker/PWA resources | `pwa/public/`, `pwa/vite.config.ts`                                         |
-| Public project/about page           | `about/`, `assets/`, `scripts/build-about.mjs`                              |
-| Java behavior                       | `desktop/src/`                                                              |
-| Desktop runtime dependencies        | `desktop/RUNTIME_DEPENDENCIES.md` and full-repo runtime material            |
-| Desktop packaging                   | `scripts/build-desktop.mjs`                                                 |
-| Full release orchestration          | `scripts/build-release.mjs`                                                 |
-| Release output policy               | `scripts/release-output-plan.mjs`                                           |
-| Release verification                | `scripts/verify-release.mjs`                                                |
-| HMAC state                          | `scripts/hmac-config.mjs`, `scripts/hmac-cli.mjs`                           |
-| Release lock                        | `scripts/release-lock.mjs`                                                  |
-| Atomic full-release promotion       | `scripts/release-dist-promotion.mjs`                                        |
-| HMAC rotation/finalization          | `scripts/release-rotate-hmac.mjs`, `scripts/release-finalize-hmac.mjs`      |
-| Production API smoke test           | `scripts/smoke-production-api.mjs`                                          |
-| Source archives                     | `scripts/write-source-archive.mjs`                                          |
-| Release metadata/checksums          | `scripts/write-release-metadata.mjs`, `scripts/write-release-checksums.mjs` |
-| Third-party notices                 | root/PWA notices plus desktop license/source material                       |
+| Goal                                | Start here                                                             |
+| ----------------------------------- | ---------------------------------------------------------------------- |
+| Game mechanics/modes/entities       | `pwa/src/mspacman/`, compare Java under `desktop/src/`                 |
+| Browser startup/shell               | `pwa/src/app/main.ts`                                                  |
+| Browser persistent-key scoping      | `pwa/src/app/BrowserStorageKeys.ts`                                    |
+| Browser resource inventory          | `pwa/src/app/resourceManifest.ts`                                      |
+| Save/continue serialization         | `pwa/src/mspacman/persistence/`                                        |
+| Browser high-score protocol/service | `pwa/src/mspacman/HighScoreProtocol.ts`, `HighScoreService.ts`         |
+| Static service-worker/PWA resources | `pwa/public/`, `pwa/vite.config.ts`                                    |
+| Public project/about page           | `about/`, `assets/`, `scripts/build-about.mjs`                         |
+| Java behavior                       | `desktop/src/`                                                         |
+| Desktop runtime dependencies        | `desktop/RUNTIME_DEPENDENCIES.md` and full-repo runtime material       |
+| Desktop packaging                   | `scripts/build-desktop.mjs`                                            |
+| Full release orchestration          | `scripts/build-release.mjs`                                            |
+| Release output policy               | `scripts/release-output-plan.mjs`                                      |
+| Release verification                | `scripts/verify-release.mjs`                                           |
+| HMAC state                          | `scripts/hmac-config.mjs`, `scripts/hmac-cli.mjs`                      |
+| Release lock                        | `scripts/release-lock.mjs`                                             |
+| Atomic full-release promotion       | `scripts/release-dist-promotion.mjs`                                   |
+| HMAC rotation/finalization          | `scripts/release-rotate-hmac.mjs`, `scripts/release-finalize-hmac.mjs` |
+| Production API smoke test           | `scripts/smoke-production-api.mjs`                                     |
+
+| Release metadata/checksums | `scripts/write-release-metadata.mjs`, `scripts/write-release-checksums.mjs` |
+| Third-party notices | root/PWA notices plus desktop license/source material |
 
 ---
 

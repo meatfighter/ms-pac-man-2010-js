@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { inflateRawSync } from "node:zlib";
 import {
@@ -12,7 +11,7 @@ import {
     readSelectedHmacKey,
     SYNTHETIC_RELEASE_HMAC_KEY_HEX
 } from "./hmac-config.mjs";
-import { distDir, readBuildVersion, rootDir, spawnGit } from "./build-utils.mjs";
+import { distDir, readBuildVersion, rootDir } from "./build-utils.mjs";
 import { assertReleaseProvenance } from "./release-provenance.mjs";
 import { listFilesStrict } from "./release-io.mjs";
 
@@ -70,10 +69,6 @@ if (target === "web" || target === "desktop" || target === "full") {
 }
 
 if (target === "web" || target === "full") {
-    verifySourceRelease();
-}
-
-if (target === "web" || target === "full") {
     verifyReleaseChecksumManifest();
     verifyGeneratedRuntimeDoesNotContainHardcodedDeploymentRoots(distDir);
 }
@@ -115,10 +110,12 @@ function verifyAboutRelease() {
     const aboutIndex = readFileSync(join(distDir, "index.html"), "utf8");
     const encodedBuildStamp = encodeURIComponent(version.buildStamp);
     assert.ok(aboutIndex.includes(`pwa/?v=${encodeURIComponent(cacheIdentity)}`), "About page Play link must use the selected release cache identity.");
-    assert.ok(aboutIndex.includes(`downloads/ms-pac-man-2010-js-source.zip?v=${encodedBuildStamp}`), "About page must link to the generated source archive.");
+    assert.ok(
+        aboutIndex.includes('href="https://github.com/meatfighter/ms-pac-man-2010-js" target="_blank" rel="noopener noreferrer">Source</a>'),
+        "About page footer Source link must open the GitHub repository."
+    );
     assert.ok(aboutIndex.includes(`downloads/ms-pac-man-2010-desktop.zip?v=${encodedBuildStamp}`), "About page must link to the desktop ZIP.");
     assert.ok(aboutIndex.includes('download="ms-pac-man-2010-desktop.zip"'), "About page desktop ZIP link must use a download attribute.");
-    assert.ok(aboutIndex.includes('download="ms-pac-man-2010-js-source.zip"'), "About page source ZIP link must use a download attribute.");
     assert.ok(existsSync(join(distDir, "downloads", "ms-pac-man-2010-desktop.zip")), "About page desktop ZIP link target must exist.");
     assert.ok(
         existsSync(join(distDir, "downloads", `ms-pac-man-2010-desktop-${version.version}.zip`)),
@@ -280,9 +277,6 @@ function verifyReleaseMetadata() {
     assert.equal(metadata.buildStamp, version.buildStamp, "release.json buildStamp must match the verified release build stamp.");
     assert.equal(metadata.gitCommit, readExpectedGitCommit(), "release.json must record the exact pre-build Git commit.");
     assert.ok(["clean", "unchecked"].includes(metadata.gitTreeState), "release.json must record the pre-build Git tree state.");
-    assert.equal(metadata.source?.gitCommit, metadata.gitCommit, "release.json source commit must match the top-level Git commit.");
-    assert.equal(metadata.source?.gitTreeState, metadata.gitTreeState, "release.json source tree state must match the top-level Git tree state.");
-    assert.equal(metadata.source?.archiveIncludesCommittedSourceOnly, true, "release.json must record committed-source-only source archives.");
     verifyReleaseProvenance(metadata);
     assert.equal(metadata.hmacKeyFingerprint, fingerprint, "release.json must include the selected HMAC fingerprint.");
     assert.equal(metadataText.includes(hmacKeyHex), false, "release.json must not contain the full HMAC key.");
@@ -291,37 +285,6 @@ function verifyReleaseMetadata() {
     if (metadata.pwa !== null) {
         assert.equal(metadata.pwa.serviceWorkerVersion, cacheIdentity, "release.json must record the embedded PWA service-worker version.");
     }
-}
-
-function verifySourceRelease() {
-    const downloadsDir = join(distDir, "downloads");
-    const stableSourcePath = join(downloadsDir, "ms-pac-man-2010-js-source.zip");
-    const versionedSourcePath = join(downloadsDir, `ms-pac-man-2010-js-source-${version.version}.zip`);
-    assert.ok(existsSync(stableSourcePath), "Release output must include the stable source archive.");
-    assert.ok(existsSync(versionedSourcePath), "Release output must include the versioned source archive.");
-    assert.equal(sha256File(stableSourcePath), sha256File(versionedSourcePath), "Stable and versioned source ZIPs must be byte-for-byte identical.");
-
-    const archiveRoot = `ms-pac-man-2010-js-source-${version.version}/`;
-    const entries = listArchiveEntries(stableSourcePath);
-    for (const requiredEntry of [
-        `${archiveRoot}LICENSE`,
-        `${archiveRoot}THIRD_PARTY_NOTICES.md`,
-        `${archiveRoot}package.json`,
-        `${archiveRoot}version.json`,
-        `${archiveRoot}desktop/src/mspacman/Main.java`,
-        `${archiveRoot}pwa/src/app/BrowserStorageKeys.ts`,
-        `${archiveRoot}pwa/src/app/main.ts`
-    ]) {
-        assert.ok(entries.includes(requiredEntry), `Source archive is missing ${requiredEntry}.`);
-    }
-    assertArchiveEntriesDoNotContainLocalReleaseState(entries, archiveRoot, "Source archive");
-    assert.equal(
-        entries.some((entry) => entry.startsWith(`${archiveRoot}dist/`)),
-        false,
-        "Source archive must not contain dist/."
-    );
-    assertArchiveDoesNotContainSecret(stableSourcePath, hmacKeyHex);
-    assertSourceArchiveMatchesGitCommit(stableSourcePath, archiveRoot, readExpectedGitCommit());
 }
 
 function verifyJarReleasePropertiesFromBuffer(jar, description) {
@@ -413,36 +376,6 @@ async function verifyTrackedSourceDoesNotContainSelectedKey() {
     await assertSecretAbsentFromTrackedFiles(hmacKeyHex);
 }
 
-function listArchiveEntries(archivePath) {
-    return readZipEntries(archivePath).map((entry) => entry.name);
-}
-
-function assertArchiveDoesNotContainSecret(archivePath, secret) {
-    if (secret === SYNTHETIC_RELEASE_HMAC_KEY_HEX) {
-        return;
-    }
-
-    const archive = readFileSync(archivePath);
-    const needle = Buffer.from(secret, "utf8");
-    for (const entry of readZipEntriesFromBuffer(archive)) {
-        if (entry.name.endsWith("/")) {
-            continue;
-        }
-        assert.equal(readZipEntryData(archive, entry).includes(needle), false, `Source archive contains the selected HMAC key: ${entry.name}`);
-    }
-}
-
-function assertSourceArchiveMatchesGitCommit(archivePath, archiveRoot, gitCommit) {
-    const tempDir = mkdtempSync(join(tmpdir(), "mspacman-source-archive-"));
-    const expectedArchivePath = join(tempDir, "expected-source.zip");
-    try {
-        spawnGit(["archive", "--format=zip", `--prefix=${archiveRoot}`, `--output=${expectedArchivePath}`, gitCommit]);
-        assert.equal(sha256File(archivePath), sha256File(expectedArchivePath), "Source archive must match git archive output for release.json gitCommit.");
-    } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-    }
-}
-
 function readVerificationVersion(sourceVersion, metadata) {
     if (metadata === null) {
         return sourceVersion;
@@ -477,10 +410,6 @@ function verifyReleaseProvenance(metadata) {
         expectedHmacKeySource,
         expectedReleaseKind
     });
-}
-
-function readZipEntries(archivePath) {
-    return readZipEntriesFromBuffer(readFileSync(archivePath));
 }
 
 function readZipEntriesFromBuffer(archive) {
@@ -540,13 +469,6 @@ function verifyZipEntryMode(entries, name, expectedMode) {
     assert.ok(entry !== undefined, `ZIP archive is missing ${name}.`);
     const actualMode = (entry.externalFileAttributes >>> 16) & 0o777;
     assert.equal(actualMode, expectedMode, `${name} must have ZIP Unix mode ${expectedMode.toString(8)}.`);
-}
-
-function assertArchiveEntriesDoNotContainLocalReleaseState(entries, archiveRoot, description) {
-    for (const entry of entries) {
-        const relativeEntry = entry.startsWith(archiveRoot) ? entry.slice(archiveRoot.length) : entry;
-        assert.equal(isLocalReleaseStateRelativePath(relativeEntry), false, `${description} must not contain local release-state path: ${entry}`);
-    }
 }
 
 function isLocalReleaseStateRelativePath(path) {

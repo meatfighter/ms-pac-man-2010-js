@@ -162,11 +162,6 @@ try {
                 assert.equal(existsSync(join(tempComponentsDir, target, "pwa", "sw.js")), true, `Component ${target} release build must write PWA output.`);
             }
             assert.equal(existsSync(join(tempComponentsDir, "web", "index.html")), true, "Component web release build must write about-page output.");
-            assert.equal(
-                existsSync(join(tempComponentsDir, "web", "downloads", "ms-pac-man-2010-js-source.zip")),
-                true,
-                "Component web release build must write source artifacts."
-            );
             const webDesktopZip = join(tempComponentsDir, "web", "downloads", "ms-pac-man-2010-desktop.zip");
             const webVersionedDesktopZip = join(tempComponentsDir, "web", "downloads", `ms-pac-man-2010-desktop-${originalVersion.version}.zip`);
             assert.equal(existsSync(webDesktopZip), true, "Component web release build must write the stable desktop ZIP linked by the about page.");
@@ -492,36 +487,6 @@ try {
         }
     });
 
-    await runTest("source archive contains committed source only", () => {
-        const tempDistDir = mkdtempSync(join(tmpdir(), "mspacman-source-archive-dist-"));
-        const untrackedFileName = "MSPACMAN_UNTRACKED_SOURCE_ARCHIVE_TEST.txt";
-        const untrackedPath = join(rootDir, untrackedFileName);
-        try {
-            writeFileSync(untrackedPath, "must not ship in source archive\n");
-            const result = spawnNodeScript("scripts/write-source-archive.mjs", {
-                ...process.env,
-                MSPACMAN_INTERNAL_DIST_DIR: tempDistDir,
-                MSPACMAN_RELEASE_GIT_COMMIT: readGitHead()
-            });
-            assert.equal(result.status, 0, result.stderr);
-            const archivePath = join(tempDistDir, "downloads", "ms-pac-man-2010-js-source.zip");
-            const entries = readZipEntries(archivePath);
-            assert.equal(
-                entries.some((entry) => entry.endsWith(`/${untrackedFileName}`)),
-                false,
-                "Untracked non-ignored files must not appear in the production source ZIP."
-            );
-            assert.equal(
-                entries.some((entry) => entry.split("/").includes(".release-secrets")),
-                false,
-                ".release-secrets must not appear in the production source ZIP."
-            );
-        } finally {
-            rmSync(untrackedPath, { force: true });
-            rmSync(tempDistDir, { recursive: true, force: true });
-        }
-    });
-
     await runTest("release build restores version.json and source state after injected stamp failure", () => {
         const tempComponentsDir = mkdtempSync(join(tmpdir(), "mspacman-stamp-failure-components-"));
         try {
@@ -703,16 +668,6 @@ function readGitStatus() {
     return result.stdout;
 }
 
-function readGitHead() {
-    const result = spawnSync("git", ["rev-parse", "HEAD"], {
-        cwd: rootDir,
-        encoding: "utf8",
-        windowsHide: true
-    });
-    assert.equal(result.status, 0, result.stderr);
-    return result.stdout.trim();
-}
-
 function snapshotDirectory(dir) {
     const snapshot = {};
     for (const path of listFiles(dir)) {
@@ -740,33 +695,6 @@ function collectFiles(dir, files) {
             files.push(path);
         }
     }
-}
-
-function readZipEntries(archivePath) {
-    const archive = readFileSync(archivePath);
-    const endOffset = findEndOfCentralDirectory(archive);
-    const entryCount = archive.readUInt16LE(endOffset + 10);
-    let offset = archive.readUInt32LE(endOffset + 16);
-    const entries = [];
-    for (let i = 0; i < entryCount; i++) {
-        assert.equal(archive.readUInt32LE(offset), 0x02014b50, "Malformed ZIP central directory.");
-        const nameLength = archive.readUInt16LE(offset + 28);
-        const extraLength = archive.readUInt16LE(offset + 30);
-        const commentLength = archive.readUInt16LE(offset + 32);
-        entries.push(archive.toString("utf8", offset + 46, offset + 46 + nameLength));
-        offset += 46 + nameLength + extraLength + commentLength;
-    }
-    return entries;
-}
-
-function findEndOfCentralDirectory(archive) {
-    const minimumOffset = Math.max(0, archive.length - 65557);
-    for (let offset = archive.length - 22; offset >= minimumOffset; offset--) {
-        if (archive.readUInt32LE(offset) === 0x06054b50) {
-            return offset;
-        }
-    }
-    throw new Error("Could not find ZIP end-of-central-directory record.");
 }
 
 function assertOutputIncludes(result, text) {

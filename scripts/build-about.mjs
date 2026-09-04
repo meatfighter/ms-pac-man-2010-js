@@ -21,6 +21,7 @@ const version = readBuildVersion();
 const explicitDistDir = process.env.MSPACMAN_INTERNAL_DIST_DIR !== undefined && process.env.MSPACMAN_INTERNAL_DIST_DIR !== "";
 const outputDir = explicitDistDir ? distDir : join(releaseComponentsDir, "about");
 const canonicalUrl = "https://meatfighter.com/mspacman2010/";
+const repositoryUrl = "https://github.com/meatfighter/ms-pac-man-2010-js";
 const description =
     "Play Ms. Pac-Man 2010 in the browser and read about its Java origins, TypeScript rewrite, controls, high-score system, and Java desktop download.";
 const cacheBust = process.env.MSPACMAN_CACHE_VERSION ?? `${version.version}-${version.buildStamp}-unsigned`;
@@ -36,7 +37,7 @@ const replacements = {
     __DESKTOP_ZIP__: `downloads/ms-pac-man-2010-desktop.zip?v=${encodedBuildStamp}`,
     __PWA_URL__: `pwa/?v=${encodedCacheBust}`,
     __SOCIAL_IMAGE_URL__: `${canonicalUrl}assets/ms-pac-man-2010-screenshot.png`,
-    __SOURCE_ZIP__: `downloads/ms-pac-man-2010-js-source.zip?v=${encodedBuildStamp}`,
+    __REPOSITORY_URL__: repositoryUrl,
     __TITLE_IMAGE_HEIGHT__: titleImageHeight,
     __TITLE_IMAGE_SIZES__: titleImageSizes,
     __TITLE_IMAGE_WIDTH__: titleImageWidth,
