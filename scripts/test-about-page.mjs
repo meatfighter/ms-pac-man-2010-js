@@ -92,6 +92,7 @@ await runTest("about page shell carries SEO, theme, footer, and generated-conten
     assert.match(styles, /\.toc \{\s+margin: 0 0 2rem;/);
     assert.match(styles, /\.toc li:not\(:last-child\)::after \{\s+color: var\(--muted\);\s+content: " \| ";/);
     assert.doesNotMatch(styles, /\.toc \.toc-level-2 a\s*\{/);
+    assert.match(styles, /\.site-footer__links \{[\s\S]*font-weight: 600;\s+line-height: 1\.6;\s+text-align: right;/);
     assert.match(styles, /\.play-button/);
     assert.match(themeScript, /ms-pac-man-2010-about-theme/);
 });
