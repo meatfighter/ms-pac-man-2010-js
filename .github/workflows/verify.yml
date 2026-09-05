@@ -40,8 +40,8 @@ jobs:
                   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
                   const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
                   const dependency = pkg.dependencies?.["slick2d-ts"];
-                  if (typeof dependency !== "string" || !/^git\+https:\/\/github\.com\/meatfighter\/slick2d-ts\.git#[0-9a-f]{40}$/.test(dependency)) {
-                      throw new Error(`package.json Slick dependency must be an immutable HTTPS commit pin: ${dependency}`);
+                  if (typeof dependency !== "string" || !/^https:\/\/codeload\.github\.com\/meatfighter\/slick2d-ts\/tar\.gz\/[0-9a-f]{40}$/.test(dependency)) {
+                      throw new Error(`package.json Slick dependency must be an immutable HTTPS commit archive: ${dependency}`);
                   }
                   if (lock.packages?.[""]?.dependencies?.["slick2d-ts"] !== dependency) {
                       throw new Error("package-lock.json root Slick dependency does not match package.json.");
