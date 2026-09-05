@@ -23,12 +23,15 @@ const server = await createServer({
 });
 
 try {
-    const { EnterInitialsMode } = await server.ssrLoadModule("/src/mspacman/EnterInitialsMode.ts");
+    // Load through the real game entry module. EnterInitialsMode imports Main for
+    // constants, so loading that leaf directly creates a test-only circular-module
+    // initialization order that the application itself never uses.
+    const { Main } = await server.ssrLoadModule("/src/mspacman/Main.ts");
 
     await runTest("restored submitted-initials screen does not wait for a dead request", () => {
         const input = createInput();
         const main = createMain(input);
-        const mode = new EnterInitialsMode();
+        const mode = Main.enterInitialsMode;
 
         mode.init(main, {});
         assert.equal(main.uploadComplete, true);
@@ -37,12 +40,12 @@ try {
         // Recreate the durable UI state captured after the player had already
         // pressed Start. No browser request can survive the destroyed page.
         mode.enterPressed = true;
-        mode.fadeState = EnterInitialsMode.FADE_NONE;
+        mode.fadeState = 0;
         mode.fadeIndex = 0;
         main.uploadComplete = true;
 
         mode.update({});
-        assert.equal(mode.fadeState, EnterInitialsMode.FADE_OUT);
+        assert.equal(mode.fadeState, 2);
         assert.equal(mode.fadeIndex, 0);
         assert.equal(main.submitCalls, 0);
     });
@@ -50,10 +53,10 @@ try {
     await runTest("fresh score submission still waits for its live request", () => {
         const input = createInput();
         const main = createMain(input);
-        const mode = new EnterInitialsMode();
+        const mode = Main.enterInitialsMode;
 
         mode.init(main, {});
-        mode.fadeState = EnterInitialsMode.FADE_NONE;
+        mode.fadeState = 0;
         mode.fadeIndex = 0;
         mode.editingIndex = 2;
         input.confirmPressed = true;
@@ -62,15 +65,15 @@ try {
         assert.equal(main.submitCalls, 1);
         assert.equal(main.uploadComplete, false);
         assert.equal(mode.enterPressed, true);
-        assert.equal(mode.fadeState, EnterInitialsMode.FADE_NONE);
+        assert.equal(mode.fadeState, 0);
 
         input.confirmPressed = false;
         mode.update({});
-        assert.equal(mode.fadeState, EnterInitialsMode.FADE_NONE);
+        assert.equal(mode.fadeState, 0);
 
         main.uploadComplete = true;
         mode.update({});
-        assert.equal(mode.fadeState, EnterInitialsMode.FADE_OUT);
+        assert.equal(mode.fadeState, 2);
     });
 } finally {
     restoreEnv("MSPACMAN_SCORE_API_URL", originalApiUrl);
