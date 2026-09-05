@@ -25,11 +25,7 @@ export class MsPacManGameStateStore {
                 return false;
             }
             const snapshot = this.serializer.createSnapshot(main, this.appVersion);
-
-            // Score submission is best-effort network work tied to the current page
-            // lifetime. Preserve the game/UI state, but never persist a request that
-            // cannot still be running after restore.
-            snapshot.submittedScore = null;
+            normalizeTransientState(snapshot);
 
             if (!hasReasonableSnapshotValues(snapshot)) {
                 return false;
@@ -106,6 +102,7 @@ export class MsPacManGameStateStore {
             return null;
         }
 
+        normalizeTransientState(snapshot);
         return snapshot;
     }
 
@@ -128,6 +125,14 @@ export class MsPacManGameStateStore {
         const version = Reflect.get(snapshot, "version");
         return typeof version === "number" && Number.isInteger(version) && version >= FIRST_PUBLIC_GAME_STATE_VERSION && version !== GAME_STATE_VERSION;
     }
+}
+
+function normalizeTransientState(snapshot: MsPacManGameStateSnapshot): void {
+    // Score submission is best-effort network work tied to the current page
+    // lifetime. Preserve the game/UI state, but never restore a request that
+    // cannot still be running after the previous page/container was destroyed.
+    snapshot.mainFields.uploadComplete = true;
+    snapshot.submittedScore = null;
 }
 
 function hasReasonableSnapshotValues(value: unknown, key = ""): boolean {
