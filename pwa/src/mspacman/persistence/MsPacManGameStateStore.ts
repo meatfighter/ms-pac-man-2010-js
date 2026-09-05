@@ -4,6 +4,12 @@ import type { Main } from "../Main";
 import { FIRST_PUBLIC_GAME_STATE_VERSION, GAME_STATE_VERSION, type MsPacManGameStateSnapshot } from "./GameStateSnapshot";
 import { MsPacManGameStateSerializer } from "./MsPacManGameStateSerializer";
 
+const JAVA_INT_MIN = -2_147_483_648;
+const JAVA_INT_MAX = 2_147_483_647;
+const MAX_GAMEPLAY_NUMBER_MAGNITUDE = 100_000;
+const MAX_SNAPSHOT_STRING_LENGTH = 4_096;
+const MAX_SNAPSHOT_TEXT_LENGTH = 1_000_000;
+
 export class MsPacManGameStateStore {
     private readonly serializer = new MsPacManGameStateSerializer();
 
@@ -19,7 +25,16 @@ export class MsPacManGameStateStore {
                 return false;
             }
             const snapshot = this.serializer.createSnapshot(main, this.appVersion);
-            localStorage.setItem(createBrowserStorageKeys().gameState, JSON.stringify(snapshot));
+            normalizeTransientState(snapshot);
+
+            if (!hasReasonableSnapshotValues(snapshot)) {
+                return false;
+            }
+            const text = JSON.stringify(snapshot);
+            if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
+                return false;
+            }
+            localStorage.setItem(createBrowserStorageKeys().gameState, text);
             return true;
         } catch (error) {
             console.warn("Unable to save MS Pac-Man game state.", error);
@@ -62,6 +77,10 @@ export class MsPacManGameStateStore {
         if (text === null) {
             return null;
         }
+        if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
+            this.clear();
+            return null;
+        }
 
         let snapshot: unknown;
         try {
@@ -78,13 +97,18 @@ export class MsPacManGameStateStore {
             this.clear();
             return null;
         }
+        if (!hasReasonableSnapshotValues(snapshot)) {
+            this.clear();
+            return null;
+        }
 
+        normalizeTransientState(snapshot);
         return snapshot;
     }
 
     private hasProtectedStoredSnapshot(): boolean {
         const text = localStorage.getItem(createBrowserStorageKeys().gameState);
-        if (text === null) {
+        if (text === null || text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
             return false;
         }
         try {
@@ -101,4 +125,44 @@ export class MsPacManGameStateStore {
         const version = Reflect.get(snapshot, "version");
         return typeof version === "number" && Number.isInteger(version) && version >= FIRST_PUBLIC_GAME_STATE_VERSION && version !== GAME_STATE_VERSION;
     }
+}
+
+function normalizeTransientState(snapshot: MsPacManGameStateSnapshot): void {
+    // Score submission is best-effort network work tied to the current page
+    // lifetime. Preserve ordinary state exactly, but if the saved initials screen
+    // had already submitted, never restore a request that cannot still exist.
+    if (snapshot.mode.id === "enterInitials" && snapshot.mode.fields.enterPressed === true) {
+        snapshot.mainFields.uploadComplete = true;
+    }
+    snapshot.submittedScore = null;
+}
+
+function hasReasonableSnapshotValues(value: unknown, key = ""): boolean {
+    if (value === null || typeof value === "boolean") {
+        return true;
+    }
+    if (typeof value === "string") {
+        return value.length <= MAX_SNAPSHOT_STRING_LENGTH;
+    }
+    if (typeof value === "number") {
+        if (!Number.isFinite(value)) {
+            return false;
+        }
+        if (key === "score") {
+            return Number.isInteger(value) && value >= JAVA_INT_MIN && value <= JAVA_INT_MAX;
+        }
+        return Math.abs(value) <= MAX_GAMEPLAY_NUMBER_MAGNITUDE;
+    }
+    if (Array.isArray(value)) {
+        return value.every((entry) => hasReasonableSnapshotValues(entry));
+    }
+    if (typeof value !== "object") {
+        return false;
+    }
+    for (const [entryKey, entryValue] of Object.entries(value)) {
+        if (!hasReasonableSnapshotValues(entryValue, entryKey)) {
+            return false;
+        }
+    }
+    return true;
 }

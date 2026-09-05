@@ -39,7 +39,13 @@ export class EnterInitialsMode implements IMode {
         this.blinkTimer = 0;
         this.newScoreOf = `YOU ACHIEVED A SCORE OF ${main.score}.`;
         this.enterPressed = false;
-        main.uploadComplete = false;
+
+        // Upload completion describes an in-flight browser request, not durable game
+        // state. A restored initials screen must never wait for a request that died
+        // with the previous page/container lifetime. A real submission sets this
+        // false again synchronously in accessScoresDatabaseAsync().
+        main.uploadComplete = true;
+        main.submittedScore = null;
 
         this.input.clearKeyPressedRecord();
     }

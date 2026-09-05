@@ -11,6 +11,9 @@ const packageLock = JSON.parse(read("package-lock.json"));
 const humanInput = read("pwa/src/mspacman/HumanInput.ts");
 const serializer = read("pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts");
 const snapshot = read("pwa/src/mspacman/persistence/GameStateSnapshot.ts");
+const statePolicy = read("pwa/src/mspacman/persistence/StateFieldPolicy.ts");
+const stateStore = read("pwa/src/mspacman/persistence/MsPacManGameStateStore.ts");
+const enterInitialsMode = read("pwa/src/mspacman/EnterInitialsMode.ts");
 const browserMain = read("pwa/src/app/main.ts");
 const browserPreferences = read("pwa/src/app/BrowserPreferences.ts");
 const runtimeLoader = read("pwa/src/app/RuntimeLoader.ts");
@@ -59,7 +62,18 @@ test("persistence uses public Slick random and music state APIs", () => {
     assert.match(serializer, /music\.getDuration\(\)/);
     assert.doesNotMatch(serializer, /getField\(music,\s*["'](?:looped|paused|playbackRate|buffer)["']/);
     assert.doesNotMatch(serializer, /(?:getField|setField|numberField)\(main\.random/);
-    assert.match(snapshot, /GAME_STATE_VERSION = 3/);
+    assert.match(snapshot, /GAME_STATE_VERSION = 4/);
+    assert.match(snapshot, /FIRST_PUBLIC_GAME_STATE_VERSION = 4/);
+});
+
+test("save state normalizes in-flight score submission state", () => {
+    const mainPolicy = sliceBetween(statePolicy, "Main: {", "Thing: {");
+    const persisted = sliceBetween(mainPolicy, "persisted: [", "runtime: [");
+    assert.match(persisted, /uploadComplete/);
+    assert.match(stateStore, /snapshot\.mainFields\.uploadComplete = true/);
+    assert.match(stateStore, /snapshot\.submittedScore = null/);
+    assert.match(enterInitialsMode, /main\.uploadComplete = true/);
+    assert.match(enterInitialsMode, /main\.submittedScore = null/);
 });
 
 test("browser-native responsibilities are decomposed and generation owned", () => {
