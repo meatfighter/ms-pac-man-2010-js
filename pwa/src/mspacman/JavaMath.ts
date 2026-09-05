@@ -4,6 +4,10 @@ export function toInt(value: number): number {
     return Math.trunc(value);
 }
 
+export function toInt32(value: number): number {
+    return value | 0;
+}
+
 export function intDiv(value: number, divisor: number): number {
     return Math.trunc(value / divisor);
 }
@@ -19,7 +23,6 @@ export function make2D(rows: number, columns: number, value = 0): number[][] {
         for (let j = 0; j < columns; j++) {
             row[j] = value;
         }
-        result[i] = row;
     }
     return result;
 }
