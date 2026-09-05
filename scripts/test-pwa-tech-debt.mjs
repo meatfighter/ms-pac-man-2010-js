@@ -32,13 +32,13 @@ function sliceBetween(source, start, end) {
     return source.slice(startIndex, endIndex);
 }
 
-test("Slick dependency is exact and cloneable over public HTTPS", () => {
+test("Slick dependency is exact and available over public HTTPS", () => {
     const dependency = packageJson.dependencies["slick2d-ts"];
     const lockedDependency = packageLock.packages[""].dependencies["slick2d-ts"];
     const locked = packageLock.packages["node_modules/slick2d-ts"];
 
     assert.equal(dependency, lockedDependency);
-    assert.match(dependency, /^git\+https:\/\/github\.com\/meatfighter\/slick2d-ts\.git#[0-9a-f]{40}$/);
+    assert.match(dependency, /^https:\/\/codeload\.github\.com\/meatfighter\/slick2d-ts\/tar\.gz\/[0-9a-f]{40}$/);
     assert.equal(locked.resolved, dependency);
     assert.match(locked.version, /^\d+\.\d+\.\d+$/);
 });
