@@ -249,13 +249,14 @@ function assertImmutableServiceWorkerRuntimeCache(serviceWorker) {
     assert.equal(serviceWorker.includes("cache.put("), false, "Service worker must not overwrite precached resources at runtime.");
     assert.equal(serviceWorker.includes("remember("), false, "Service worker must not keep the old runtime cache-write helper.");
     assert.ok(
-        serviceWorker.includes("fetch(request).catch(() => matchCurrentCache(APP_INDEX))"),
-        "Navigation fallback must fetch first and fall back to cached APP_INDEX without replacing APP_INDEX."
+        serviceWorker.includes("fetchOnce(request).catch(() => matchCurrentCache(APP_INDEX))"),
+        "Navigation fallback must use the HTTP-aware network fetch first and fall back to cached APP_INDEX without replacing APP_INDEX."
     );
     assert.ok(
-        serviceWorker.includes("return cached || fetch(request);"),
-        "Non-navigation requests must return current-cache hits directly and fetch uncached requests without overwriting precached assets."
+        serviceWorker.includes("return cached || fetchOnce(request);"),
+        "Non-navigation requests must return current-cache hits directly and use the HTTP-aware fetch for uncached requests without overwriting precached assets."
     );
+    assert.ok(serviceWorker.includes("if (!response.ok)"), "Service-worker network fetches must reject HTTP error responses before fallback handling.");
 }
 
 function assertIndexAssetReferencesAreStamped(html, cacheBust) {
