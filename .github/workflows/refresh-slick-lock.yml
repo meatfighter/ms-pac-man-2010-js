@@ -1,3 +1,4 @@
+# One-shot workflow; it deletes itself after successful lock/test validation.
 name: Refresh Slick lock
 
 on:
