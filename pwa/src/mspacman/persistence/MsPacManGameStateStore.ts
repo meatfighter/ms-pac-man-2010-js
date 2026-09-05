@@ -4,6 +4,8 @@ import type { Main } from "../Main";
 import { FIRST_PUBLIC_GAME_STATE_VERSION, GAME_STATE_VERSION, type MsPacManGameStateSnapshot } from "./GameStateSnapshot";
 import { MsPacManGameStateSerializer } from "./MsPacManGameStateSerializer";
 
+const MAX_SNAPSHOT_TEXT_LENGTH = 1_000_000;
+
 export class MsPacManGameStateStore {
     private readonly serializer = new MsPacManGameStateSerializer();
 
@@ -19,7 +21,17 @@ export class MsPacManGameStateStore {
                 return false;
             }
             const snapshot = this.serializer.createSnapshot(main, this.appVersion);
-            localStorage.setItem(createBrowserStorageKeys().gameState, JSON.stringify(snapshot));
+
+            // Score submission is best-effort network work tied to the current page
+            // lifetime. Preserve the game/UI state, but never persist a request that
+            // cannot still be running after restore.
+            snapshot.submittedScore = null;
+
+            const text = JSON.stringify(snapshot);
+            if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
+                return false;
+            }
+            localStorage.setItem(createBrowserStorageKeys().gameState, text);
             return true;
         } catch (error) {
             console.warn("Unable to save MS Pac-Man game state.", error);
@@ -62,6 +74,10 @@ export class MsPacManGameStateStore {
         if (text === null) {
             return null;
         }
+        if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
+            this.clear();
+            return null;
+        }
 
         let snapshot: unknown;
         try {
@@ -84,7 +100,7 @@ export class MsPacManGameStateStore {
 
     private hasProtectedStoredSnapshot(): boolean {
         const text = localStorage.getItem(createBrowserStorageKeys().gameState);
-        if (text === null) {
+        if (text === null || text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
             return false;
         }
         try {
