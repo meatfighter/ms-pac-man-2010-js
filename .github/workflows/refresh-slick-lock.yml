@@ -31,7 +31,12 @@ jobs:
           if (root !== expected || resolved !== expected) {
             throw new Error(`Unexpected Slick lock metadata: expected ${expected}, root=${root}, resolved=${resolved}`);
           }
+          if (!/^https:\/\/codeload\.github\.com\/meatfighter\/slick2d-ts\/tar\.gz\/[0-9a-f]{40}$/.test(expected)) {
+            throw new Error(`Unexpected Slick archive URL: ${expected}`);
+          }
           EOF
+      - run: npm ci --ignore-scripts
+      - run: npm test
       - name: Commit refreshed lock and remove helper
         run: |
           rm .github/workflows/refresh-slick-lock.yml
@@ -39,5 +44,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package-lock.json .github/workflows/refresh-slick-lock.yml
           git diff --cached --check
-          git commit -m "Refresh slick2d-ts lock metadata"
+          git commit -m "Refresh slick2d-ts archive lock"
           git push
