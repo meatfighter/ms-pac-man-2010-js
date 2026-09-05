@@ -4,6 +4,10 @@ import type { Main } from "../Main";
 import { FIRST_PUBLIC_GAME_STATE_VERSION, GAME_STATE_VERSION, type MsPacManGameStateSnapshot } from "./GameStateSnapshot";
 import { MsPacManGameStateSerializer } from "./MsPacManGameStateSerializer";
 
+const JAVA_INT_MIN = -2_147_483_648;
+const JAVA_INT_MAX = 2_147_483_647;
+const MAX_GAMEPLAY_NUMBER_MAGNITUDE = 100_000;
+const MAX_SNAPSHOT_STRING_LENGTH = 4_096;
 const MAX_SNAPSHOT_TEXT_LENGTH = 1_000_000;
 
 export class MsPacManGameStateStore {
@@ -27,6 +31,9 @@ export class MsPacManGameStateStore {
             // cannot still be running after restore.
             snapshot.submittedScore = null;
 
+            if (!hasReasonableSnapshotValues(snapshot)) {
+                return false;
+            }
             const text = JSON.stringify(snapshot);
             if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
                 return false;
@@ -94,6 +101,10 @@ export class MsPacManGameStateStore {
             this.clear();
             return null;
         }
+        if (!hasReasonableSnapshotValues(snapshot)) {
+            this.clear();
+            return null;
+        }
 
         return snapshot;
     }
@@ -117,4 +128,34 @@ export class MsPacManGameStateStore {
         const version = Reflect.get(snapshot, "version");
         return typeof version === "number" && Number.isInteger(version) && version >= FIRST_PUBLIC_GAME_STATE_VERSION && version !== GAME_STATE_VERSION;
     }
+}
+
+function hasReasonableSnapshotValues(value: unknown, key = ""): boolean {
+    if (value === null || typeof value === "boolean") {
+        return true;
+    }
+    if (typeof value === "string") {
+        return value.length <= MAX_SNAPSHOT_STRING_LENGTH;
+    }
+    if (typeof value === "number") {
+        if (!Number.isFinite(value)) {
+            return false;
+        }
+        if (key === "score") {
+            return Number.isInteger(value) && value >= JAVA_INT_MIN && value <= JAVA_INT_MAX;
+        }
+        return Math.abs(value) <= MAX_GAMEPLAY_NUMBER_MAGNITUDE;
+    }
+    if (Array.isArray(value)) {
+        return value.every((entry) => hasReasonableSnapshotValues(entry));
+    }
+    if (typeof value !== "object") {
+        return false;
+    }
+    for (const [entryKey, entryValue] of Object.entries(value)) {
+        if (!hasReasonableSnapshotValues(entryValue, entryKey)) {
+            return false;
+        }
+    }
+    return true;
 }
