@@ -30,7 +30,7 @@ jobs:
                       echo "Unable to resolve slick2d-ts main." >&2
                       exit 1
                   fi
-                  expected="git+https://github.com/meatfighter/slick2d-ts.git#$slick_head"
+                  expected="https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/$slick_head"
                   current="$(node --input-type=module -e 'import { readFileSync } from "node:fs"; process.stdout.write(JSON.parse(readFileSync("package.json", "utf8")).dependencies?.["slick2d-ts"] ?? "");')"
                   echo "sha=$slick_head" >> "$GITHUB_OUTPUT"
                   if [[ "$current" == "$expected" ]]; then
@@ -62,21 +62,22 @@ jobs:
               run: |
                   node --input-type=module <<'NODE'
                   import { readFileSync, writeFileSync } from "node:fs";
-                  const dependency = `git+https://github.com/meatfighter/slick2d-ts.git#${process.env.SLICK_SHA}`;
+                  const dependency = `https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/${process.env.SLICK_SHA}`;
                   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
                   pkg.dependencies["slick2d-ts"] = dependency;
                   writeFileSync("package.json", `${JSON.stringify(pkg, null, 4)}\n`);
                   NODE
                   npm install --ignore-scripts
                   node --input-type=module <<'NODE'
-                  import { readFileSync, writeFileSync } from "node:fs";
-                  const dependency = `git+https://github.com/meatfighter/slick2d-ts.git#${process.env.SLICK_SHA}`;
+                  import { readFileSync } from "node:fs";
+                  const dependency = `https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/${process.env.SLICK_SHA}`;
                   const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
-                  lock.packages[""].dependencies["slick2d-ts"] = dependency;
+                  const rootDependency = lock.packages[""].dependencies["slick2d-ts"];
                   const slick = lock.packages["node_modules/slick2d-ts"];
                   if (!slick || typeof slick.version !== "string") throw new Error("Missing installed slick2d-ts lock entry.");
-                  slick.resolved = dependency;
-                  writeFileSync("package-lock.json", `${JSON.stringify(lock, null, 4)}\n`);
+                  if (rootDependency !== dependency || slick.resolved !== dependency) {
+                      throw new Error(`Unexpected Slick lock metadata: root=${rootDependency}, resolved=${slick.resolved}, expected=${dependency}`);
+                  }
                   NODE
                   npx prettier package.json package-lock.json --write
                   unexpected="$(git diff --name-only | grep -v -E '^(package.json|package-lock.json)$' || true)"
