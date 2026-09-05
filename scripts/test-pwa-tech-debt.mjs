@@ -66,11 +66,11 @@ test("persistence uses public Slick random and music state APIs", () => {
     assert.match(snapshot, /FIRST_PUBLIC_GAME_STATE_VERSION = 4/);
 });
 
-test("save state excludes in-flight score submission state", () => {
+test("save state normalizes in-flight score submission state", () => {
     const mainPolicy = sliceBetween(statePolicy, "Main: {", "Thing: {");
     const persisted = sliceBetween(mainPolicy, "persisted: [", "runtime: [");
-    assert.doesNotMatch(persisted, /uploadComplete/);
-    assert.match(mainPolicy, /runtime:[\s\S]*"uploadComplete"/);
+    assert.match(persisted, /uploadComplete/);
+    assert.match(stateStore, /snapshot\.mainFields\.uploadComplete = true/);
     assert.match(stateStore, /snapshot\.submittedScore = null/);
     assert.match(enterInitialsMode, /main\.uploadComplete = true/);
     assert.match(enterInitialsMode, /main\.submittedScore = null/);
