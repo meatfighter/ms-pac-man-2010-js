@@ -4,10 +4,6 @@ export function toInt(value: number): number {
     return Math.trunc(value);
 }
 
-export function toInt32(value: number): number {
-    return value | 0;
-}
-
 export function intDiv(value: number, divisor: number): number {
     return Math.trunc(value / divisor);
 }
