@@ -608,7 +608,7 @@ function withCleanGitFixture(fn) {
 function removeTemporaryGitFixture(path) {
     rmSync(path, {
         force: true,
-        maxRetries: 10,
+        maxRetries: 30,
         recursive: true,
         retryDelay: 100
     });
