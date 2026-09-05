@@ -42,17 +42,17 @@ The persistence implementation lives under `pwa/src/mspacman/persistence/`.
 
 ## Repository layout
 
-| Path                         | Purpose                                                               |
-| ---------------------------- | --------------------------------------------------------------------- |
-| `about/`                     | Public project/about page source                                      |
-| `assets/`                    | Shared artwork and source assets                                      |
-| `desktop/`                   | Java/Slick2D implementation and desktop packaging                     |
-| `pwa/`                       | TypeScript browser/PWA implementation                                 |
-| `pwa/src/app/`               | Browser shell and lifecycle integration                               |
-| `pwa/src/mspacman/`          | Java-shaped TypeScript game port                                      |
-| `pwa/src/mspacman/persistence/` | Browser save/continue implementation                               |
-| `scripts/`                   | Build, verification, packaging, release, and HMAC tooling             |
-| `version.json`               | Application version/build metadata                                    |
+| Path                            | Purpose                                                   |
+| ------------------------------- | --------------------------------------------------------- |
+| `about/`                        | Public project/about page source                          |
+| `assets/`                       | Shared artwork and source assets                          |
+| `desktop/`                      | Java/Slick2D implementation and desktop packaging         |
+| `pwa/`                          | TypeScript browser/PWA implementation                     |
+| `pwa/src/app/`                  | Browser shell and lifecycle integration                   |
+| `pwa/src/mspacman/`             | Java-shaped TypeScript game port                          |
+| `pwa/src/mspacman/persistence/` | Browser save/continue implementation                      |
+| `scripts/`                      | Build, verification, packaging, release, and HMAC tooling |
+| `version.json`                  | Application version/build metadata                        |
 
 Generated build output and local release state are not source and should not be edited manually.
 
