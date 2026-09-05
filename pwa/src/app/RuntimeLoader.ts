@@ -34,6 +34,14 @@ export class RuntimeLoader {
         if (this.prepared !== null) {
             return this.prepared;
         }
+        if (forceRetry && this.preparationPromise !== null) {
+            this.abortController?.abort(new Error("Ms. Pac-Man runtime preparation superseded by retry."));
+            try {
+                await this.preparationPromise;
+            } catch {
+                // The replacement preparation below owns the user-visible result.
+            }
+        }
         if (this.preparationPromise !== null) {
             return this.preparationPromise;
         }
@@ -61,7 +69,9 @@ export class RuntimeLoader {
                 return runtime;
             })
             .catch((error) => {
-                this.error = error;
+                if (!abortController.signal.aborted) {
+                    this.error = error;
+                }
                 throw error;
             })
             .finally(() => {
@@ -122,7 +132,7 @@ export class RuntimeLoader {
         };
 
         updateProgress();
-        await Promise.all([
+        const results = await Promise.allSettled([
             ResourceLoader.preloadResources(nonAudioRefs, {
                 concurrency: RESOURCE_PRELOAD_CONCURRENCY,
                 signal,
@@ -140,6 +150,13 @@ export class RuntimeLoader {
                 }
             })
         ]);
+        const failure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+        if (failure !== undefined) {
+            throw failure.reason;
+        }
+        if (signal.aborted) {
+            throw signal.reason ?? new Error("Ms. Pac-Man runtime preparation was aborted.");
+        }
         this.progress = 1;
         this.progressChanged();
     }

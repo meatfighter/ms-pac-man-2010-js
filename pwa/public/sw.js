@@ -59,6 +59,14 @@ async function matchCurrentCache(requestOrUrl) {
     return cache.match(createCacheUrl(requestOrUrl));
 }
 
+async function fetchOnce(request) {
+    const response = await fetch(request);
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+    return response;
+}
+
 self.addEventListener("install", (event) => {
     event.waitUntil(
         (async () => {
@@ -91,13 +99,13 @@ self.addEventListener("fetch", (event) => {
     }
 
     if (request.mode === "navigate") {
-        event.respondWith(fetch(request).catch(() => matchCurrentCache(APP_INDEX)));
+        event.respondWith(fetchOnce(request).catch(() => matchCurrentCache(APP_INDEX)));
         return;
     }
 
     event.respondWith(
         matchCurrentCache(request).then((cached) => {
-            return cached || fetch(request);
+            return cached || fetchOnce(request);
         })
     );
 });
