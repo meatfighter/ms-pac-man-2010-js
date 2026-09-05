@@ -129,9 +129,11 @@ export class MsPacManGameStateStore {
 
 function normalizeTransientState(snapshot: MsPacManGameStateSnapshot): void {
     // Score submission is best-effort network work tied to the current page
-    // lifetime. Preserve the game/UI state, but never restore a request that
-    // cannot still be running after the previous page/container was destroyed.
-    snapshot.mainFields.uploadComplete = true;
+    // lifetime. Preserve ordinary state exactly, but if the saved initials screen
+    // had already submitted, never restore a request that cannot still exist.
+    if (snapshot.mode.id === "enterInitials" && snapshot.mode.fields.enterPressed === true) {
+        snapshot.mainFields.uploadComplete = true;
+    }
     snapshot.submittedScore = null;
 }
 
