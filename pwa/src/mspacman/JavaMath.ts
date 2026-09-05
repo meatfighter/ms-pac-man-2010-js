@@ -23,6 +23,7 @@ export function make2D(rows: number, columns: number, value = 0): number[][] {
         for (let j = 0; j < columns; j++) {
             row[j] = value;
         }
+        result[i] = row;
     }
     return result;
 }
