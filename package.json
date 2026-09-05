@@ -86,7 +86,7 @@
         "verify:offline": "node scripts/run-offline-verification.mjs"
     },
     "dependencies": {
-        "slick2d-ts": "git+https://github.com/meatfighter/slick2d-ts.git#39689c01a336c7620a7e80f992fe33558ef9652a"
+        "slick2d-ts": "git+https://github.com/meatfighter/slick2d-ts.git#0bad1eb9f2b8ded61d4d6b82b9a4282c4a62b9ee"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
