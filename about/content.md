@@ -1,6 +1,6 @@
 # About
 
-_Ms. Pac-Man 2010_ is an expanded and graphically enhanced version of the original _Ms. Pac-Man_ arcade game. Instead of cycling endlessly through the same mazes, the game is divided into four worlds. Each world contains eight stages, all featuring unique mazes.
+_Ms. Pac-Man 2010_ is an expanded and graphically enhanced version of the original _Ms. Pac-Man_ arcade game. Instead of cycling endlessly through the same boards, the game is divided into four worlds, each featuring eight unique mazes.
 
 Press the **Play** button below to launch the desktop browser version of _Ms. Pac-Man 2010_.
 
@@ -35,7 +35,7 @@ _Ms. Pac-Man 2010_ automatically pauses when the browser loses focus and resumes
 
 # History
 
-I created _Ms. Pac-Man 2010_ in 2010, hence the name, as a Java game using the [Slick2D](https://github.com/nguillaumin/slick2d-maven) and [JInput](https://jinput.github.io/jinput/) libraries. I studied the original arcade game in the [MAME](https://www.mamedev.org/) multi-purpose emulator and recreated its mazes and mechanics through observation.
+I created _Ms. Pac-Man 2010_ in 2010—hence the name—as a Java game using the [Slick2D](https://github.com/nguillaumin/slick2d-maven) and [JInput](https://jinput.github.io/jinput/) libraries. I studied the original arcade game in the [MAME](https://www.mamedev.org/) multi-purpose emulator and recreated its mazes and mechanics through observation.
 
 I released _Ms. Pac-Man 2010_ as a Java applet that ran in a web page and as a downloadable desktop version. As technology evolved, both options became increasingly impractical. Browsers abandoned Java applets, while the desktop version required players to download and run an executable and install Java, something many people understandably avoided because of the hassle and security concerns. The game also relied on platform-specific native libraries that became increasingly difficult to run reliably on modern systems.
 
@@ -43,9 +43,11 @@ In 2026, I rewrote _Ms. Pac-Man 2010_ in TypeScript and adapted it to modern web
 
 # Differences
 
+_Ms. Pac-Man 2010_ is based on the original arcade game but expands on it in several ways.
+
 A cutscene appears between every stage. The first three recreate the intermissions from the original _Ms. Pac-Man_ arcade game. The later cutscenes were based on the between-fight scenes in _Mike Tyson's Punch-Out!!_ for the Nintendo Entertainment System.
 
-After completing Stage 8, the player sees an ending sequence inspired by Ryu's ending in the arcade version of _Street Fighter II_.
+After completing Stage 8, the player is rewarded with a final sequence inspired by Ryu's ending in the arcade version of _Street Fighter II_.
 
 The game employs two special energizers from _Pac-Mania_: the red energizer sends the ghosts into their familiar blue frightened state, while the green energizer temporarily gives Ms. Pac-Man a burst of extra speed.
 
