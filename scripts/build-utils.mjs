@@ -368,11 +368,7 @@ function isControlledTemporaryReleasePath(path) {
         temporaryRoot = dirname(temporaryRoot);
     }
     const name = basename(temporaryRoot);
-    return (
-        /^\.dist-pending-[A-Za-z0-9_-]+$/.test(name) ||
-        /^\.dist-previous-\d+-\d+$/.test(name) ||
-        /^\.dist-active-before-hmac-finalize-\d+-\d+$/.test(name)
-    );
+    return /^\.dist-pending-[A-Za-z0-9_-]+$/.test(name) || /^\.dist-previous-\d+-\d+$/.test(name) || /^\.dist-active-before-hmac-finalize-\d+-\d+$/.test(name);
 }
 
 function findControlledTestTemporaryRoot(path) {

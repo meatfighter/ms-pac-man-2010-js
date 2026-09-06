@@ -61,7 +61,6 @@ production release. Build production `dist` with the existing active-key release
 tooling, qualify those bytes, and archive that directory. Keep the local key files
 and rotation state outside version control.
 
-
 The active signing key is stored locally in
 `.release-secrets/ms-pac-man-2010-hmac.hex`. This directory is ignored by Git.
 When setting up a new checkout for an existing deployment, obtain the existing
