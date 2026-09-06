@@ -6,7 +6,7 @@ The source and resources keep the game's existing `desktop/src` layout. Current 
 
 ## Build
 
-Use JDK 21 LTS for current development and release validation. The build requires `javac` and `jar` on `PATH` and emits Java 8-compatible bytecode for the legacy Slick2D/LWJGL runtime.
+JDK 21 LTS is the reference toolchain; JDK 25 has also been used successfully for a full release build. Put `java`, `javac`, and `jar` on `PATH`. The build emits Java 8-compatible bytecode for the legacy Slick2D/LWJGL runtime.
 
 From the repository root, build an unsigned desktop client with:
 

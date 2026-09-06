@@ -28,7 +28,7 @@ Do not change repository visibility as part of the build.
 
 ## Browser qualification
 
-For game repositories, `verify:production-browser` runs Chromium, Firefox, and
+`verify:production-browser` runs Chromium, Firefox, and
 WebKit against the production build. It checks resource preparation, game entry,
 real-tab save takeover, two service-worker cache generations, offline Continue,
 and preservation of a newer public save. WebKit's cache fallback is tested by dropping
@@ -37,8 +37,7 @@ service-worker navigation limitation. Chromium and Firefox also use browser offl
 emulation. The cache-generation fixture uses the
 same candidate's assets with two worker identities; it does not claim compatibility
 between arbitrary historical releases. Existing browser fixtures exercise real
-Main save/restore, and Stickvania also compares resumed simulation with uninterrupted
-simulation in an active stage.
+Main save/restore.
 
 Before the first deployment, record a short real-device pass on supported Safari/iOS
 and Android devices: launch from the home screen, enter gameplay, exercise audio and
@@ -61,3 +60,33 @@ is marked `synthetic-test-not-for-deployment`; never deploy it or relabel it as 
 production release. Build production `dist` with the existing active-key release
 tooling, qualify those bytes, and archive that directory. Keep the local key files
 and rotation state outside version control.
+
+
+The active signing key is stored locally in
+`.release-secrets/ms-pac-man-2010-hmac.hex`. This directory is ignored by Git.
+When setting up a new checkout for an existing deployment, obtain the existing
+primary server key privately and import it through the hidden input prompt:
+
+```sh
+npm run hmac:import
+npm run hmac:check
+```
+
+Import is only needed when the active key file is absent. The check prints a
+fingerprint, not the key. Confirm that the imported key matches the server's
+primary key and that no rotation is staged before building:
+
+```sh
+npm run release
+```
+
+This produces the complete verified distribution in `dist/`: the about page,
+signed PWA, desktop download, release metadata, and checksums. Upload the contents
+of that directory while preserving its structure. Run these commands locally;
+GitHub Actions is not required. On Windows PowerShell, use `npm.cmd` if needed.
+
+Keep key files out of source control and uploaded source archives. Do not generate
+a new key merely because a checkout lacks one; the client must use a key accepted
+by the existing server. If rotation is staged, resolve that rotation before an
+active-key release. The embedded client key is recoverable from distributed builds
+and does not authenticate legitimate play.

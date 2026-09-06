@@ -23,7 +23,7 @@ Generated output belongs in `dist/`, `.release-components/`, and desktop build d
 
 ## Getting started
 
-Use Node.js 24 and Git. Other supported Node versions are listed in [package.json](package.json). Desktop builds and checks that compile Java require JDK 21, with `javac` and `jar` on `PATH`.
+Use Node.js 24 and Git. Other supported Node versions are listed in [package.json](package.json). Desktop builds and Java checks need a JDK with `java`, `javac`, and `jar` on `PATH`. JDK 21 is the reference toolchain; JDK 25 has also been used successfully for a full release build. Desktop output targets Java 8.
 
 Run commands from the repository root:
 
@@ -59,7 +59,7 @@ For the separate Chromium/Firefox/WebKit qualification, install the browser engi
 
 - Compare gameplay changes with the corresponding Java source. Preserve useful structural correspondence, fixed-step timing, Java numeric behavior, and random-state behavior.
 - Keep browser storage, networking, presentation, and lifecycle concerns in the browser-support layer where practical.
-- Avoid unnecessary temporary objects and repeated computation in update and render loops. Use the focused tests and available benchmarks in [package.json](package.json).
+- Avoid unnecessary temporary objects and repeated computation in update and render loops. Use the focused tests listed in [package.json](package.json).
 - Preserve unsupported public saves and input mappings. Update schema validation and restoration together; never discard an unfamiliar public format merely to simplify an upgrade.
 - Regenerate affected resource or parity metadata through the repository scripts and check it before committing.
 - The [slick2d-ts](https://github.com/meatfighter/slick2d-ts) dependency is pinned to an immutable HTTPS commit archive. Update `package.json` and `package-lock.json` together, then verify gameplay and browser behavior against that engine revision.
@@ -78,12 +78,12 @@ Use `build:pwa:unsigned`, `build:web:unsigned`, and `build:desktop` for developm
 
 Production browser builds use the fixed same-origin endpoint `/api/ms-pac-man-2010/scores`. Moving a build to another directory on the same host does not isolate leaderboard requests. Arrange a separate staging host/backend or disable submissions when testing against a production host. The current release build does not accept an alternate API path.
 
-The embedded HMAC key deters casual tampering; it cannot authenticate legitimate play. See the public [client implementation](pwa/src/mspacman/) for protocol handling and [releases/README.md](releases/README.md) for maintainer release configuration.
+The embedded HMAC key deters casual tampering; it cannot authenticate legitimate play. See the public [client implementation](pwa/src/mspacman/) for protocol handling and [RELEASING.md](RELEASING.md#ms-pac-man-signing) for maintainer signing configuration.
 
 ## Further documentation
 
 - [RELEASING.md](RELEASING.md): qualification, archives and checksums, retention, rollout, and rollback.
 - [desktop/README.md](desktop/README.md): Java build and runtime details.
-- [releases/README.md](releases/README.md): release tooling and local release state.
+- [releases/README.md](releases/README.md): desktop ZIP packaging and uploadable artifacts.
 - [LICENSE](LICENSE): source-code license, GPL-3.0-or-later.
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md): third-party licenses and redistributed components.
