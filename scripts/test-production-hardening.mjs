@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { delimiter, join } from "node:path";
+import { join } from "node:path";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
@@ -26,20 +26,25 @@ test("Windows desktop launcher tolerates paths containing parentheses", () => {
         return;
     }
 
+    const instrumentedSource = source
+        .replace("java --enable-native-access=ALL-UNNAMED -version >nul 2>nul", "ver >nul")
+        .replace("java --sun-misc-unsafe-memory-access=allow -version >nul 2>nul", "ver >nul")
+        .replace(
+            'java %JAVA_COMPAT_ARGS% "-Dorg.lwjgl.librarypath=%NATIVE_PATH%" "-Dnet.java.games.input.librarypath=%NATIVE_PATH%" "-Djava.library.path=%NATIVE_PATH%" "-Djinput.useDefaultPlugin=false" "-Dnet.java.games.input.plugins=net.java.games.input.DirectAndRawInputEnvironmentPlugin" -jar "%JAR_PATH%"',
+            '> "%MSPACMAN_TEST_JAVA_LOG%" echo JAR=%JAR_PATH%\n>> "%MSPACMAN_TEST_JAVA_LOG%" echo NATIVE=%NATIVE_PATH%'
+        );
+    assert.notEqual(instrumentedSource, source);
+    assert.doesNotMatch(instrumentedSource, /^java\b/im, "Test launcher should replace Java invocations with deterministic local commands");
+
     const tempRoot = mkdtempSync(join(tmpdir(), "ms-pac-man-desktop (1) "));
     const installDir = join(tempRoot, "ms-pac-man-2010-desktop");
-    const fakeBin = join(tempRoot, "fake-java");
     const javaLogPath = join(tempRoot, "java-args.txt");
     try {
         mkdirSync(join(installDir, "natives", "windows"), { recursive: true });
-        mkdirSync(fakeBin, { recursive: true });
-        copyFileSync(launcherPath, join(installDir, "run-windows.cmd"));
+        writeFileSync(join(installDir, "run-windows.cmd"), instrumentedSource);
         writeFileSync(join(installDir, "ms-pac-man-2010-desktop.jar"), "");
-        writeFileSync(join(fakeBin, "java.cmd"), '@echo off\r\n>>"%MSPACMAN_TEST_JAVA_LOG%" echo %*\r\nexit /b 0\r\n');
 
         const env = { ...process.env, MSPACMAN_TEST_JAVA_LOG: javaLogPath };
-        const pathKey = Object.keys(env).find((key) => key.toLowerCase() === "path") ?? "PATH";
-        env[pathKey] = `${fakeBin}${delimiter}${env[pathKey] ?? ""}`;
         const result = spawnSync("cmd.exe", ["/d", "/c", "run-windows.cmd"], {
             cwd: installDir,
             encoding: "utf8",
@@ -52,9 +57,8 @@ test("Windows desktop launcher tolerates paths containing parentheses", () => {
         );
 
         const javaLog = readFileSync(javaLogPath, "utf8");
-        assert.match(javaLog, /-jar/);
-        assert.ok(javaLog.includes(join(installDir, "ms-pac-man-2010-desktop.jar")));
-        assert.ok(javaLog.includes(join(installDir, "natives", "windows")));
+        assert.ok(javaLog.includes(`JAR=${join(installDir, "ms-pac-man-2010-desktop.jar")}`));
+        assert.ok(javaLog.includes(`NATIVE=${join(installDir, "natives", "windows")}`));
     } finally {
         rmSync(tempRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
     }
