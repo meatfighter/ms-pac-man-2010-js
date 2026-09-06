@@ -76,10 +76,10 @@ npm run hmac:check
 
 Import is only needed when the active key file is absent. The check prints a
 fingerprint, not the key. Confirm that the imported key matches the server's
-primary key and that no rotation is staged before building:
+primary key and that no rotation is staged before qualification:
 
 ```sh
-npm run release
+npm run qualify
 ```
 
 This produces the complete verified distribution in `dist/`: the about page,
