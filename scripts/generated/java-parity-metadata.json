@@ -1003,14 +1003,6 @@
                 },
                 {
                     "type": "boolean",
-                    "name": "controllerRefreshEnabled"
-                },
-                {
-                    "type": "boolean",
-                    "name": "controllerRefreshInProgress"
-                },
-                {
-                    "type": "boolean",
                     "name": "controllerRightDown"
                 },
                 {
@@ -1034,20 +1026,28 @@
                     "name": "input"
                 },
                 {
-                    "type": "long",
-                    "name": "lastControllerPollNanos"
-                },
-                {
-                    "type": "long",
-                    "name": "lastControllerRefreshNanos"
-                },
-                {
                     "type": "ByteArrayOutputStream",
                     "name": "lineBuffer"
                 },
                 {
                     "type": "boolean",
-                    "name": "suppressedPollFailure"
+                    "name": "sampledDown"
+                },
+                {
+                    "type": "boolean",
+                    "name": "sampledLeft"
+                },
+                {
+                    "type": "boolean",
+                    "name": "sampledRight"
+                },
+                {
+                    "type": "boolean",
+                    "name": "sampledStart"
+                },
+                {
+                    "type": "boolean",
+                    "name": "sampledUp"
                 },
                 {
                     "type": "PrintStream",
@@ -1056,6 +1056,7 @@
             ],
             "floatFields": [],
             "publicMethods": [
+                "beginFrame",
                 "clearKeyPressedRecord",
                 "isConfirmPressed",
                 "isDown",
@@ -1072,8 +1073,6 @@
                 "isUp",
                 "isUpPressed",
                 "reset",
-                "run",
-                "setControllerRefreshEnabled",
                 "update"
             ]
         },

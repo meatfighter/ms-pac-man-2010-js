@@ -168,7 +168,7 @@ public class Main extends BasicGame {
   }
 
   public void update(GameContainer gc, int delta) throws SlickException {
-    updateControllerRefreshPolicy();
+    ((HumanInput)input).beginFrame();
     applyPendingRemoteScores();
     updateMouseCursorAutoHide();
     if (fadeMusic) {
@@ -184,7 +184,6 @@ public class Main extends BasicGame {
     if (paused) {
       if (isGameplayPauseTogglePressed()) {
         paused = false;
-        updateControllerRefreshPolicy();
         markMouseInput(System.currentTimeMillis());
         gc.setMusicOn(true);
       }
@@ -192,7 +191,6 @@ public class Main extends BasicGame {
       return;
     } else if (isGameplayPauseTogglePressed()) {
       paused = true;
-      updateControllerRefreshPolicy();
       markMouseInput(System.currentTimeMillis());
       stopAllSoundEffects();
       gc.setMusicOn(false);
@@ -232,17 +230,6 @@ public class Main extends BasicGame {
       return false;
     }
     return input.isPausePressed() || input.isGameplayStartPressed();
-  }
-
-  private void updateControllerRefreshPolicy() {
-    if (input instanceof HumanInput) {
-      ((HumanInput)input).setControllerRefreshEnabled(
-          shouldRefreshControllers());
-    }
-  }
-
-  private boolean shouldRefreshControllers() {
-    return paused || mode != Main.playingMode || demoMode;
   }
 
   private boolean isFullscreenDisplayActive(GameContainer gc) {
@@ -362,11 +349,8 @@ public class Main extends BasicGame {
 
   public void setMode(IMode mode, GameContainer gc) throws SlickException {
     this.mode = mode;
-    updateControllerRefreshPolicy();
     mode.init(this, gc);
-    updateControllerRefreshPolicy();
     mode.update(gc);
-    updateControllerRefreshPolicy();
     input.clearKeyPressedRecord();
     resetNextFrameTime();
   }

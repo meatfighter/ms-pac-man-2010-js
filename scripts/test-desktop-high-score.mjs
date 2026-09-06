@@ -36,6 +36,17 @@ run("java", ["-Djava.awt.headless=true", "-cp", `${testClassesDir}${process.plat
     MSPACMAN_SCORE_API_URL: ""
 });
 
+// Each scenario gets a fresh JVM because legacy JInput discovery is process-wide.
+for (const scenario of ["empty", "connected", "poll-failure", "reported-failure", "initialization-failure"]) {
+    run("java", [
+        "-Djava.awt.headless=true",
+        "-cp",
+        `${testClassesDir}${process.platform === "win32" ? ";" : ":"}${classpath}`,
+        "mspacman.HumanInputTest",
+        scenario
+    ]);
+}
+
 function commandExists(command) {
     const finder = process.platform === "win32" ? "where.exe" : "which";
     const result = spawnSync(finder, [command], { stdio: "ignore", windowsHide: true });

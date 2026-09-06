@@ -59,7 +59,9 @@ _Ms. Pac-Man 2010_ is a reimplementation of the _Ms. Pac-Man_ arcade game, not a
 
 The source code for the project is available in the [meatfighter/ms-pac-man-2010-js repository](__REPOSITORY_URL__).
 
-The Java desktop version is available as a [ZIP file](__DESKTOP_ZIP__). Download and extract the ZIP, then run the launcher for your operating system:
+The Java desktop version is available as a [ZIP file](__DESKTOP_ZIP__). To use a gamepad with the Java version, connect and enable it before starting the game.
+
+Download and extract the ZIP, then run the launcher for your operating system:
 
 - Windows: `run-windows.cmd`
 - Linux: `run-linux.sh`
