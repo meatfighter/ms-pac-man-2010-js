@@ -1,0 +1,1 @@
+export const MAX_SNAPSHOT_TEXT_LENGTH = 1_000_000;

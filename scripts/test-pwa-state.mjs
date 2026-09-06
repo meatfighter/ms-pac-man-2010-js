@@ -629,7 +629,7 @@ function createMode(id, variant) {
         pressEnterVisible: !alternate,
         ghostSpriteIndex: alternate ? 12 : 11,
         ghostSpriteIndexIncrementor: alternate ? 13 : 12,
-        ghostsVisible: !alternate,
+        ghostsVisible: alternate ? 4 : 0,
         ghostX: alternate ? 14 : 13,
         enterPressed: alternate,
         ticks: alternate ? 15 : 14,

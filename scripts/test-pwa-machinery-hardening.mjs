@@ -11,7 +11,6 @@ test("forced runtime retry supersedes pending preparation cleanly", () => {
     assert.match(runtimeLoaderSource, /if \(forceRetry && this\.preparationPromise !== null\) \{/);
     assert.match(runtimeLoaderSource, /this\.abortController\?\.abort\(new Error\("Ms\. Pac-Man runtime preparation superseded by retry\."\)\)/);
     assert.match(runtimeLoaderSource, /await this\.preparationPromise;/);
-    assert.match(runtimeLoaderSource, /if \(!abortController\.signal\.aborted\) \{\s*this\.error = error;/);
 });
 
 test("runtime preload waits for both resource branches before exposing failure", () => {

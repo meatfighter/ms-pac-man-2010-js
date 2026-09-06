@@ -48,9 +48,12 @@ try {
     browser = await launchBrowser(baseUrl, process.cwd(), "ms-pac-man-2010-offline-");
     await waitForExpression(
         browser.page,
-        'window.__msPacManBooted === true && window.__msPacManResourcesPrepared === true && navigator.serviceWorker?.controller !== null && document.querySelector("#newGameButton") !== null',
+        'window.__msPacManBooted === true && navigator.serviceWorker?.controller !== null && document.querySelector("#newGameButton") !== null',
         45_000
     );
+    await browser.page.call("Page.enable");
+    await browser.page.call("Page.reload", { ignoreCache: true });
+    await waitForExpression(browser.page, "window.__gameResourcesPrepared === true", 120_000);
     await browser.page.call("Network.enable");
     await browser.page.call("Network.emulateNetworkConditions", { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 });
     await browser.page.call("Page.enable");
@@ -60,7 +63,19 @@ try {
         'window.__msPacManBooted === true && window.__msPacManResourcesPrepared === true && document.querySelector("#newGameButton") !== null',
         45_000
     );
-    console.log("Ms. Pac-Man 2010 production PWA prepared all game resources after an offline reload.");
+    await browser.page.call("Runtime.evaluate", { expression: 'document.querySelector("#newGameButton").click()', userGesture: true });
+    await waitForExpression(browser.page, 'document.querySelector("canvas") !== null', 30_000);
+    console.log("Ms. Pac-Man 2010 production PWA prepared all resources and entered the game while offline.");
+} catch (error) {
+    if (browser !== null) {
+        const diagnostics = await browser.page.call("Runtime.evaluate", {
+            expression:
+                "JSON.stringify({ text: document.body.innerText, booted: window.__msPacManBooted, prepared: window.__gameResourcesPrepared, controlled: navigator.serviceWorker.controller !== null })",
+            returnByValue: true
+        });
+        console.error("Offline diagnostics:", diagnostics.result?.value);
+    }
+    throw error;
 } finally {
     if (browser !== null) {
         try {

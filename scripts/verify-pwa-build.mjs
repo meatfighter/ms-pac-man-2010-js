@@ -266,7 +266,12 @@ function assertIndexAssetReferencesAreStamped(html, cacheBust) {
     for (const ref of assetRefs) {
         assert.ok(ref !== undefined);
         const url = new URL(ref, "https://example.invalid");
-        assert.equal(url.searchParams.get("v"), cacheBust, `Generated asset reference is missing the cache-bust query: ${ref}`);
+        if (url.pathname.endsWith(".js")) {
+            assert.equal(url.search, "", "Hashed JS entries must share their module identity with internal chunk imports.");
+            assert.match(url.pathname, /-[A-Za-z0-9_-]{8}\.js$/);
+        } else {
+            assert.equal(url.searchParams.get("v"), cacheBust, `Generated stylesheet reference is missing its version: ${ref}`);
+        }
     }
 }
 
@@ -315,7 +320,7 @@ function assertIndexReferencesResolveWithinScope(html, base, cacheBust) {
         assert.equal(ref.startsWith("/"), false, `index.html contains a root-relative static reference: ${ref}`);
         const url = new URL(ref, base);
         assert.ok(url.href.startsWith(base), `index.html reference does not resolve under ${base}: ${ref}`);
-        if (/\.(?:js|css|png|svg|webmanifest)$/.test(url.pathname)) {
+        if (/\.(?:css|png|svg|webmanifest)$/.test(url.pathname)) {
             assert.equal(url.searchParams.get("v"), cacheBust, `index.html reference is missing the release cache-bust query: ${ref}`);
         }
     }

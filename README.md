@@ -152,3 +152,19 @@ Use unsigned build commands for ordinary development. Production release command
 Ms. Pac-Man 2010 is licensed under **GPL-3.0-or-later**. See [`LICENSE`](LICENSE).
 
 Third-party components and redistributed desktop runtime material retain their respective licenses. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and the notices under `desktop/`.
+
+## Production readiness
+
+See [RELEASING.md](RELEASING.md) for browser qualification, reproducible source
+identification, build archives and checksums, artifact retention, and rollback.
+
+The PWA permits one writable game session per deployment path. Another tab can
+request **Continue here**; the current owner saves and closes its game before the
+new tab starts. Unresponsive owners are not forcibly displaced. This requires a
+secure context (HTTPS or localhost), Web Locks, and BroadcastChannel. Close legacy
+tabs during the first rollout so every open client uses the ownership protocol.
+
+Resource requests have a 30-second deadline covering response bodies as well as
+headers. Audio activation waits at most three seconds before allowing silent play.
+Unknown public save versions and oversized saves are preserved; **New Game** and
+**Reset** are the explicit paths for replacing protected saves.

@@ -8,7 +8,7 @@ const JAVA_INT_MIN = -2_147_483_648;
 const JAVA_INT_MAX = 2_147_483_647;
 const MAX_GAMEPLAY_NUMBER_MAGNITUDE = 100_000;
 const MAX_SNAPSHOT_STRING_LENGTH = 4_096;
-const MAX_SNAPSHOT_TEXT_LENGTH = 1_000_000;
+import { MAX_SNAPSHOT_TEXT_LENGTH } from "../../app/SnapshotLimits.js";
 
 export class MsPacManGameStateStore {
     private readonly serializer = new MsPacManGameStateSerializer();
@@ -27,7 +27,7 @@ export class MsPacManGameStateStore {
             const snapshot = this.serializer.createSnapshot(main, this.appVersion);
             normalizeTransientState(snapshot);
 
-            if (!hasReasonableSnapshotValues(snapshot)) {
+            if (!this.serializer.isSupportedSnapshot(snapshot) || !hasReasonableSnapshotValues(snapshot)) {
                 return false;
             }
             const text = JSON.stringify(snapshot);
@@ -78,7 +78,7 @@ export class MsPacManGameStateStore {
             return null;
         }
         if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
-            this.clear();
+            // An older client cannot safely classify a larger public snapshot.
             return null;
         }
 
@@ -108,8 +108,11 @@ export class MsPacManGameStateStore {
 
     private hasProtectedStoredSnapshot(): boolean {
         const text = localStorage.getItem(createBrowserStorageKeys().gameState);
-        if (text === null || text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
+        if (text === null) {
             return false;
+        }
+        if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
+            return true;
         }
         try {
             return this.shouldPreserveUnsupportedPublicSnapshot(JSON.parse(text) as unknown);

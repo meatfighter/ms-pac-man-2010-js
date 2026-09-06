@@ -60,18 +60,17 @@ export class RuntimeLoader {
         ResourceLoader.setCacheBust(null);
         ResourceLoader.setCacheVersionResolver(getResourceVersion);
         ResourceLoader.setRetryOptions(RESOURCE_CACHE_RETRY_COUNT, RESOURCE_CACHE_RETRY_DELAY_MS);
-        this.preparationPromise = this.prepareRuntime(abortController.signal)
+        this.preparationPromise = this.prepareRuntime(abortController)
             .then((runtime) => {
                 this.prepared = runtime;
+                Reflect.set(window, "__gameResourcesPrepared", true);
                 this.error = null;
                 this.progress = 1;
                 this.progressChanged();
                 return runtime;
             })
             .catch((error) => {
-                if (!abortController.signal.aborted) {
-                    this.error = error;
-                }
+                this.error = error;
                 throw error;
             })
             .finally(() => {
@@ -102,15 +101,26 @@ export class RuntimeLoader {
         this.abortController?.abort();
     }
 
-    private async prepareRuntime(signal: AbortSignal): Promise<PreparedRuntime> {
+    private async prepareRuntime(controller: AbortController): Promise<PreparedRuntime> {
+        const signal = controller.signal;
         const preloadPromise = this.preloadPreparedResources(Array.from(new Set(RESOURCE_REFS)), signal);
-        const [slick, mainModule, scalableGameModule, gameStateStoreModule] = await Promise.all([
+        const operations = [
             import("slick2d-ts"),
             import("../mspacman/Main.js"),
             import("../mspacman/ScalableGame2.js"),
             import("../mspacman/persistence/MsPacManGameStateStore.js"),
             preloadPromise
-        ]);
+        ] as const;
+        const guarded = operations.map((operation) =>
+            operation.catch((error: unknown) => {
+                controller.abort(error);
+                throw error;
+            })
+        );
+        const results = await Promise.allSettled(guarded);
+        const failure = results.find((result) => result.status === "rejected");
+        if (failure?.status === "rejected") throw failure.reason;
+        const [slick, mainModule, scalableGameModule, gameStateStoreModule] = await Promise.all(operations);
 
         return {
             slick,

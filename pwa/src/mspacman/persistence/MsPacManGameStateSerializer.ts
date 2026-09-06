@@ -96,7 +96,6 @@ const BOOLEAN_FIELD_NAMES = new Set<string>([
     "showHeart",
     "stringDone",
     "pressEnterVisible",
-    "ghostsVisible",
     "enterPressed",
     "juniorReturning",
     "juniorFruits",
@@ -108,6 +107,7 @@ const STRING_FIELD_NAMES = new Set<string>(["stageMessage", "initials", "blinkin
 const NUMBER_ARRAY_FIELD_NAMES = new Set<string>(["regionCounts"]);
 
 const INTEGER_FIELD_RANGES = new Map<string, readonly [number, number]>([
+    ["ghostsVisible", [0, 4]],
     ["worldIndex", [0, 3]],
     ["stageIndex", [0, 7]],
     ["demoIndex", [0, 3]],

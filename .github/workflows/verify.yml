@@ -78,3 +78,22 @@ jobs:
               env:
                   MSPACMAN_VERIFY_PWA_ROOT: .release-components/synthetic-full/pwa
               run: npm run verify:offline
+
+            - name: Install browser qualification engines
+              run: npx playwright install --with-deps chromium firefox webkit
+
+            - name: Qualify production browser lifecycle
+              env:
+                  PWA_ROOT: .release-components/synthetic-full/pwa
+              run: xvfb-run --auto-servernum npm run verify:production-browser
+
+            - name: Archive qualified build
+              run: node scripts/archive-release.mjs .release-components/synthetic-full "$RUNNER_TEMP/qualified-artifacts"
+
+            - name: Retain build and checksums
+              uses: actions/upload-artifact@v4
+              with:
+                  name: qualified-${{ github.sha }}
+                  path: ${{ runner.temp }}/qualified-artifacts
+                  retention-days: 90
+                  if-no-files-found: error

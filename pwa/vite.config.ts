@@ -108,8 +108,10 @@ function appendCacheBustQuery(url: string, encodedCacheBust: string): string {
 }
 
 function versionBuiltAssetReferences(html: string, encodedCacheBust: string): string {
+    // Vite hashes JS filenames. Querying only the HTML entry gives it a different
+    // module identity from internal imports and can execute application startup twice.
     return html.replace(
-        /\b(src|href)="([^"]*\/assets\/[^"]+\.(?:js|css)(?:\?[^"]*)?)"/g,
+        /\b(src|href)="([^"]*\/assets\/[^"]+\.css(?:\?[^"]*)?)"/g,
         (_match, attribute: string, url: string) => `${attribute}="${appendCacheBustQuery(url, encodedCacheBust)}"`
     );
 }

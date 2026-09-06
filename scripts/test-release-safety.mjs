@@ -597,6 +597,9 @@ function withCleanGitFixture(fn) {
     try {
         copyWorkingSourceToFixture(fixtureRoot);
         runGit(fixtureRoot, ["init"]);
+        // Disposable fixtures must not leave background Git maintenance racing cleanup.
+        runGit(fixtureRoot, ["config", "gc.auto", "0"]);
+        runGit(fixtureRoot, ["config", "maintenance.auto", "false"]);
         runGit(fixtureRoot, ["add", "."]);
         runGit(fixtureRoot, ["-c", "user.name=Ms Pac-Man Release Test", "-c", "user.email=release-test@example.invalid", "commit", "-m", "fixture"]);
         fn(fixtureRoot);

@@ -59,7 +59,10 @@ async function mountMain(restore: ((main: Main, container: AppGameContainer) => 
     main.appGameContainer = container;
     main.windowedDisplayModeProvider = () => ({ width: 1000, height: 750 });
     if (restore !== null) {
-        main.loadingCompleteHandler = () => restore(main, container);
+        main.loadingCompleteHandler = () => {
+            assert(restore(main, container), "Saved state restore failed; default startup must not count as restoration.");
+            return true;
+        };
     }
     await container.setDisplayMode(1000, 750, false);
     await container.start();
@@ -77,6 +80,8 @@ async function verify(): Promise<void> {
     const first = await mountMain(null);
     const savedMode = first.main.getCurrentModeIdForState();
     assert(savedMode === "attract", `Expected the real game to start in attract mode, got ${savedMode}.`);
+    first.main.score = 123450;
+    first.main.lives = 3;
     assert(store.save(first.main), "Real browser Main could not create a save-state snapshot.");
     first.buffered.setScalingPreference("smooth");
     first.buffered.setScalingPreference("pixel-perfect");
@@ -88,6 +93,7 @@ async function verify(): Promise<void> {
     const second = await mountMain((main, container) => store.restore(main, container));
     assert(second.main.getCurrentModeIdForState() === savedMode, "A fresh browser Main did not restore the saved mode.");
     assert(second.main.isStateSaveReady(), "Restored browser Main is not save-state ready.");
+    assert(second.main.score === 123450 && second.main.lives === 3, "Fresh Main must restore non-default score and lives.");
     second.main.invalidateBrowserLifetime();
     second.container.destroy();
     Display.setParent(null);

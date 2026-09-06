@@ -1,4 +1,7 @@
+import { unlockGameAudio } from "./AudioUnlock.js";
 import "./styles.css";
+import { GameSessionOwnership } from "./GameSessionOwnership.js";
+import { MAX_SNAPSHOT_TEXT_LENGTH } from "./SnapshotLimits.js";
 import { SoundStore, type AppGameContainer, type GameContainer } from "slick2d-ts";
 import { BrowserPreferences, DEFAULT_SCALING_PREFERENCE, DEFAULT_VOLUME, type ScalingPreference } from "./BrowserPreferences";
 import { createBrowserStorageKeys } from "./BrowserStorageKeys";
@@ -48,13 +51,23 @@ let gameStateStore: MsPacManGameStateStore | null = null;
 let volume = preferences.volume;
 let scalingPreference: ScalingPreference = preferences.scaling;
 let activeSessionGeneration = 0;
+const ownership = new GameSessionOwnership(
+    app,
+    () => {
+        renderMenu();
+        window.__msPacManBooted = true;
+    },
+    () => {
+        saveCurrentGameState();
+        destroyGame();
+    }
+);
 window.__msPacManResourcesPrepared = false;
 if (!window.__msPacManBootFailed) {
     setupGlobalErrorHandlers();
     setupPageLifecycleHandlers();
     void registerServiceWorker(CACHE_BUST);
-    renderMenu();
-    window.__msPacManBooted = true;
+    ownership.start();
 }
 
 function renderMenu(errorText = ""): void {
@@ -383,7 +396,7 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean, ge
 }
 
 async function unlockAudio(): Promise<void> {
-    await SoundStore.get().unlock();
+    await unlockGameAudio();
 }
 
 function applyVolume(): void {
@@ -635,6 +648,7 @@ function destroyGame(): void {
 }
 
 function saveCurrentGameState(): boolean {
+    if (!ownership.owned) return false;
     if (!game || !game.isStateSaveReady()) {
         return false;
     }
@@ -669,7 +683,7 @@ function hasPotentialSavedGameState(): boolean {
     } catch {
         return false;
     }
-    if (text === null) {
+    if (text === null || text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
         return false;
     }
 

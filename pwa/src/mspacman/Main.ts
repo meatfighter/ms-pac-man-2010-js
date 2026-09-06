@@ -1,3 +1,4 @@
+import { SoundStore } from "slick2d-ts";
 import {
     AppGameContainer,
     BasicGame,
@@ -381,16 +382,7 @@ export class Main extends BasicGame {
     }
 
     public stopAllSoundEffects(): void {
-        this.atePellotSound.stop();
-        this.ateEnergizerSound.stop();
-        this.ateGhostSound.stop();
-        this.ateFruitSound.stop();
-        this.fruitAppearedSound.stop();
-        this.blueGhostsSound.stop();
-        this.clappingSound.stop();
-        this.extraLifeSound.stop();
-        this.diedSound.stop();
-        this.pressedEnterSound.stop();
+        SoundStore.get().stopSoundEffects();
     }
 
     public stopAllSounds(): void {
