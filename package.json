@@ -30,6 +30,8 @@
         "build:web:release": "node scripts/build-release.mjs --target=web --key-source=active",
         "build": "node scripts/build-release.mjs --target=full --key-source=active",
         "release": "npm run verify:dependencies && npm run build",
+        "qualify": "node scripts/assert-clean-git.mjs && npm run format:check && npm run lint && npm test && npm run release && npm run verify:release && npm run verify:browser && npm run verify:offline && node scripts/assert-clean-git.mjs",
+        "qualify:browsers": "npm run verify:production-browser",
         "release:provision": "node scripts/release-provision.mjs",
         "release:rotate-hmac": "node scripts/release-rotate-hmac.mjs",
         "release:finalize-hmac": "node scripts/release-finalize-hmac.mjs",

@@ -1,11 +1,9 @@
 # Release qualification and retention
 
 Release from a clean checkout of one reviewed commit. Preserve existing Git history.
-Run the repository's verification and production build commands before archiving.
-The Verify workflow retains successful build artifacts for 90 days, with SHA-256
-checksums and `RELEASE.json` recording the exact commit, source tree, package version,
-Node version, build directory, and each packaged file's hash. Download and retain
-production artifacts in durable release storage before Actions retention expires.
+Run `npm run qualify` against that exact commit before pushing or tagging it. Local
+qualification is the normal gate; GitHub Actions Verify is manual-only and optional
+as a second Linux environment.
 
 Archive an already verified build on a host with Node.js, Git, and tar:
 
@@ -20,6 +18,10 @@ Rebuilds can have new timestamps: the archive hash identifies the exact deployed
 bytes, while the commit identifies their source. Retain the last known good archive
 for rollback instead of rebuilding it during an incident.
 
+A manually run Verify workflow provides an independent Linux check using a synthetic
+HMAC key and retains its qualified artifact for 90 days. It is optional and does not
+replace local qualification of the active-key production build.
+
 After all required checks pass, create an annotated release tag on that exact
 commit and push the tag. Choose a unique version tag matching the release; never
 move an existing tag. Record the tag, commit, archive hash, qualification run, and
@@ -28,16 +30,17 @@ Do not change repository visibility as part of the build.
 
 ## Browser qualification
 
-`verify:production-browser` runs Chromium, Firefox, and
-WebKit against the production build. It checks resource preparation, game entry,
-real-tab save takeover, two service-worker cache generations, offline Continue,
-and preservation of a newer public save. WebKit's cache fallback is tested by dropping
-all connections to the origin; Playwright's offline emulation has a known WebKit
-service-worker navigation limitation. Chromium and Firefox also use browser offline
-emulation. The cache-generation fixture uses the
+`npm run qualify` includes the production build, release verification, real Chromium
+boot/save/restore, and offline PWA verification. `npm run qualify:browsers` is an
+optional additional Chromium/Firefox/WebKit pass against the built `dist/pwa/`.
+It checks resource preparation, game entry, real-tab save takeover, two service-worker
+cache generations, offline Continue, and preservation of a newer public save. WebKit's
+cache fallback is tested by dropping all connections to the origin; Playwright's
+offline emulation has a known WebKit service-worker navigation limitation. Chromium
+and Firefox also use browser offline emulation. The cache-generation fixture uses the
 same candidate's assets with two worker identities; it does not claim compatibility
-between arbitrary historical releases. Existing browser fixtures exercise real
-Main save/restore.
+between arbitrary historical releases. Existing browser fixtures exercise real Main
+save/restore.
 
 Before the first deployment, record a short real-device pass on supported Safari/iOS
 and Android devices: launch from the home screen, enter gameplay, exercise audio and
@@ -55,11 +58,11 @@ the new single-session protocol.
 
 ## Ms. Pac-Man signing
 
-CI uses the explicitly synthetic full-build path and fixture HMAC key. Its archive
-is marked `synthetic-test-not-for-deployment`; never deploy it or relabel it as a
-production release. Build production `dist` with the existing active-key release
-tooling, qualify those bytes, and archive that directory. Keep the local key files
-and rotation state outside version control.
+The optional manual Verify workflow uses the explicitly synthetic full-build path and
+fixture HMAC key. Its archive is marked `synthetic-test-not-for-deployment`; never
+deploy it or relabel it as a production release. Build production `dist` with the
+existing active-key release tooling, qualify those bytes, and archive that directory.
+Keep the local key files and rotation state outside version control.
 
 The active signing key is stored locally in
 `.release-secrets/ms-pac-man-2010-hmac.hex`. This directory is ignored by Git.

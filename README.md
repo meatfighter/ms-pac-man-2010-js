@@ -48,12 +48,13 @@ The commands also work in Windows PowerShell; use `npm.cmd` if PowerShell blocks
 | Check browser / offline behavior    | `npm run verify:browser` / `npm run verify:offline` | See browser prerequisites below                                             |
 | Audit dependencies                  | `npm run verify:dependencies`                       | Queries current npm advisories                                              |
 | Build production release            | `npm run release`                                   | `dist/`; requires active-key release configuration                          |
+| Qualify local commit                | `npm run qualify`                                   | Full local pre-push qualification; builds and verifies `dist/`              |
 
 Component builds use isolated output directories; building a component does not refresh the complete `dist/` distribution. Use the public scripts above rather than invoking internal `_build:*` steps directly.
 
 Browser fixtures use a locally installed Chrome, Chromium, or Edge. Set `CHROMIUM_PATH` to the executable if automatic discovery fails. Offline verification also needs a built PWA; consult [scripts/run-offline-verification.mjs](scripts/run-offline-verification.mjs) for its output-directory selection.
 
-For the separate Chromium/Firefox/WebKit qualification, install the browser engines locally with `npx playwright install chromium firefox webkit`, then run `npm run verify:production-browser` against an already built `dist/pwa/`. Set `PWA_ROOT` to use another built PWA directory. Linux also needs the Playwright system dependencies and a graphical display or Xvfb. See [RELEASING.md](RELEASING.md) for coverage limits and device checks. Run checks locally; GitHub Actions is not required for development.
+For the separate Chromium/Firefox/WebKit qualification, install the browser engines locally with `npx playwright install chromium firefox webkit`, then run `npm run qualify:browsers` against an already built `dist/pwa/`. Set `PWA_ROOT` to use another built PWA directory. Linux also needs the Playwright system dependencies and a graphical display or Xvfb. See [RELEASING.md](RELEASING.md) for coverage limits and device checks. Run `npm run qualify` before pushing release-affecting changes; GitHub Actions is an optional manual Linux check.
 
 ## Maintenance principles
 
@@ -76,7 +77,7 @@ The high-score server is maintained in a separate private repository. Access to 
 
 Use `build:pwa:unsigned`, `build:web:unsigned`, and `build:desktop` for development. `npm run build` and `npm run release` require the maintainer's active-key configuration. Synthetic verification artifacts are not production releases.
 
-Production browser builds use the fixed same-origin endpoint `/api/ms-pac-man-2010/scores`. Moving a build to another directory on the same host does not isolate leaderboard requests. Arrange a separate staging host/backend or disable submissions when testing against a production host. The current release build does not accept an alternate API path.
+Production browser builds use the fixed same-origin endpoint `/api/ms-pac-man-2010/scores`. Moving a build to another directory on the same host does not isolate leaderboard requests. The same leaderboard may be used for staging and production when that is intentional. The current release build does not accept an alternate API path.
 
 The embedded HMAC key deters casual tampering; it cannot authenticate legitimate play. See the public [client implementation](pwa/src/mspacman/) for protocol handling and [RELEASING.md](RELEASING.md#ms-pac-man-signing) for maintainer signing configuration.
 
