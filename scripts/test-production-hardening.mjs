@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { delimiter, join } from "node:path";
 import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
@@ -10,6 +13,52 @@ function load(path, context) {
     vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, context);
     return context.exports;
 }
+
+test("Windows desktop launcher tolerates paths containing parentheses", () => {
+    const launcherPath = join("desktop", "run-windows.cmd");
+    const source = readFileSync(launcherPath, "utf8");
+
+    assert.doesNotMatch(source, /^\s*if\b[^\r\n]*\(\s*$/im, "Path-sensitive IF checks must not use CMD parenthesized command blocks");
+    assert.match(source, /if not exist "%JAR_PATH%" set "JAR_PATH=%BASE_DIR%ms-pac-man-2010-desktop\.jar"/);
+    assert.match(source, /if not exist "%NATIVE_PATH%" set "NATIVE_PATH=%BASE_DIR%natives\\windows"/);
+
+    if (process.platform !== "win32") {
+        return;
+    }
+
+    const tempRoot = mkdtempSync(join(tmpdir(), "ms-pac-man-desktop (1) "));
+    const installDir = join(tempRoot, "ms-pac-man-2010-desktop");
+    const fakeBin = join(tempRoot, "fake-java");
+    const javaLogPath = join(tempRoot, "java-args.txt");
+    try {
+        mkdirSync(join(installDir, "natives", "windows"), { recursive: true });
+        mkdirSync(fakeBin, { recursive: true });
+        copyFileSync(launcherPath, join(installDir, "run-windows.cmd"));
+        writeFileSync(join(installDir, "ms-pac-man-2010-desktop.jar"), "");
+        writeFileSync(join(fakeBin, "java.cmd"), '@echo off\r\n>>"%MSPACMAN_TEST_JAVA_LOG%" echo %*\r\nexit /b 0\r\n');
+
+        const env = { ...process.env, MSPACMAN_TEST_JAVA_LOG: javaLogPath };
+        const pathKey = Object.keys(env).find((key) => key.toLowerCase() === "path") ?? "PATH";
+        env[pathKey] = `${fakeBin}${delimiter}${env[pathKey] ?? ""}`;
+        const result = spawnSync("cmd.exe", ["/d", "/c", "run-windows.cmd"], {
+            cwd: installDir,
+            encoding: "utf8",
+            env
+        });
+        assert.equal(
+            result.status,
+            0,
+            `Windows launcher failed from a path containing parentheses.\nstdout:\n${result.stdout ?? ""}\nstderr:\n${result.stderr ?? ""}${result.error ? `\n${result.error.message}` : ""}`
+        );
+
+        const javaLog = readFileSync(javaLogPath, "utf8");
+        assert.match(javaLog, /-jar/);
+        assert.ok(javaLog.includes(join(installDir, "ms-pac-man-2010-desktop.jar")));
+        assert.ok(javaLog.includes(join(installDir, "natives", "windows")));
+    } finally {
+        rmSync(tempRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
+    }
+});
 
 test("failed runtime import aborts and settles preloading before retry is exposed", async () => {
     let settled = false;
