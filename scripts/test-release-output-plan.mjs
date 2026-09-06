@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { assertSafeReleaseMutationPath, pathsEqual, rootDir, spawnGit } from "./build-utils.mjs";
+import { assertSafeReleaseMutationPath, cleanDirectory, pathsEqual, rootDir, spawnGit } from "./build-utils.mjs";
 import { normalizeRequestedOutputDir, resolveReleaseOutputPlan } from "./release-output-plan.mjs";
 import { assertReleaseProvenance } from "./release-provenance.mjs";
 
@@ -10,6 +10,61 @@ const repositoryDistDir = join(rootDir, "dist");
 const releaseComponentsDir = join(rootDir, ".release-components");
 const hmacNextCandidateDir = join(rootDir, ".release-candidates", "hmac-next");
 const syntheticOutputDir = join(rootDir, ".release-components", "synthetic-full");
+await runTest("production temporary releases allow nested output cleanup without touching siblings", () => {
+    const pendingDir = mkdtempSync(join(rootDir, ".dist-pending-"));
+    try {
+        const assetsDir = join(pendingDir, "assets");
+        const pwaDir = join(pendingDir, "pwa");
+        mkdirSync(assetsDir);
+        mkdirSync(pwaDir);
+        writeFileSync(join(assetsDir, "stale.txt"), "old assets");
+        writeFileSync(join(pwaDir, "sentinel.txt"), "built PWA");
+        cleanDirectory(assetsDir);
+        cleanDirectory(join(pendingDir, "downloads", "nested"));
+        assert.equal(existsSync(join(assetsDir, "stale.txt")), false);
+        assert.equal(readFileSync(join(pwaDir, "sentinel.txt"), "utf8"), "built PWA");
+        for (const name of [".dist-previous-123-456", ".dist-active-before-hmac-finalize-123-456"]) {
+            assertSafeReleaseMutationPath(join(rootDir, name, "assets"), "temporary release child");
+        }
+        for (const path of [
+            rootDir,
+            join(rootDir, "assets"),
+            join(pendingDir, "..", "about"),
+            join(rootDir, "about", ".dist-pending-test", "assets"),
+            join(rootDir, ".dist-pending-test.invalid", "assets"),
+            join(rootDir, "..", ".dist-pending-test", "assets")
+        ]) {
+            assert.throws(() => assertSafeReleaseMutationPath(path, "unsafe output"), /managed|repository root/);
+        }
+    } finally {
+        rmSync(pendingDir, { recursive: true, force: true });
+    }
+});
+
+await runTest("production temporary release children cannot traverse links", () => {
+    const pendingDir = mkdtempSync(join(rootDir, ".dist-pending-"));
+    const externalDir = mkdtempSync(join(tmpdir(), "mspacman-protected-output-"));
+    try {
+        writeFileSync(join(externalDir, "sentinel.txt"), "protected");
+        const linkPath = join(pendingDir, "assets");
+        try {
+            symlinkSync(externalDir, linkPath, process.platform === "win32" ? "junction" : "dir");
+        } catch (error) {
+            if (error.code !== "EPERM" && error.code !== "EACCES") {
+                throw error;
+            }
+            console.log(`ok - link creation unavailable; skipped link assertion (${error.code})`);
+            return;
+        }
+        assert.throws(() => cleanDirectory(linkPath), /symlink|junction/);
+        assert.throws(() => cleanDirectory(join(linkPath, "nested")), /symlink|junction/);
+        assert.equal(readFileSync(join(externalDir, "sentinel.txt"), "utf8"), "protected");
+    } finally {
+        rmSync(pendingDir, { recursive: true, force: true });
+        rmSync(externalDir, { recursive: true, force: true });
+    }
+});
+
 await runTest("active-key full release writes only canonical repository dist", () => {
     const plan = createPlan({
         keySource: "active",

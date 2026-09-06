@@ -359,11 +359,19 @@ function readActiveTestOverrideRoots() {
 }
 
 function isControlledTemporaryReleasePath(path) {
-    const parent = dirname(path);
-    const name = basename(path);
+    if (!isPathInside(path, rootDir)) {
+        return false;
+    }
+    // Recognize the temporary release root even when validating a child output directory.
+    let temporaryRoot = path;
+    while (!pathsEqual(dirname(temporaryRoot), rootDir)) {
+        temporaryRoot = dirname(temporaryRoot);
+    }
+    const name = basename(temporaryRoot);
     return (
-        pathsEqual(parent, rootDir) &&
-        (/^\.dist-pending-[A-Za-z0-9_-]+/.test(name) || /^\.dist-previous-\d+-\d+$/.test(name) || /^\.dist-active-before-hmac-finalize-\d+-\d+$/.test(name))
+        /^\.dist-pending-[A-Za-z0-9_-]+$/.test(name) ||
+        /^\.dist-previous-\d+-\d+$/.test(name) ||
+        /^\.dist-active-before-hmac-finalize-\d+-\d+$/.test(name)
     );
 }
 
