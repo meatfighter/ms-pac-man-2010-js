@@ -121,9 +121,9 @@ function verifyAboutRelease() {
         existsSync(join(distDir, "downloads", `ms-pac-man-2010-desktop-${version.version}.zip`)),
         "About page versioned desktop ZIP link target must exist."
     );
-    assert.ok(aboutIndex.includes('<link rel="canonical" href="https://meatfighter.com/mspacman2010/" />'), "About page must include canonical metadata.");
+    assert.ok(aboutIndex.includes('<link rel="canonical" href="https://meatfighter.com/mspacman2010/">'), "About page must include canonical metadata.");
     assert.ok(
-        aboutIndex.includes('<meta property="og:image" content="https://meatfighter.com/mspacman2010/assets/ms-pac-man-2010-screenshot.png" />'),
+        aboutIndex.includes('<meta property="og:image" content="https://meatfighter.com/mspacman2010/assets/ms-pac-man-2010-screenshot.png">'),
         "About page must include social preview image metadata."
     );
     assert.ok(aboutIndex.includes('<nav class="toc" aria-labelledby="toc-heading">'), "About page must include the generated top contents index.");
