@@ -104,14 +104,22 @@ export class GameSessionOwnership {
     }
 
     private showMessage(message: string): void {
-        const panel = document.createElement("main");
-        panel.className = "shell";
-        panel.setAttribute("aria-live", "polite");
-        const text = document.createElement("p");
+        const screen = document.createElement("main");
+        // Reuse each game's existing menu classes so this state automatically follows its PWA theme.
+        screen.className = "shell menu-screen session-ownership-screen";
+        screen.setAttribute("aria-live", "polite");
+
+        const panel = document.createElement("section");
+        panel.className = "menu menu-panel menu-actions session-ownership-panel";
+
+        const text = document.createElement("span");
+        text.className = "setting-scaling-row session-ownership-message";
         text.textContent = message;
         panel.append(text);
+
         if ("locks" in navigator && "BroadcastChannel" in globalThis) {
             const button = document.createElement("button");
+            button.className = "start-button";
             button.type = "button";
             button.textContent = "Continue here";
             button.addEventListener("click", () => {
@@ -120,6 +128,8 @@ export class GameSessionOwnership {
             });
             panel.append(button);
         }
-        this.root.replaceChildren(panel);
+
+        screen.append(panel);
+        this.root.replaceChildren(screen);
     }
 }
