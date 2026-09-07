@@ -1,7 +1,27 @@
 * text=auto eol=lf
 
-*.jar binary
-*.zip binary
+*.cmd text eol=lf
+*.ps1 text eol=lf
+*.sh text eol=lf
+*.svg text eol=lf
+
 *.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
 *.ogg binary
+*.wav binary
+*.mp3 binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.jar binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.jnilib binary
+*.zip binary
 *.dat binary
