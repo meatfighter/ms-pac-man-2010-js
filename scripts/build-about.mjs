@@ -71,9 +71,7 @@ try {
         __ARTICLE_HTML__: prepareAboutArticleHtml(renderedMarkdown),
         __TOC_HTML__: renderedMarkdown.tocHtml
     };
-    const indexHtml = finalizeAboutPageHtml(
-        renderCheckedTemplate(readFileSync(join(aboutDir, "index.html"), "utf8"), pageReplacements, "about index page")
-    );
+    const indexHtml = finalizeAboutPageHtml(renderCheckedTemplate(readFileSync(join(aboutDir, "index.html"), "utf8"), pageReplacements, "about index page"));
 
     writeTextFileAtomically(join(outputDir, "index.html"), indexHtml, { mode: 0o644 });
     writeTextFileAtomically(

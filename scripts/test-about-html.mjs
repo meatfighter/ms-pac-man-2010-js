@@ -1,11 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-    assertAboutHeadingHierarchy,
-    assertAboutHtmlConformance,
-    finalizeAboutPageHtml,
-    prepareAboutArticleHtml
-} from "./about-html.mjs";
+import { assertAboutHeadingHierarchy, assertAboutHtmlConformance, finalizeAboutPageHtml, prepareAboutArticleHtml } from "./about-html.mjs";
 
 function validPage() {
     return `<!doctype html>
@@ -45,10 +40,7 @@ test("About article headings are embedded beneath the page title without changin
 });
 
 test("About Markdown heading hierarchy rejects skipped or unembeddable levels", () => {
-    assert.throws(
-        () => assertAboutHeadingHierarchy([{ level: 1 }, { level: 3 }]),
-        /heading level jumps from 1 to 3/
-    );
+    assert.throws(() => assertAboutHeadingHierarchy([{ level: 1 }, { level: 3 }]), /heading level jumps from 1 to 3/);
     assert.throws(() => assertAboutHeadingHierarchy([{ level: 6 }]), /cannot be embedded beneath the page title/);
 });
 
