@@ -1,4 +1,5 @@
 import { generateAboutImageAssets, titleImageHeight, titleImageSizes, titleImageWidth } from "./about-image-assets.mjs";
+import { finalizeAboutPageHtml, prepareAboutArticleHtml } from "./about-html.mjs";
 import { renderAboutMarkdown } from "./about-markdown.mjs";
 import {
     assertSafeReleaseMutationPath,
@@ -67,15 +68,14 @@ try {
     const renderedMarkdown = renderAboutMarkdown(contentMarkdown);
     const pageReplacements = {
         ...replacements,
-        __ARTICLE_HTML__: renderedMarkdown.articleHtml,
+        __ARTICLE_HTML__: prepareAboutArticleHtml(renderedMarkdown),
         __TOC_HTML__: renderedMarkdown.tocHtml
     };
-
-    writeTextFileAtomically(
-        join(outputDir, "index.html"),
-        renderCheckedTemplate(readFileSync(join(aboutDir, "index.html"), "utf8"), pageReplacements, "about index page"),
-        { mode: 0o644 }
+    const indexHtml = finalizeAboutPageHtml(
+        renderCheckedTemplate(readFileSync(join(aboutDir, "index.html"), "utf8"), pageReplacements, "about index page")
     );
+
+    writeTextFileAtomically(join(outputDir, "index.html"), indexHtml, { mode: 0o644 });
     writeTextFileAtomically(
         join(outputDir, "styles.css"),
         renderCheckedTemplate(readFileSync(join(aboutDir, "styles.css"), "utf8"), pageReplacements, "about stylesheet"),
