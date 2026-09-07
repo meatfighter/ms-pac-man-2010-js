@@ -19,6 +19,8 @@ await runTest("about Markdown content is the user-facing source of truth", () =>
     assert.match(contentMarkdown, /\[Play\]\(__PWA_URL__\)/);
     assert.match(contentMarkdown, /\[meatfighter\/ms-pac-man-2010-js repository\]\(__REPOSITORY_URL__\)/);
     assert.match(contentMarkdown, /\[ZIP file\]\(__DESKTOP_ZIP__\)/);
+    assert.match(contentMarkdown, /- \*\*Scaling\*\* — /);
+    assert.match(contentMarkdown, /- \*\*Reset\*\* — /);
     assert.match(contentMarkdown, /Windows: `run-windows\.cmd`/);
     assert.match(contentMarkdown, /Linux: `run-linux\.sh`/);
     assert.match(contentMarkdown, /macOS: `run-macos\.sh`/);
