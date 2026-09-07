@@ -86,12 +86,12 @@ test("second tab cannot write until the old tab saves and destroys its session",
     assert.equal(second.owned, false);
 
     const screen = secondRoot.children[0];
-    assert.equal(screen.className, "shell menu-screen session-ownership-screen");
+    assert.equal(screen.className, "session-ownership-screen");
     assert.equal(screen.children.length, 1);
     const panel = screen.children[0];
-    assert.equal(panel.className, "menu menu-panel menu-actions session-ownership-panel");
+    assert.equal(panel.className, "session-ownership-panel");
     const message = panel.children[0];
-    assert.equal(message.className, "setting-scaling-row session-ownership-message");
+    assert.equal(message.className, "session-ownership-message");
     assert.match(message.textContent, /another tab/);
     const continueButton = panel.children[1];
     assert.equal(continueButton.className, "start-button");

@@ -105,15 +105,14 @@ export class GameSessionOwnership {
 
     private showMessage(message: string): void {
         const screen = document.createElement("main");
-        // Reuse each game's existing menu classes so this state automatically follows its PWA theme.
-        screen.className = "shell menu-screen session-ownership-screen";
+        screen.className = "session-ownership-screen";
         screen.setAttribute("aria-live", "polite");
 
         const panel = document.createElement("section");
-        panel.className = "menu menu-panel menu-actions session-ownership-panel";
+        panel.className = "session-ownership-panel";
 
         const text = document.createElement("span");
-        text.className = "setting-scaling-row session-ownership-message";
+        text.className = "session-ownership-message";
         text.textContent = message;
         panel.append(text);
 

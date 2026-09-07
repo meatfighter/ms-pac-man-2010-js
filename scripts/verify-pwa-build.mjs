@@ -295,12 +295,18 @@ function assertManifestAssetReferencesAreStamped(manifest, cacheBust) {
 
 async function assertRelocatablePwaBuild(indexHtml, manifestText, serviceWorker, resources, cacheBust) {
     const manifest = JSON.parse(manifestText);
+    const identityUrls = new Set();
     for (const base of relocationTestBases) {
         assertIndexReferencesResolveWithinScope(indexHtml, base, cacheBust);
-        assertManifestResolvesWithinScope(manifest, base, cacheBust);
+        identityUrls.add(assertManifestResolvesWithinScope(manifest, base, cacheBust));
         assertServiceWorkerResolvesWithinScope(serviceWorker, resources, base, cacheBust);
         await assertHighScoreApiBypassesServiceWorkerCache(serviceWorker, base);
     }
+    assert.deepEqual(
+        [...identityUrls],
+        ["https://example.invalid/mspacman2010"],
+        "Manifest id must remain the same game identity when identical PWA bytes are mounted at different paths."
+    );
 }
 
 function assertIndexReferencesResolveWithinScope(html, base, cacheBust) {
@@ -330,12 +336,12 @@ function assertManifestResolvesWithinScope(manifest, base, cacheBust) {
     const manifestUrl = new URL("./manifest.webmanifest", base).href;
     const scope = new URL(manifest.scope, manifestUrl).href;
     const startUrl = new URL(manifest.start_url, manifestUrl);
-    const idUrl = new URL(manifest.id, manifestUrl).href;
+    const idUrl = new URL(manifest.id, `${startUrl.origin}/`).href;
 
     assert.equal(scope, base, `Manifest scope must resolve to the current PWA directory for ${base}.`);
     assert.ok(startUrl.href.startsWith(scope), `Manifest start_url must remain inside scope for ${base}.`);
     assert.equal(startUrl.searchParams.get("v"), cacheBust, `Manifest start_url is missing the release cache-bust query for ${base}.`);
-    assert.ok(idUrl.startsWith(scope), `Manifest id must resolve inside the current PWA scope for ${base}.`);
+    assert.equal(idUrl, `${startUrl.origin}/mspacman2010`, `Manifest id must resolve from the start_url origin to the Ms. Pac-Man game identity for ${base}.`);
     assert.ok(Array.isArray(manifest.icons), "PWA manifest must contain an icons array.");
 
     for (const icon of manifest.icons) {
@@ -343,6 +349,7 @@ function assertManifestResolvesWithinScope(manifest, base, cacheBust) {
         assert.ok(iconUrl.href.startsWith(scope), `Manifest icon must resolve inside the current PWA scope for ${base}: ${icon.src}`);
         assert.equal(iconUrl.searchParams.get("v"), cacheBust, `Manifest icon is missing the release cache-bust query: ${icon.src}`);
     }
+    return idUrl;
 }
 
 function assertServiceWorkerResolvesWithinScope(serviceWorker, resources, base, cacheBust) {

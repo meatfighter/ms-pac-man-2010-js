@@ -44,15 +44,46 @@ input {
     justify-items: center;
 }
 
+.session-ownership-screen {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: #000000;
+}
+
+.session-ownership-panel {
+    width: min(520px, calc(100vw - 48px));
+    display: grid;
+    gap: 25px;
+    justify-items: center;
+    text-align: center;
+}
+
+.setting-scaling-row,
+.session-ownership-message {
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 700;
+}
+
 .setting-scaling-row {
     position: relative;
     display: grid;
     grid-template-columns: max-content auto;
     align-items: center;
     gap: 10px;
-    color: #ffffff;
-    font-size: 16px;
-    font-weight: 700;
+}
+
+.session-ownership-message {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    overflow-wrap: anywhere;
+    line-height: 1.45;
+    text-align: center;
+    white-space: normal;
 }
 
 .theme-picker {
