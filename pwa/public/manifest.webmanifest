@@ -2,7 +2,7 @@
     "name": "Ms. Pac-Man 2010",
     "short_name": "Ms. Pac-Man",
     "description": "Ms. Pac-Man 2010.",
-    "id": "./",
+    "id": "/mspacman2010/",
     "start_url": "./?v=%CACHE_VERSION%",
     "scope": ".",
     "display": "standalone",
