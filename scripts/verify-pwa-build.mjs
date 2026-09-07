@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { runInNewContext } from "node:vm";
@@ -53,7 +54,7 @@ async function main() {
     assertServiceWorkerLifecycle(serviceWorker);
     assertImmutableServiceWorkerRuntimeCache(serviceWorker);
     assertIndexAssetReferencesAreStamped(indexHtml, cacheBust);
-    assertManifestAssetReferencesAreStamped(manifest, cacheBust);
+    assertManifestInstallMetadataIsStable(manifest);
     await assertRelocatablePwaBuild(indexHtml, manifest, serviceWorker, resources, cacheBust);
 
     console.log(`PWA build verified: ${builtAssets.length} built assets are precached.`);
@@ -94,6 +95,20 @@ function readPrecacheResources(serviceWorker) {
         assert.equal(typeof resource, "string", "APP_STATIC_RESOURCES entries must be strings.");
     }
     return resources;
+}
+
+function readInstallIconVersions(serviceWorker) {
+    const match = /const INSTALL_ICON_VERSIONS = (\{[\s\S]*?\});/.exec(serviceWorker);
+    assert.ok(match !== null && match[1] !== undefined, "Could not find INSTALL_ICON_VERSIONS in dist/pwa/sw.js.");
+    const versions = JSON.parse(match[1]);
+    assert.ok(versions !== null && typeof versions === "object" && !Array.isArray(versions), "INSTALL_ICON_VERSIONS must be an object.");
+    return versions;
+}
+
+function contentVersionForPwaRef(ref) {
+    return createHash("sha256")
+        .update(readFileSync(join(pwaDistDir, ...ref.split("/"))))
+        .digest("hex");
 }
 
 function assertPrecacheResourceTree(resources) {
@@ -163,7 +178,8 @@ async function assertVersionedServiceWorkerCacheKeys(serviceWorker, cacheBust) {
         false,
         "Service worker internal version must not be derived from its registration URL."
     );
-    assert.ok(serviceWorker.includes("cache.match(createCacheUrl(requestOrUrl))"), "Service worker runtime cache reads must use normalized cache keys.");
+    assert.ok(serviceWorker.includes("const cache = await caches.open(CACHE_NAME);"), "Service worker runtime cache reads must stay inside the current cache namespace.");
+    assert.ok(serviceWorker.includes("cache.match(cacheUrl)"), "Service worker runtime cache reads must use normalized cache keys.");
     assert.ok(serviceWorker.includes('!url.searchParams.has("v")'), "Service worker must preserve explicitly supplied build versions.");
     assert.ok(
         serviceWorker.includes('url.searchParams.set("v", resourceVersionForUrl(url))'),
@@ -171,7 +187,20 @@ async function assertVersionedServiceWorkerCacheKeys(serviceWorker, cacheBust) {
     );
     assert.equal(serviceWorker.includes("IGNORED_CACHE_SEARCH_PARAMS"), false, "Service worker must not strip build-stamp cache keys.");
     assert.equal(serviceWorker.includes('searchParams.delete("v")'), false, "Service worker must not delete build-stamp cache keys.");
-    assert.equal(serviceWorker.includes("ignoreSearch"), false, "Service worker should use normalized cache keys instead of ignoreSearch.");
+    assert.ok(
+        serviceWorker.includes('requestUrl.searchParams.get("v") === installIconVersion'),
+        "Install-icon cache fallback must only accept the current icon content version."
+    );
+    assert.ok(
+        serviceWorker.includes("cache.match(cacheUrl, { ignoreSearch: true })"),
+        "Current install icons should be able to reuse their current-cache precache entry."
+    );
+
+    const installIconVersions = readInstallIconVersions(serviceWorker);
+    assert.ok(Object.keys(installIconVersions).length > 0, "Built service worker must include install-icon content versions.");
+    for (const [ref, version] of Object.entries(installIconVersions)) {
+        assert.equal(version, contentVersionForPwaRef(ref), `Install-icon fingerprint must match emitted bytes: ${ref}`);
+    }
 
     const staleScriptUrlVersion = "1.0.0-stale-script-url";
     const worker = createServiceWorkerHarness(serviceWorker, staleScriptUrlVersion);
@@ -275,21 +304,17 @@ function assertIndexAssetReferencesAreStamped(html, cacheBust) {
     }
 }
 
-function assertManifestAssetReferencesAreStamped(manifest, cacheBust) {
+function assertManifestInstallMetadataIsStable(manifest) {
     const parsed = JSON.parse(manifest);
-    assert.equal(
-        new URL(parsed.start_url, "https://example.invalid/pwa/").searchParams.get("v"),
-        cacheBust,
-        "Manifest start_url is missing the cache-bust query."
-    );
+    const base = "https://example.invalid/pwa/";
+    const startUrl = new URL(parsed.start_url, base);
+    assert.equal(startUrl.href, base, "Manifest start_url must be a stable scope-relative launch URL.");
     assert.ok(Array.isArray(parsed.icons), "PWA manifest must contain an icons array.");
 
     for (const icon of parsed.icons) {
-        assert.equal(
-            new URL(icon.src, "https://example.invalid/pwa/").searchParams.get("v"),
-            cacheBust,
-            `Manifest icon is missing the cache-bust query: ${icon.src}`
-        );
+        const iconUrl = new URL(icon.src, base);
+        const ref = decodeURIComponent(iconUrl.pathname.slice(new URL(base).pathname.length)).replace(/^\/+/, "");
+        assert.equal(iconUrl.searchParams.get("v"), contentVersionForPwaRef(ref), `Manifest icon must use the emitted file's content version: ${icon.src}`);
     }
 }
 
@@ -298,7 +323,7 @@ async function assertRelocatablePwaBuild(indexHtml, manifestText, serviceWorker,
     const identityUrls = new Set();
     for (const base of relocationTestBases) {
         assertIndexReferencesResolveWithinScope(indexHtml, base, cacheBust);
-        identityUrls.add(assertManifestResolvesWithinScope(manifest, base, cacheBust));
+        identityUrls.add(assertManifestResolvesWithinScope(manifest, base));
         assertServiceWorkerResolvesWithinScope(serviceWorker, resources, base, cacheBust);
         await assertHighScoreApiBypassesServiceWorkerCache(serviceWorker, base);
     }
@@ -332,22 +357,22 @@ function assertIndexReferencesResolveWithinScope(html, base, cacheBust) {
     }
 }
 
-function assertManifestResolvesWithinScope(manifest, base, cacheBust) {
+function assertManifestResolvesWithinScope(manifest, base) {
     const manifestUrl = new URL("./manifest.webmanifest", base).href;
     const scope = new URL(manifest.scope, manifestUrl).href;
     const startUrl = new URL(manifest.start_url, manifestUrl);
     const idUrl = new URL(manifest.id, `${startUrl.origin}/`).href;
 
     assert.equal(scope, base, `Manifest scope must resolve to the current PWA directory for ${base}.`);
-    assert.ok(startUrl.href.startsWith(scope), `Manifest start_url must remain inside scope for ${base}.`);
-    assert.equal(startUrl.searchParams.get("v"), cacheBust, `Manifest start_url is missing the release cache-bust query for ${base}.`);
+    assert.equal(startUrl.href, scope, `Manifest start_url must resolve to the current PWA scope for ${base}.`);
     assert.equal(idUrl, `${startUrl.origin}/mspacman2010`, `Manifest id must resolve from the start_url origin to the Ms. Pac-Man game identity for ${base}.`);
     assert.ok(Array.isArray(manifest.icons), "PWA manifest must contain an icons array.");
 
     for (const icon of manifest.icons) {
         const iconUrl = new URL(icon.src, manifestUrl);
         assert.ok(iconUrl.href.startsWith(scope), `Manifest icon must resolve inside the current PWA scope for ${base}: ${icon.src}`);
-        assert.equal(iconUrl.searchParams.get("v"), cacheBust, `Manifest icon is missing the release cache-bust query: ${icon.src}`);
+        const ref = decodeURIComponent(iconUrl.pathname.slice(new URL(scope).pathname.length)).replace(/^\/+/, "");
+        assert.equal(iconUrl.searchParams.get("v"), contentVersionForPwaRef(ref), `Manifest icon must use the emitted file's content version: ${icon.src}`);
     }
     return idUrl;
 }
@@ -518,16 +543,7 @@ function createServiceWorkerHarness(serviceWorker, scriptUrlVersion, scope = "ht
     };
 
     runInNewContext(
-        `${serviceWorker}
-self.__pwaVerifier = {
-    APP_INDEX,
-    APP_STATIC_RESOURCES,
-    CACHE_PREFIX,
-    CACHE_NAME,
-    CACHE_SCOPE_ID,
-    VERSION,
-    createCacheUrl
-};`,
+        `${serviceWorker}\nself.__pwaVerifier = {\n    APP_INDEX,\n    APP_STATIC_RESOURCES,\n    CACHE_PREFIX,\n    CACHE_NAME,\n    CACHE_SCOPE_ID,\n    VERSION,\n    createCacheUrl\n};`,
         context
     );
 
