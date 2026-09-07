@@ -48,6 +48,18 @@ controls, background/foreground, save/Continue, and cold offline launch. Automat
 WebKit is useful coverage but is not a real iOS device qualification. Record failures
 and supported browser versions rather than claiming untested support.
 
+Use a separate browser profile for staging PWA installation and update tests. Staging
+and production intentionally resolve to the same manifest app identity for Ms. Pac-Man
+2010, so installing or updating the staged app in the same profile as production can
+replace installed-app metadata even though game saves and preferences remain scoped
+to the deployment path.
+
+Before the first public release, install the staged Ms. Pac-Man 2010, Stickvania, and
+Jackal PWAs together in one clean profile. Confirm that all three appear as distinct
+installed apps, launch and relaunch independently, and that uninstalling one leaves
+the other two intact. Close all older app tabs and windows before the final offline
+and update pass so a waiting service worker can activate.
+
 Before a later release, keep the currently deployed build open with a real save,
 serve the new build at the same deployment path, reload and Continue, then go offline
 and Continue again. Test rollback against the same save. Never raise

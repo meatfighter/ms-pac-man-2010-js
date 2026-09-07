@@ -21,6 +21,11 @@ const versionInfo = readBuildVersionInfo();
 const encodedBuildStamp = encodeURIComponent(versionInfo.buildStamp);
 const SERVICE_WORKER_VERSION_TOKEN = "__SERVICE_WORKER_VERSION__";
 const SERVICE_WORKER_VERSION_PLACEHOLDER = JSON.stringify(SERVICE_WORKER_VERSION_TOKEN);
+const ASSET_VERSION_TOKEN_PATTERN = /%ASSET_VERSION\(([^)]+)\)%/g;
+const MASKABLE_ICON_REF = "icon-maskable.svg";
+const INSTALL_ICON_REFS = ["favicon.svg", "favicon-16.png", "favicon.png", "icon.svg", "icon-192.png", "icon-512.png"] as const;
+const maskableIconSvg = createMaskableIconSvg();
+const installIconVersions = createInstallIconVersions();
 const DEFAULT_HIGH_SCORE_API_URL = "/api/ms-pac-man-2010/scores";
 const HIGH_SCORE_API_PREFIX = "/api/ms-pac-man-2010/";
 const HMAC_KEY_PATTERN = /^[0-9a-f]{64}$/;
@@ -96,8 +101,45 @@ function readBuildVersionInfo(): VersionInfo {
     return version;
 }
 
+function createMaskableIconSvg(): string {
+    const iconBytes = readFileSync(join(rootDir, "public", "icon-512.png"));
+    const dataUrl = `data:image/png;base64,${iconBytes.toString("base64")}`;
+    return [
+        '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">',
+        '    <rect width="512" height="512" fill="#0f0f0f"/>',
+        `    <image href="${dataUrl}" x="112" y="112" width="288" height="288" preserveAspectRatio="xMidYMid meet"/>`,
+        "</svg>",
+        ""
+    ].join("\n");
+}
+
+function contentVersion(bytes: string | Buffer): string {
+    return createHash("sha256").update(bytes).digest("hex");
+}
+
+function createInstallIconVersions(): Readonly<Record<string, string>> {
+    const versions: Record<string, string> = {};
+    for (const ref of INSTALL_ICON_REFS) {
+        versions[ref] = contentVersion(readFileSync(join(rootDir, "public", ref)));
+    }
+    versions[MASKABLE_ICON_REF] = contentVersion(maskableIconSvg);
+    return versions;
+}
+
+function renderAssetVersionPlaceholders(text: string): string {
+    return text.replace(ASSET_VERSION_TOKEN_PATTERN, (_match, ref: string) => {
+        const version = installIconVersions[ref];
+        if (version === undefined) {
+            throw new Error(`Unknown PWA install asset version token: ${ref}`);
+        }
+        return encodeURIComponent(version);
+    });
+}
+
 function renderVersionPlaceholders(text: string, encodedCacheBust: string): string {
-    return text.replaceAll("%APP_VERSION%", versionInfo.version).replaceAll("%BUILD_STAMP%", encodedBuildStamp).replaceAll("%CACHE_VERSION%", encodedCacheBust);
+    return renderAssetVersionPlaceholders(
+        text.replaceAll("%APP_VERSION%", versionInfo.version).replaceAll("%BUILD_STAMP%", encodedBuildStamp).replaceAll("%CACHE_VERSION%", encodedCacheBust)
+    );
 }
 
 function appendCacheBustQuery(url: string, encodedCacheBust: string): string {
@@ -185,6 +227,10 @@ function renderServiceWorker(sw: string, pwaDistDir: string, cacheBust: string):
     const resources = Array.from(new Set(["./", ...collectPrecacheResources(pwaDistDir)]));
     return sw
         .replace("const RESOURCE_VERSIONS = __RESOURCE_VERSIONS__;", `const RESOURCE_VERSIONS = ${JSON.stringify(RESOURCE_VERSIONS, null, 4)};`)
+        .replace(
+            "const INSTALL_ICON_VERSIONS = __INSTALL_ICON_VERSIONS__;",
+            `const INSTALL_ICON_VERSIONS = ${JSON.stringify(installIconVersions, null, 4)};`
+        )
         .replaceAll(SERVICE_WORKER_VERSION_PLACEHOLDER, JSON.stringify(cacheBust))
         .replace(/const APP_STATIC_RESOURCES = \[[^\]]*\];/, `const APP_STATIC_RESOURCES = ${JSON.stringify(resources, null, 4)};`);
 }
@@ -217,6 +263,8 @@ function versionedStaticAssetsPlugin(command: string, config: HighScoreBuildConf
             if (command !== "build") {
                 return;
             }
+
+            writeFileSync(join(pwaDistDir, MASKABLE_ICON_REF), maskableIconSvg);
 
             const manifestPath = join(pwaDistDir, "manifest.webmanifest");
             if (existsSync(manifestPath)) {
