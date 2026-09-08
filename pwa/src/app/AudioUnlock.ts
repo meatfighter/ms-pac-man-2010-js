@@ -1,4 +1,4 @@
-import { BrowserAudioLifecycle, DevicePixelRatioMonitor } from "slick2d-ts";
+import { BrowserAudioLifecycle, DevicePixelRatioMonitor, SoundStore } from "slick2d-ts";
 
 const AUDIO_UNLOCK_TIMEOUT_MS = 3000;
 const browserAudioLifecycle = BrowserAudioLifecycle.get();
@@ -12,7 +12,7 @@ export async function unlockGameAudio(): Promise<void> {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
         await Promise.race([
-            browserAudioLifecycle.resume(),
+            SoundStore.get().unlock(),
             new Promise<void>((resolve) => {
                 timeout = setTimeout(() => {
                     console.warn("Audio activation is still pending; continuing without waiting.");
