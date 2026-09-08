@@ -95,15 +95,15 @@ async function verifySessionOwnership(url, gameName) {
 
         const wrapping = await ownershipMessage.evaluate((element) => {
             element.textContent = "The other tab has not released your game. Close it, then try again.";
-            const style = getComputedStyle(element);
+            const style = globalThis.getComputedStyle(element);
             const rect = element.getBoundingClientRect();
             return {
                 clientWidth: element.clientWidth,
                 display: style.display,
-                documentClientWidth: document.documentElement.clientWidth,
-                documentScrollWidth: document.documentElement.scrollWidth,
+                documentClientWidth: globalThis.document.documentElement.clientWidth,
+                documentScrollWidth: globalThis.document.documentElement.scrollWidth,
                 height: rect.height,
-                innerWidth: window.innerWidth,
+                innerWidth: globalThis.innerWidth,
                 left: rect.left,
                 lineHeight: Number.parseFloat(style.lineHeight),
                 right: rect.right,
@@ -125,11 +125,11 @@ async function verifySessionOwnership(url, gameName) {
         );
 
         await continueButton.click();
-        await first.waitForFunction(() => document.querySelector(".session-ownership-message")?.textContent === "Your game moved to another tab.");
+        await first.waitForFunction(() => globalThis.document.querySelector(".session-ownership-message")?.textContent === "Your game moved to another tab.");
 
         const movedMessage = first.locator(".session-ownership-message");
         assert.deepEqual(await readComputedStyles(movedMessage, ["fontFamily", "fontSize", "fontWeight", "color"]), messageReference);
-        assert.equal(await movedMessage.evaluate((element) => getComputedStyle(element).display), "block");
+        assert.equal(await movedMessage.evaluate((element) => globalThis.getComputedStyle(element).display), "block");
 
         await second.locator(".setting-scaling-row > span").first().waitFor({ state: "visible", timeout: 30_000 });
         console.log(`${gameName} multi-tab ownership verification passed.`);
@@ -140,7 +140,7 @@ async function verifySessionOwnership(url, gameName) {
 
 async function readComputedStyles(locator, properties) {
     return locator.evaluate((element, names) => {
-        const style = getComputedStyle(element);
+        const style = globalThis.getComputedStyle(element);
         return Object.fromEntries(names.map((name) => [name, style[name]]));
     }, properties);
 }
