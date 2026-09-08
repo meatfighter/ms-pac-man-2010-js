@@ -48,6 +48,16 @@ controls, background/foreground, save/Continue, and cold offline launch. Automat
 WebKit is useful coverage but is not a real iOS device qualification. Record failures
 and supported browser versions rather than claiming untested support.
 
+During active music, repeat the browser/app Home or background -> foreground cycle at
+least three times. After every return, confirm the existing game resumes, music becomes
+audible again without restarting the game, and a subsequent sound effect is audible.
+Exercise this in iOS Safari/browser mode and the installed PWA where available; also
+check Android browser/PWA behavior. A tap or hamburger/Continue may be used as normal
+input, but audio recovery must not depend on destroying/reloading the game. On desktop,
+move the game between displays with different OS scaling (or change browser zoom) and
+confirm the canvas remains correctly sized and sharp after the device-pixel ratio
+changes.
+
 On a real phone with a short auto-lock interval, confirm that user-initiated loading
 and the launched game keep the screen awake without screen input, including title or
 attract behavior and in-game Pause where applicable. Confirm browser/PWA menus allow
