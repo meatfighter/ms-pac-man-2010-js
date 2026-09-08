@@ -120,7 +120,7 @@ export class GameSessionOwnership {
             const button = document.createElement("button");
             button.className = "start-button";
             button.type = "button";
-            button.textContent = "Continue here";
+            button.textContent = "Continue Here";
             button.addEventListener("click", () => {
                 button.disabled = true;
                 void this.acquire(true);

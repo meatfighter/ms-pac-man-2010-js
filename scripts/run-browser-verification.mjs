@@ -68,7 +68,7 @@ async function verifySessionOwnership(url, gameName) {
         await second.goto(url, { waitUntil: "domcontentloaded" });
 
         const ownershipMessage = second.locator(".session-ownership-message");
-        const continueButton = second.getByRole("button", { name: "Continue here" });
+        const continueButton = second.getByRole("button", { name: "Continue Here" });
         await ownershipMessage.waitFor({ state: "visible", timeout: 30_000 });
         await continueButton.waitFor({ state: "visible", timeout: 30_000 });
 
