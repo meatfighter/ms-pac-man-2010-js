@@ -227,10 +227,7 @@ function renderServiceWorker(sw: string, pwaDistDir: string, cacheBust: string):
     const resources = Array.from(new Set(["./", ...collectPrecacheResources(pwaDistDir)]));
     return sw
         .replace("const RESOURCE_VERSIONS = __RESOURCE_VERSIONS__;", `const RESOURCE_VERSIONS = ${JSON.stringify(RESOURCE_VERSIONS, null, 4)};`)
-        .replace(
-            "const INSTALL_ICON_VERSIONS = __INSTALL_ICON_VERSIONS__;",
-            `const INSTALL_ICON_VERSIONS = ${JSON.stringify(installIconVersions, null, 4)};`
-        )
+        .replace("const INSTALL_ICON_VERSIONS = __INSTALL_ICON_VERSIONS__;", `const INSTALL_ICON_VERSIONS = ${JSON.stringify(installIconVersions, null, 4)};`)
         .replaceAll(SERVICE_WORKER_VERSION_PLACEHOLDER, JSON.stringify(cacheBust))
         .replace(/const APP_STATIC_RESOURCES = \[[^\]]*\];/, `const APP_STATIC_RESOURCES = ${JSON.stringify(resources, null, 4)};`);
 }
