@@ -96,7 +96,7 @@ test("second tab cannot write until the old tab saves and destroys its session",
     const continueButton = panel.children[1];
     assert.equal(continueButton.className, "start-button");
     assert.equal(continueButton.type, "button");
-    assert.equal(continueButton.textContent, "Continue here");
+    assert.equal(continueButton.textContent, "Continue Here");
 
     await second.acquire(true);
     assert.deepEqual(events, ["first acquired", "first saved and destroyed", "second acquired"]);
