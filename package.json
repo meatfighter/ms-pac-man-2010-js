@@ -93,7 +93,7 @@
         "release:archive": "node scripts/archive-release.mjs"
     },
     "dependencies": {
-        "slick2d-ts": "https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/962be7001549b4f2b96519dc4625447f05e0aeee"
+        "slick2d-ts": "https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/ed330dfcde41d219496e29a06af3bae82a8b4670"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
