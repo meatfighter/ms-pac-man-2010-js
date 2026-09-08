@@ -26,7 +26,7 @@ test("a stalled audio resume cannot block gameplay startup", async () => {
                 })
             },
             DevicePixelRatioMonitor: class {
-                constructor(_changed) {}
+                constructor() {}
                 start() {
                     dprMonitorStarted = true;
                 }
