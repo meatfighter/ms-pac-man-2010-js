@@ -9,15 +9,6 @@ test("a stalled audio resume cannot block gameplay startup", async () => {
     let cleared = false;
     let installed = false;
     let dprMonitorStarted = false;
-    const lifecycle = {
-        install: () => {
-            installed = true;
-        },
-        resume: () => {
-            requested = true;
-            return new Promise(() => {});
-        }
-    };
     const context = {
         exports: {},
         console,
@@ -28,13 +19,25 @@ test("a stalled audio resume cannot block gameplay startup", async () => {
         },
         require: () => ({
             BrowserAudioLifecycle: {
-                get: () => lifecycle
+                get: () => ({
+                    install: () => {
+                        installed = true;
+                    }
+                })
             },
             DevicePixelRatioMonitor: class {
                 constructor(_changed) {}
                 start() {
                     dprMonitorStarted = true;
                 }
+            },
+            SoundStore: {
+                get: () => ({
+                    unlock: () => {
+                        requested = true;
+                        return new Promise(() => {});
+                    }
+                })
             }
         })
     };
