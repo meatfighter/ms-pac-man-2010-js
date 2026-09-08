@@ -6,6 +6,7 @@ import { SoundStore, type AppGameContainer, type GameContainer } from "slick2d-t
 import { BrowserPreferences, DEFAULT_SCALING_PREFERENCE, DEFAULT_VOLUME, type ScalingPreference } from "./BrowserPreferences";
 import { createBrowserStorageKeys } from "./BrowserStorageKeys";
 import { RuntimeLoader, type PreparedRuntime } from "./RuntimeLoader";
+import { ScreenWakeLockManager } from "./ScreenWakeLockManager.js";
 import { registerServiceWorker } from "./ServiceWorkerRegistrar";
 import { SessionGeneration } from "./SessionGeneration";
 import { APP_VERSION, CACHE_BUST } from "./version";
@@ -42,11 +43,13 @@ let cursorGameHost: HTMLElement | null = null;
 let cursorHideTimer = 0;
 let pointerOverGameHost = false;
 let liveMenuOpen = false;
+let gameLaunchInProgress = false;
 let suspendedByVisibilityLoss = document.visibilityState !== "visible";
 let suspendedByFocusLoss = !document.hasFocus();
 const preferences = new BrowserPreferences();
 const sessionGeneration = new SessionGeneration();
 const runtimeLoader = new RuntimeLoader(refreshVisibleBootProgress);
+const screenWakeLock = new ScreenWakeLockManager();
 let gameStateStore: MsPacManGameStateStore | null = null;
 let volume = preferences.volume;
 let scalingPreference: ScalingPreference = preferences.scaling;
@@ -223,6 +226,8 @@ function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: stri
 async function startGame(restoreSavedGame: boolean): Promise<void> {
     const audioUnlockPromise = unlockAudio();
     destroyGame();
+    gameLaunchInProgress = true;
+    syncScreenWakeLock();
     const generation = sessionGeneration.begin();
     let runtimePrepared = false;
     if (runtimeLoader.prepared === null) {
@@ -385,6 +390,8 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean, ge
         applyVolume();
         focusGameCanvas();
         syncCurrentGameLifecycleState();
+        gameLaunchInProgress = false;
+        syncScreenWakeLock();
     } catch (error) {
         mainGame.invalidateBrowserLifetime();
         appContainer.destroy();
@@ -626,9 +633,14 @@ function volumeIcon(value: number): string {
     `;
 }
 
+function syncScreenWakeLock(): void {
+    screenWakeLock.setDesired(!liveMenuOpen && (gameLaunchInProgress || container !== null));
+}
+
 function destroyGame(): void {
     sessionGeneration.invalidate();
     activeSessionGeneration = 0;
+    gameLaunchInProgress = false;
     game?.invalidateBrowserLifetime();
     removeMenuOverlay();
     stopHamburgerVisibilityMonitor();
@@ -645,6 +657,7 @@ function destroyGame(): void {
     game = null;
     activeGameHost = null;
     runtimeLoader.prepared?.slick.Display.setParent(null);
+    syncScreenWakeLock();
 }
 
 function saveCurrentGameState(): boolean {
@@ -731,6 +744,7 @@ function showLiveMenuOverlay(): void {
     }
 
     liveMenuOpen = true;
+    syncScreenWakeLock();
     const saved = saveCurrentGameState();
     game.setBrowserSuspended(true);
     container.stopSoundEffects();
@@ -754,6 +768,7 @@ function resumeLiveGameFromMenu(): void {
     }
 
     removeMenuOverlay();
+    syncScreenWakeLock();
     currentContainer.getInput().resume();
     currentContainer.getInput().clearKeyPressedRecord();
     currentGame.input.clearKeyPressedRecord();
