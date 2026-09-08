@@ -48,6 +48,13 @@ controls, background/foreground, save/Continue, and cold offline launch. Automat
 WebKit is useful coverage but is not a real iOS device qualification. Record failures
 and supported browser versions rather than claiming untested support.
 
+On a real phone with a short auto-lock interval, confirm that user-initiated loading
+and the launched game keep the screen awake without screen input, including title or
+attract behavior and in-game Pause where applicable. Confirm browser/PWA menus allow
+normal auto-lock and that backgrounding releases the lock; returning to the game should
+reacquire it. Screen wake lock is best-effort, so record an OS/browser refusal under
+power-saving conditions rather than treating it as a game failure.
+
 Use a separate browser profile for staging PWA installation and update tests. Staging
 and production intentionally resolve to the same manifest app identity for Ms. Pac-Man
 2010, so installing or updating the staged app in the same profile as production can
