@@ -178,7 +178,10 @@ async function assertVersionedServiceWorkerCacheKeys(serviceWorker, cacheBust) {
         false,
         "Service worker internal version must not be derived from its registration URL."
     );
-    assert.ok(serviceWorker.includes("const cache = await caches.open(CACHE_NAME);"), "Service worker runtime cache reads must stay inside the current cache namespace.");
+    assert.ok(
+        serviceWorker.includes("const cache = await caches.open(CACHE_NAME);"),
+        "Service worker runtime cache reads must stay inside the current cache namespace."
+    );
     assert.ok(serviceWorker.includes("cache.match(cacheUrl)"), "Service worker runtime cache reads must use normalized cache keys.");
     assert.ok(serviceWorker.includes('!url.searchParams.has("v")'), "Service worker must preserve explicitly supplied build versions.");
     assert.ok(
@@ -543,7 +546,16 @@ function createServiceWorkerHarness(serviceWorker, scriptUrlVersion, scope = "ht
     };
 
     runInNewContext(
-        `${serviceWorker}\nself.__pwaVerifier = {\n    APP_INDEX,\n    APP_STATIC_RESOURCES,\n    CACHE_PREFIX,\n    CACHE_NAME,\n    CACHE_SCOPE_ID,\n    VERSION,\n    createCacheUrl\n};`,
+        `${serviceWorker}
+self.__pwaVerifier = {
+    APP_INDEX,
+    APP_STATIC_RESOURCES,
+    CACHE_PREFIX,
+    CACHE_NAME,
+    CACHE_SCOPE_ID,
+    VERSION,
+    createCacheUrl
+};`,
         context
     );
 
