@@ -7,6 +7,17 @@ import ts from "typescript";
 test("a stalled audio resume cannot block gameplay startup", async () => {
     let requested = false;
     let cleared = false;
+    let installed = false;
+    let dprMonitorStarted = false;
+    const lifecycle = {
+        install: () => {
+            installed = true;
+        },
+        resume: () => {
+            requested = true;
+            return new Promise(() => {});
+        }
+    };
     const context = {
         exports: {},
         console,
@@ -16,19 +27,22 @@ test("a stalled audio resume cannot block gameplay startup", async () => {
             cleared = true;
         },
         require: () => ({
-            SoundStore: {
-                get: () => ({
-                    unlock: () => {
-                        requested = true;
-                        return new Promise(() => {});
-                    }
-                })
+            BrowserAudioLifecycle: {
+                get: () => lifecycle
+            },
+            DevicePixelRatioMonitor: class {
+                constructor(_changed) {}
+                start() {
+                    dprMonitorStarted = true;
+                }
             }
         })
     };
     const source = readFileSync("pwa/src/app/AudioUnlock.ts", "utf8");
     vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, context);
     await context.exports.unlockGameAudio();
+    assert.equal(installed, true);
+    assert.equal(dprMonitorStarted, true);
     assert.equal(requested, true);
     assert.equal(cleared, true);
 });
