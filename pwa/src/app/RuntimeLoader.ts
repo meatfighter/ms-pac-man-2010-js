@@ -1,6 +1,7 @@
 import { ResourceLoader, SoundStore } from "slick2d-ts";
 import { RESOURCE_REFS } from "./resourceManifest.js";
 import { getResourceVersion } from "./ResourceVersions.js";
+import { waitForServiceWorkerReadiness } from "./ServiceWorkerRegistrar.js";
 
 export type SlickRuntime = typeof import("slick2d-ts");
 export type MainConstructor = typeof import("../mspacman/Main.js").Main;
@@ -51,6 +52,16 @@ export class RuntimeLoader {
             this.progressChanged();
         } else if (this.error !== null) {
             throw this.error;
+        }
+
+        // On a first visit, let the bounded service-worker install settle before
+        // runtime preload starts fetching the same release resources itself.
+        await waitForServiceWorkerReadiness();
+        if (this.prepared !== null) {
+            return this.prepared;
+        }
+        if (this.preparationPromise !== null) {
+            return this.preparationPromise;
         }
 
         this.abortController?.abort();
