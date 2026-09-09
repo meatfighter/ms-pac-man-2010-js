@@ -49,14 +49,17 @@ WebKit is useful coverage but is not a real iOS device qualification. Record fai
 and supported browser versions rather than claiming untested support.
 
 During active music, repeat the browser/app Home or background -> foreground cycle at
-least three times. After every return, confirm the existing game resumes, music becomes
-audible again without restarting the game, and a subsequent sound effect is audible.
-Exercise this in iOS Safari/browser mode and the installed PWA where available; also
-check Android browser/PWA behavior. A tap or hamburger/Continue may be used as normal
-input, but audio recovery must not depend on destroying/reloading the game. On desktop,
-move the game between displays with different OS scaling (or change browser zoom) and
-confirm the canvas remains correctly sized and sharp after the device-pixel ratio
-changes.
+least ten times. Include an immediate return, a return after several minutes in the
+background, a return with no input, and a return followed immediately by a real
+pointer/touch or keyboard gesture. After every return, confirm the existing game
+resumes, music becomes audible again without restarting the game, and a subsequent
+sound effect is audible. Exercise this in iOS Safari/browser mode and the installed
+PWA where available; also check Android browser/PWA behavior. Hamburger/Continue may
+be used as normal input, but audio recovery must not depend on destroying/reloading
+the game. On desktop, move the game between displays with different OS scaling and
+change browser zoom through several values; confirm the logical game size/aspect stays
+correct while the canvas backing resolution remains sharp after each device-pixel-ratio
+change.
 
 On a real phone with a short auto-lock interval, confirm that user-initiated loading
 and the launched game keep the screen awake without screen input, including title or
