@@ -4,10 +4,11 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 
-test("a stalled audio resume cannot block gameplay startup", async () => {
+test("a stalled audio resume cannot block gameplay startup and arms a gesture retry", async () => {
     let requested = false;
     let cleared = false;
     let installed = false;
+    let armed = false;
     const context = {
         exports: {},
         console,
@@ -21,6 +22,9 @@ test("a stalled audio resume cannot block gameplay startup", async () => {
                 get: () => ({
                     install: () => {
                         installed = true;
+                    },
+                    armRecovery: () => {
+                        armed = true;
                     }
                 })
             },
@@ -39,5 +43,6 @@ test("a stalled audio resume cannot block gameplay startup", async () => {
     await context.exports.unlockGameAudio();
     assert.equal(installed, true);
     assert.equal(requested, true);
+    assert.equal(armed, true);
     assert.equal(cleared, true);
 });
