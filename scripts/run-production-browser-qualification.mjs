@@ -58,9 +58,13 @@ const newGame = "#new-game-button, #newGameButton";
 const continueGame = "#continue-button, #continueButton";
 const prepared = (page) => page.waitForFunction(() => window.__gameResourcesPrepared === true, undefined, { timeout: 120_000 });
 const saveEntry = (page) => page.evaluate(() => Object.entries(localStorage).find(([key]) => /game-state/.test(key)) ?? null);
+const browserTypes = process.platform === "darwin" ? { chromium, firefox, webkit } : { chromium, firefox };
+if (process.platform !== "darwin") {
+    console.warn("webkit: skipping media-dependent production qualification on non-macOS; validate Safari/WebKit on an Apple device.");
+}
 
 try {
-    for (const [name, browserType] of Object.entries({ chromium, firefox, webkit })) {
+    for (const [name, browserType] of Object.entries(browserTypes)) {
         generation = "A";
         const browser = await browserType.launch({
             headless: false,
