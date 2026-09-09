@@ -95,7 +95,7 @@ try {
             );
             const second = await context.newPage();
             await second.goto(url);
-            await second.getByRole("button", { name: "Continue here", exact: true }).click();
+            await second.getByRole("button", { name: "Continue Here", exact: true }).click();
             await second.locator(continueGame).waitFor();
             assert.equal(await second.locator(continueGame).isEnabled(), true, `${name}: takeover did not save a resumable game`);
             const saved = await saveEntry(second);
