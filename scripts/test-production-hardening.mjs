@@ -14,6 +14,15 @@ function load(path, context) {
     return context.exports;
 }
 
+test("first-run service worker readiness is bounded before runtime resource preload", () => {
+    const registrar = readFileSync("pwa/src/app/ServiceWorkerRegistrar.ts", "utf8");
+    const loader = readFileSync("pwa/src/app/RuntimeLoader.ts", "utf8");
+    assert.match(registrar, /SERVICE_WORKER_STARTUP_TIMEOUT_MS = 3000/);
+    assert.match(registrar, /navigator\.serviceWorker\.ready/);
+    assert.match(registrar, /controllerchange/);
+    assert.match(loader, /await waitForServiceWorkerReadiness\(\);/);
+});
+
 test("Windows desktop launcher tolerates paths containing parentheses", () => {
     const launcherPath = join("desktop", "run-windows.cmd");
     const source = readFileSync(launcherPath, "utf8");
