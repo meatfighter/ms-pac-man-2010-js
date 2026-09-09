@@ -1,7 +1,8 @@
 import { BrowserAudioLifecycle, SoundStore } from "slick2d-ts";
 
 const AUDIO_UNLOCK_TIMEOUT_MS = 3000;
-const browserAudioLifecycle = BrowserAudioLifecycle.get();
+type BrowserAudioLifecycleWithRecovery = ReturnType<typeof BrowserAudioLifecycle.get> & { armRecovery?: () => void };
+const browserAudioLifecycle = BrowserAudioLifecycle.get() as BrowserAudioLifecycleWithRecovery;
 
 browserAudioLifecycle.install();
 
@@ -19,7 +20,7 @@ export async function unlockGameAudio(): Promise<void> {
             })
         ]);
         if (!unlocked) {
-            browserAudioLifecycle.armRecovery();
+            browserAudioLifecycle.armRecovery?.();
         }
     } finally {
         clearTimeout(timeout);
