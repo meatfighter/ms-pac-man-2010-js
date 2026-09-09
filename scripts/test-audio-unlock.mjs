@@ -9,6 +9,7 @@ test("a stalled audio resume cannot block gameplay startup and arms a gesture re
     let cleared = false;
     let installed = false;
     let armed = false;
+    let observed = false;
     const context = {
         exports: {},
         console,
@@ -25,6 +26,9 @@ test("a stalled audio resume cannot block gameplay startup and arms a gesture re
                     },
                     armRecovery: () => {
                         armed = true;
+                    },
+                    observeActiveContext: () => {
+                        observed = true;
                     }
                 })
             },
@@ -43,6 +47,7 @@ test("a stalled audio resume cannot block gameplay startup and arms a gesture re
     await context.exports.unlockGameAudio();
     assert.equal(installed, true);
     assert.equal(requested, true);
+    assert.equal(observed, true);
     assert.equal(armed, true);
     assert.equal(cleared, true);
 });
