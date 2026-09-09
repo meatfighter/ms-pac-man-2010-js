@@ -22,7 +22,7 @@ async function registerServiceWorkerOnce(cacheBust: string): Promise<void> {
 
     const serviceWorkerUrl = new URL(`./sw.js?v=${encodeURIComponent(cacheBust)}`, window.location.href);
     let timeout: ReturnType<typeof setTimeout> | undefined;
-    let removeControllerListener: (() => void) | null = null;
+    let removeControllerListener: () => void = () => undefined;
     let expired = false;
     try {
         await Promise.race([
@@ -54,7 +54,7 @@ async function registerServiceWorkerOnce(cacheBust: string): Promise<void> {
     } finally {
         expired = true;
         clearTimeout(timeout);
-        removeControllerListener?.();
+        removeControllerListener();
     }
 }
 
