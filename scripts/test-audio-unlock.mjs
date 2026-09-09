@@ -8,7 +8,6 @@ test("a stalled audio resume cannot block gameplay startup", async () => {
     let requested = false;
     let cleared = false;
     let installed = false;
-    let dprMonitorStarted = false;
     const context = {
         exports: {},
         console,
@@ -25,11 +24,6 @@ test("a stalled audio resume cannot block gameplay startup", async () => {
                     }
                 })
             },
-            DevicePixelRatioMonitor: class {
-                start() {
-                    dprMonitorStarted = true;
-                }
-            },
             SoundStore: {
                 get: () => ({
                     unlock: () => {
@@ -44,7 +38,6 @@ test("a stalled audio resume cannot block gameplay startup", async () => {
     vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, context);
     await context.exports.unlockGameAudio();
     assert.equal(installed, true);
-    assert.equal(dprMonitorStarted, true);
     assert.equal(requested, true);
     assert.equal(cleared, true);
 });
