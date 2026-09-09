@@ -9,15 +9,18 @@ browserAudioLifecycle.install();
 export async function unlockGameAudio(): Promise<void> {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
-        await Promise.race([
+        const unlocked = await Promise.race([
             SoundStore.get().unlock(),
-            new Promise<void>((resolve) => {
+            new Promise<boolean>((resolve) => {
                 timeout = setTimeout(() => {
                     console.warn("Audio activation is still pending; continuing without waiting.");
-                    resolve();
+                    resolve(false);
                 }, AUDIO_UNLOCK_TIMEOUT_MS);
             })
         ]);
+        if (!unlocked) {
+            browserAudioLifecycle.armRecovery();
+        }
     } finally {
         clearTimeout(timeout);
     }
