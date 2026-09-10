@@ -1,15 +1,16 @@
 import type { GameContainer } from "slick2d-ts";
 import { createBrowserStorageKeys } from "../../app/BrowserStorageKeys";
+import { MAX_SNAPSHOT_TEXT_LENGTH } from "../../app/SnapshotLimits.js";
 import type { Main } from "../Main";
-import { FIRST_PUBLIC_GAME_STATE_VERSION, GAME_STATE_VERSION, type MsPacManGameStateSnapshot } from "./GameStateSnapshot";
+import type { MsPacManGameStateSnapshot } from "./GameStateSnapshot";
 import { MsPacManGameStateSerializer } from "./MsPacManGameStateSerializer";
 
 const JAVA_INT_MIN = -2_147_483_648;
 const JAVA_INT_MAX = 2_147_483_647;
 const MAX_GAMEPLAY_NUMBER_MAGNITUDE = 100_000;
 const MAX_SNAPSHOT_STRING_LENGTH = 4_096;
-import { MAX_SNAPSHOT_TEXT_LENGTH } from "../../app/SnapshotLimits.js";
 
+/** Only the current development schema is supported in its deployment-scoped storage slot. */
 export class MsPacManGameStateStore {
     private readonly serializer = new MsPacManGameStateSerializer();
 
@@ -19,14 +20,9 @@ export class MsPacManGameStateStore {
         if (!main.isStateSaveReady()) {
             return false;
         }
-
         try {
-            if (this.hasProtectedStoredSnapshot()) {
-                return false;
-            }
             const snapshot = this.serializer.createSnapshot(main, this.appVersion);
             normalizeTransientState(snapshot);
-
             if (!this.serializer.isSupportedSnapshot(snapshot) || !hasReasonableSnapshotValues(snapshot)) {
                 return false;
             }
@@ -48,7 +44,6 @@ export class MsPacManGameStateStore {
             if (snapshot === null) {
                 return false;
             }
-
             this.serializer.restoreSnapshot(main, gc, snapshot);
             return true;
         } catch (error) {
@@ -69,7 +64,9 @@ export class MsPacManGameStateStore {
     public clear(): void {
         try {
             localStorage.removeItem(createBrowserStorageKeys().gameState);
-        } catch {}
+        } catch (error) {
+            console.warn("Unable to clear MS Pac-Man game state.", error);
+        }
     }
 
     private readSnapshot(): MsPacManGameStateSnapshot | null {
@@ -78,10 +75,9 @@ export class MsPacManGameStateStore {
             return null;
         }
         if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
-            // An older client cannot safely classify a larger public snapshot.
+            this.clear();
             return null;
         }
-
         let snapshot: unknown;
         try {
             snapshot = JSON.parse(text) as unknown;
@@ -89,51 +85,18 @@ export class MsPacManGameStateStore {
             this.clear();
             return null;
         }
-
-        if (!this.serializer.isSupportedSnapshot(snapshot)) {
-            if (this.shouldPreserveUnsupportedPublicSnapshot(snapshot)) {
-                return null;
-            }
+        if (!this.serializer.isSupportedSnapshot(snapshot) || !hasReasonableSnapshotValues(snapshot)) {
             this.clear();
             return null;
         }
-        if (!hasReasonableSnapshotValues(snapshot)) {
-            this.clear();
-            return null;
-        }
-
         normalizeTransientState(snapshot);
         return snapshot;
-    }
-
-    private hasProtectedStoredSnapshot(): boolean {
-        const text = localStorage.getItem(createBrowserStorageKeys().gameState);
-        if (text === null) {
-            return false;
-        }
-        if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
-            return true;
-        }
-        try {
-            return this.shouldPreserveUnsupportedPublicSnapshot(JSON.parse(text) as unknown);
-        } catch {
-            return false;
-        }
-    }
-
-    private shouldPreserveUnsupportedPublicSnapshot(snapshot: unknown): boolean {
-        if (snapshot === null || typeof snapshot !== "object" || Array.isArray(snapshot)) {
-            return false;
-        }
-        const version = Reflect.get(snapshot, "version");
-        return typeof version === "number" && Number.isInteger(version) && version >= FIRST_PUBLIC_GAME_STATE_VERSION && version !== GAME_STATE_VERSION;
     }
 }
 
 function normalizeTransientState(snapshot: MsPacManGameStateSnapshot): void {
-    // Score submission is best-effort network work tied to the current page
-    // lifetime. Preserve ordinary state exactly, but if the saved initials screen
-    // had already submitted, never restore a request that cannot still exist.
+    // An old network request cannot survive a page lifetime. Do not resubmit it
+    // merely because the persisted initials screen had already submitted.
     if (snapshot.mode.id === "enterInitials" && snapshot.mode.fields.enterPressed === true) {
         snapshot.mainFields.uploadComplete = true;
     }
