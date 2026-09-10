@@ -4,6 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 const rootDir = process.cwd();
+const mainSource = readFileSync(join(rootDir, "pwa", "src", "app", "main.ts"), "utf8");
 const runtimeLoaderSource = readFileSync(join(rootDir, "pwa", "src", "app", "RuntimeLoader.ts"), "utf8");
 const serviceWorkerSource = readFileSync(join(rootDir, "pwa", "public", "sw.js"), "utf8");
 
@@ -23,6 +24,24 @@ test("runtime preload waits for both resource branches before exposing failure",
         /await Promise\.all\(\[\s*ResourceLoader\.preloadResources[\s\S]*?SoundStore\.get\(\)\.preloadAudioBuffers/,
         "Audio and non-audio preload branches must not fail-fast and leave sibling work running behind a retry screen."
     );
+});
+
+test("browser lifecycle only enters the PWA menu and never auto-resumes", () => {
+    assert.match(mainSource, /window\.addEventListener\("pagehide", \(\) => requestPwaMenu\("pagehide"\)\)/);
+    assert.match(mainSource, /window\.addEventListener\("blur", \(\) => requestPwaMenu\("blur"\)\)/);
+    assert.match(mainSource, /document\.visibilityState === "hidden"/);
+    assert.doesNotMatch(mainSource, /window\.addEventListener\("focus"/);
+    assert.doesNotMatch(mainSource, /window\.addEventListener\("pageshow"/);
+    assert.match(mainSource, /releaseGameAudio\(\);[\s\S]*menuOverlay = renderMenuUi/);
+});
+
+test("STARTING container is owned before the first asynchronous display operation", () => {
+    const mount = mainSource.slice(mainSource.indexOf("async function mountGame"), mainSource.indexOf("async function unlockAudio"));
+    const ownership = mount.indexOf("container = appContainer;");
+    const firstDisplayAwait = mount.indexOf("await appContainer.setDisplayMode");
+    assert.ok(ownership >= 0);
+    assert.ok(firstDisplayAwait >= 0);
+    assert.ok(ownership < firstDisplayAwait);
 });
 
 test("service worker treats HTTP failures like network failures", () => {
