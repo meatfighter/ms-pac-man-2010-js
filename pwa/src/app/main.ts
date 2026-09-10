@@ -373,6 +373,13 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean, ge
     mainGame.appGameContainer = appContainer;
     mainGame.windowedDisplayModeProvider = getResponsiveWindowedDisplayMode;
     mainGame.pauseStateChangeHandler = handleGamePauseStateChanged;
+    // Own STARTING resources immediately so blur/hidden/pagehide can destroy them
+    // before any asynchronous display/container startup continuation resolves.
+    container = appContainer;
+    game = mainGame;
+    activeScalableGame = scalableGame;
+    activeGameHost = host;
+    activeSessionGeneration = generation;
     if (restoreSavedGame) {
         mainGame.loadingCompleteHandler = (gc: GameContainer): boolean => {
             if (!getGameStateStore(runtime).restore(mainGame, gc)) {
