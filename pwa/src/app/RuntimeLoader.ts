@@ -27,7 +27,6 @@ export class RuntimeLoader {
 
     private preparationPromise: Promise<PreparedRuntime> | null = null;
     private abortController: AbortController | null = null;
-    private backgroundScheduled = false;
 
     public constructor(private readonly progressChanged: () => void) {}
 
@@ -91,21 +90,6 @@ export class RuntimeLoader {
                 }
             });
         return this.preparationPromise;
-    }
-
-    public scheduleBackgroundPreparation(): void {
-        if (this.backgroundScheduled || this.prepared !== null || this.preparationPromise !== null || this.error !== null) {
-            return;
-        }
-        this.backgroundScheduled = true;
-        requestAnimationFrame(() => {
-            window.setTimeout(() => {
-                this.backgroundScheduled = false;
-                void this.prepare().catch((error) => {
-                    console.warn("Ms. Pac-Man background preparation failed.", error);
-                });
-            }, 0);
-        });
     }
 
     public abort(): void {
