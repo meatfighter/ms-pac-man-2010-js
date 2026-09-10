@@ -20,7 +20,7 @@ test("new game requires boot-prepared runtime before fresh audio activation", ()
     assert.match(startGame, /if \(runtime === null\) \{\s*startPwaMenu\(\);\s*return;\s*\}/);
     assert.ok(startGame.indexOf("destroyGame();") > startGame.indexOf("const runtime = runtimeLoader.prepared;"));
     assert.ok(startGame.indexOf("destroyGame();") < startGame.indexOf("const audioUnlockPromise = unlockAudio();"));
-    assert.doesNotMatch(startGame, /runtimeLoader\.prepare|renderBoot/);
+    assert.doesNotMatch(startGame, /runtimeLoader\.prepare\s*\(|renderBoot/);
 });
 
 test("runtime preload waits for both resource branches before exposing failure", () => {
