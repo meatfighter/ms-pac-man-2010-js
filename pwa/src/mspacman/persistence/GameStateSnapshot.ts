@@ -1,13 +1,11 @@
-// Increment whenever saved-state structure or semantics become incompatible across releases.
-export const GAME_STATE_VERSION = 4;
-export const FIRST_PUBLIC_GAME_STATE_VERSION = 4;
+import type { MusicPlaybackSnapshot } from "slick2d-ts";
+
+// Development cutover: only this schema is supported; earlier test saves are not migrated.
+export const GAME_STATE_VERSION = 5;
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | JsonRecord;
-
-export type JsonRecord = {
-    [key: string]: JsonValue;
-};
+export type JsonRecord = { [key: string]: JsonValue };
 
 export type ModeId =
     "act1" | "act2" | "act3" | "act4" | "act5" | "act6" | "act7" | "attract" | "ending" | "enterInitials" | "hallOfFame" | "intro" | "playing" | "selectWorld";
@@ -23,12 +21,12 @@ export interface RandomSnapshot {
 
 export interface MusicSnapshot {
     id: MusicId;
-    looped: boolean;
-    paused: boolean;
-    playing: boolean;
-    playbackRate: number;
-    position: number;
-    volume: number;
+    playback: MusicPlaybackSnapshot;
+}
+
+export interface AudioSettingsSnapshot {
+    musicOn: boolean;
+    soundOn: boolean;
 }
 
 export interface RobotInputSnapshot {
@@ -71,6 +69,7 @@ export interface MsPacManGameStateSnapshot {
     mainFields: JsonRecord;
     mode: CurrentModeSnapshot;
     music: MusicSnapshot | null;
+    audioSettings: AudioSettingsSnapshot;
     random: RandomSnapshot;
     robotInputs: RobotInputSnapshot[];
     submittedScore: SubmittedScoreSnapshot | null;
