@@ -1,4 +1,4 @@
-import { releaseGameAudio, unlockGameAudio } from "./AudioUnlock.js";
+import { releaseGameAudio, unlockGameAudio, type GameAudioActivation } from "./AudioUnlock.js";
 import "./styles.css";
 import { GameSessionOwnership } from "./GameSessionOwnership.js";
 import { MAX_SNAPSHOT_TEXT_LENGTH } from "./SnapshotLimits.js";
@@ -227,6 +227,9 @@ function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: stri
     }
 
     newGameButton?.addEventListener("click", () => {
+        if (pwaSessionState !== "menu") {
+            return;
+        }
         clearStoredGameState();
         void startGame(false);
     });
@@ -260,8 +263,8 @@ async function startGame(restoreSavedGame: boolean): Promise<void> {
     syncScreenWakeLock();
     const generation = sessionGeneration.begin();
     try {
-        await audioUnlockPromise;
-        if (!sessionGeneration.isCurrent(generation) || pwaSessionState !== "starting") {
+        const audioActivation = await audioUnlockPromise;
+        if (audioActivation === "superseded" || !sessionGeneration.isCurrent(generation) || pwaSessionState !== "starting") {
             return;
         }
         renderGameHost();
@@ -374,6 +377,9 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean, ge
     activeSessionGeneration = generation;
     if (restoreSavedGame) {
         mainGame.loadingCompleteHandler = (gc: GameContainer): boolean => {
+            if (!sessionGeneration.isCurrent(generation)) {
+                return false;
+            }
             if (!getGameStateStore(runtime).restore(mainGame, gc)) {
                 throw new Error("Saved game could not be restored.");
             }
@@ -422,13 +428,13 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean, ge
         });
         startResponsiveGameSizing(host);
         startGameCursorAutoHide(host);
-        startHamburgerVisibilityMonitor();
         applyVolume();
         focusGameCanvas();
         gameLaunchInProgress = false;
         pwaSessionState = "running";
         mainGame.setBrowserSuspended(false);
         appContainer.setLoopSuspended(false);
+        startHamburgerVisibilityMonitor();
         syncScreenWakeLock();
         if (document.visibilityState !== "visible" || !document.hasFocus()) {
             requestPwaMenu("launch-lost-focus");
@@ -436,16 +442,16 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean, ge
     } catch (error) {
         mainGame.invalidateBrowserLifetime();
         appContainer.destroy();
-        releaseGameAudio();
         if (sessionGeneration.isCurrent(generation)) {
+            releaseGameAudio();
             runtime.slick.Display.setParent(null);
         }
         throw error;
     }
 }
 
-async function unlockAudio(): Promise<void> {
-    await unlockGameAudio();
+async function unlockAudio(): Promise<GameAudioActivation> {
+    return unlockGameAudio();
 }
 
 function applyVolume(): void {
@@ -608,7 +614,7 @@ function getElementVerticalScrollbarWidth(element: HTMLElement, style: CSSStyleD
 
 function horizontalSpacing(style: CSSStyleDeclaration, includeBorder: boolean): number {
     const borderWidth = includeBorder ? parseCssPixels(style.borderLeftWidth) + parseCssPixels(style.borderRightWidth) : 0;
-    return parseCssPixels(style.paddingLeft) + parseCssPixels(style.paddingRight) + borderWidth;
+    return parseCssPixels(style.paddingLeft) + parseCssPixels(style.paddingRight);
 }
 
 function parseCssPixels(value: string): number {
@@ -676,6 +682,8 @@ function syncScreenWakeLock(): void {
 }
 
 function destroyGame(): void {
+    pwaSessionState = "stopping";
+    syncScreenWakeLock();
     sessionGeneration.invalidate();
     activeSessionGeneration = 0;
     gameLaunchInProgress = false;
@@ -819,7 +827,10 @@ async function resumeLiveGameFromMenu(): Promise<void> {
 
     pwaSessionState = "starting";
     const audioUnlockPromise = unlockAudio();
-    await audioUnlockPromise;
+    const audioActivation = await audioUnlockPromise;
+    if (audioActivation === "superseded") {
+        return;
+    }
     if (
         pwaSessionState !== "starting" ||
         game !== currentGame ||
@@ -841,13 +852,13 @@ async function resumeLiveGameFromMenu(): Promise<void> {
     currentContainer.getInput().clearKeyPressedRecord();
     currentGame.input.clearKeyPressedRecord();
     startGameCursorAutoHide(host);
-    startHamburgerVisibilityMonitor();
     applyVolume();
     scheduleResponsiveGameResize();
     focusGameCanvas();
     currentGame.setBrowserSuspended(false);
     currentContainer.setLoopSuspended(false);
     pwaSessionState = "running";
+    startHamburgerVisibilityMonitor();
     syncScreenWakeLock();
 }
 
