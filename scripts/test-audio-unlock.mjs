@@ -12,16 +12,27 @@ function loadAudioUnlock(beginPlaybackGeneration) {
         beginPlaybackGeneration,
         endPlaybackGeneration: () => ended++
     };
+    class FakeAppGameContainer {
+        destroyCalls = 0;
+        destroy() {
+            this.destroyCalls++;
+        }
+    }
     const context = {
         exports: {},
         console,
+        WeakSet,
+        Object,
         setTimeout: (callback) => setTimeout(callback, 10),
         clearTimeout,
-        require: () => ({ PwaAudioManager: { get: () => manager } })
+        require: (id) =>
+            id.includes("AppGameContainer")
+                ? { AppGameContainer: FakeAppGameContainer }
+                : { PwaAudioManager: { get: () => manager } }
     };
     const source = readFileSync("pwa/src/app/AudioUnlock.ts", "utf8");
     vm.runInNewContext(ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, context);
-    return { exports: context.exports, installed: () => installed, ended: () => ended };
+    return { exports: context.exports, installed: () => installed, ended: () => ended, FakeAppGameContainer };
 }
 
 test("audio startup creates a fresh PWA playback generation", async () => {
@@ -49,4 +60,14 @@ test("a stalled fresh generation cannot block gameplay startup", async () => {
 
     assert.equal(requested, 1);
     assert.equal(loaded.ended(), 1);
+});
+
+test("repeated stale container destroy calls are harmless", () => {
+    const loaded = loadAudioUnlock(() => Promise.resolve(true));
+    const container = new loaded.FakeAppGameContainer();
+
+    container.destroy();
+    container.destroy();
+
+    assert.equal(container.destroyCalls, 1);
 });
