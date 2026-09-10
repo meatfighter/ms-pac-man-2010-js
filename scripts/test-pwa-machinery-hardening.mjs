@@ -14,6 +14,15 @@ test("forced runtime retry supersedes pending preparation cleanly", () => {
     assert.match(runtimeLoaderSource, /await this\.preparationPromise;/);
 });
 
+test("new game requires boot-prepared runtime before fresh audio activation", () => {
+    const startGame = mainSource.slice(mainSource.indexOf("async function startGame"), mainSource.indexOf("function renderBoot"));
+    assert.match(startGame, /const runtime = runtimeLoader\.prepared;/);
+    assert.match(startGame, /if \(runtime === null\) \{\s*startPwaMenu\(\);\s*return;\s*\}/);
+    assert.ok(startGame.indexOf("destroyGame();") > startGame.indexOf("const runtime = runtimeLoader.prepared;"));
+    assert.ok(startGame.indexOf("destroyGame();") < startGame.indexOf("const audioUnlockPromise = unlockAudio();"));
+    assert.doesNotMatch(startGame, /runtimeLoader\.prepare|renderBoot/);
+});
+
 test("runtime preload waits for both resource branches before exposing failure", () => {
     assert.match(runtimeLoaderSource, /const results = await Promise\.allSettled\(\[/);
     assert.match(runtimeLoaderSource, /results\.find\(\(result\): result is PromiseRejectedResult => result\.status === "rejected"\)/);
@@ -32,7 +41,15 @@ test("browser lifecycle only enters the PWA menu and never auto-resumes", () => 
     assert.match(mainSource, /document\.visibilityState === "hidden"/);
     assert.doesNotMatch(mainSource, /window\.addEventListener\("focus"/);
     assert.doesNotMatch(mainSource, /window\.addEventListener\("pageshow"/);
+    assert.match(mainSource, /if \(pwaSessionState === "starting"\) \{[\s\S]*renderMenu\(\);[\s\S]*return;/);
     assert.match(mainSource, /releaseGameAudio\(\);[\s\S]*menuOverlay = renderMenuUi/);
+});
+
+test("live-menu transition freezes gameplay before saving and retiring audio", () => {
+    const liveMenu = mainSource.slice(mainSource.indexOf("function showLiveMenuOverlay"), mainSource.indexOf("async function resumeLiveGameFromMenu"));
+    assert.ok(liveMenu.indexOf("game.setBrowserSuspended(true);") < liveMenu.indexOf("const saved = saveCurrentGameState();"));
+    assert.ok(liveMenu.indexOf("container.setLoopSuspended(true);") < liveMenu.indexOf("const saved = saveCurrentGameState();"));
+    assert.ok(liveMenu.indexOf("const saved = saveCurrentGameState();") < liveMenu.indexOf("releaseGameAudio();"));
 });
 
 test("STARTING container is owned before the first asynchronous display operation", () => {
