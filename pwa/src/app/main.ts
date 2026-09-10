@@ -497,7 +497,7 @@ function scalingPickerHtml(): string {
     return `
         <div id="scaling-picker" class="theme-picker scaling-picker" data-open="false">
             <button id="scaling-button" class="theme-picker-button scaling-picker-button" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="scaling-list">
-                <span class="picker-label scaling-picker-label">${escapeHtml(selectedDefinition.label)}</span>
+                <span class="theme-picker-label scaling-picker-label">${escapeHtml(selectedDefinition.label)}</span>
                 <span class="picker-caret" aria-hidden="true"></span>
             </button>
             <div id="scaling-popup" class="theme-picker-popup scaling-picker-popup" hidden>
@@ -568,6 +568,7 @@ function measurePickerWidth(
             : maxLabelWidth +
               parseCssPixels(optionStyle.columnGap) * optionAccessorySelectors.length +
               optionAccessoryWidth +
+              horizontalSpacing(optionStyle, false) +
               horizontalSpacing(popupStyle, true) +
               horizontalSpacing(listStyle, true) +
               scrollbarWidth +
