@@ -497,7 +497,7 @@ function scalingPickerHtml(): string {
     return `
         <div id="scaling-picker" class="theme-picker scaling-picker" data-open="false">
             <button id="scaling-button" class="theme-picker-button scaling-picker-button" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="scaling-list">
-                <span class="theme-picker-label scaling-picker-label">${escapeHtml(selectedDefinition.label)}</span>
+                <span class="picker-label scaling-picker-label">${escapeHtml(selectedDefinition.label)}</span>
                 <span class="picker-caret" aria-hidden="true"></span>
             </button>
             <div id="scaling-popup" class="theme-picker-popup scaling-picker-popup" hidden>
@@ -568,7 +568,6 @@ function measurePickerWidth(
             : maxLabelWidth +
               parseCssPixels(optionStyle.columnGap) * optionAccessorySelectors.length +
               optionAccessoryWidth +
-              horizontalSpacing(optionStyle, false) +
               horizontalSpacing(popupStyle, true) +
               horizontalSpacing(listStyle, true) +
               scrollbarWidth +
@@ -614,7 +613,7 @@ function getElementVerticalScrollbarWidth(element: HTMLElement, style: CSSStyleD
 
 function horizontalSpacing(style: CSSStyleDeclaration, includeBorder: boolean): number {
     const borderWidth = includeBorder ? parseCssPixels(style.borderLeftWidth) + parseCssPixels(style.borderRightWidth) : 0;
-    return parseCssPixels(style.paddingLeft) + parseCssPixels(style.paddingRight);
+    return parseCssPixels(style.paddingLeft) + parseCssPixels(style.paddingRight) + borderWidth;
 }
 
 function parseCssPixels(value: string): number {
