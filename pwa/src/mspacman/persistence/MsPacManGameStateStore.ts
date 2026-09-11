@@ -71,22 +71,16 @@ export class MsPacManGameStateStore {
 
     private readSnapshot(): MsPacManGameStateSnapshot | null {
         const text = localStorage.getItem(createBrowserStorageKeys().gameState);
-        if (text === null) {
-            return null;
-        }
-        if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
-            this.clear();
+        if (text === null || text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
             return null;
         }
         let snapshot: unknown;
         try {
             snapshot = JSON.parse(text) as unknown;
         } catch {
-            this.clear();
             return null;
         }
         if (!this.serializer.isSupportedSnapshot(snapshot) || !hasReasonableSnapshotValues(snapshot)) {
-            this.clear();
             return null;
         }
         normalizeTransientState(snapshot);
