@@ -216,7 +216,7 @@ export class Main extends BasicGame {
             if (this.isGameplayPauseTogglePressed()) {
                 this.setPaused(false);
                 gc.setMusicOn(true);
-                this.resumeCurrentMusicForBrowser(gc);
+                this.resumeCurrentMusicAfterPause(gc);
             }
             this.resetNextFrameTime();
             return;
@@ -402,23 +402,14 @@ export class Main extends BasicGame {
         return generation === this.browserLifetimeGeneration;
     }
 
+    /** Menu suspension is independent of the game's own pause and audio choices. */
     public setBrowserSuspended(suspended: boolean): void {
-        if (this.browserSuspended === suspended) {
-            return;
-        }
-
         this.browserSuspended = suspended;
-        if (suspended) {
-            this.stopAllSoundEffects();
-            this.appGameContainer?.setMusicOn(false);
-        } else {
-            this.appGameContainer?.setMusicOn(!this.paused);
-            this.resumeCurrentMusicForBrowser(this.appGameContainer);
-            this.resetNextFrameTime();
-        }
+        this.input?.clearKeyPressedRecord();
+        this.resetNextFrameTime();
     }
 
-    private resumeCurrentMusicForBrowser(gc: GameContainer | null | undefined): void {
+    private resumeCurrentMusicAfterPause(gc: GameContainer | null | undefined): void {
         if (this.paused || gc === null || gc === undefined || !gc.isMusicOn()) {
             return;
         }
