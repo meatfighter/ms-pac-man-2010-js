@@ -16,6 +16,9 @@ const stateStore = read("pwa/src/mspacman/persistence/MsPacManGameStateStore.ts"
 const enterInitialsMode = read("pwa/src/mspacman/EnterInitialsMode.ts");
 const browserMain = read("pwa/src/app/main.ts");
 const browserPreferences = read("pwa/src/app/BrowserPreferences.ts");
+const browserStorageKeys = read("pwa/src/app/BrowserStorageKeys.ts");
+const playbackSession = read("pwa/src/app/PlaybackSession.ts");
+const sessionCleanup = read("pwa/src/app/SessionCleanup.ts");
 const runtimeLoader = read("pwa/src/app/RuntimeLoader.ts");
 const sessionGeneration = read("pwa/src/app/SessionGeneration.ts");
 const serviceWorkerRegistrar = read("pwa/src/app/ServiceWorkerRegistrar.ts");
@@ -53,17 +56,23 @@ test("browser input delegates controller axis calibration and dense enumeration 
     assert.doesNotMatch(humanInput, /extraAxisBaselines|getAxisValue|CONTROLLER_INDEX_LIMIT|GAMEPAD_AXIS_LIMIT|AXIS_RECENTER_THRESHOLD/);
 });
 
-test("persistence uses public Slick random and music state APIs", () => {
+test("persistence uses public Slick random and logical Music snapshot APIs", () => {
     assert.match(serializer, /main\.random\.getState\(\)/);
     assert.match(serializer, /main\.random\.setState\(snapshot\)/);
-    assert.match(serializer, /music\.isLooped\(\)/);
-    assert.match(serializer, /music\.isPaused\(\)/);
-    assert.match(serializer, /music\.getPlaybackRate\(\)/);
-    assert.match(serializer, /music\.getDuration\(\)/);
-    assert.doesNotMatch(serializer, /getField\(music,\s*["'](?:looped|paused|playbackRate|buffer)["']/);
+    assert.match(serializer, /music\.capturePlaybackState\(\)/);
+    assert.match(serializer, /music\.restorePlaybackState\(/);
+    assert.match(serializer, /isMusicPlaybackSnapshot\(snapshot\.playback\)/);
+    assert.doesNotMatch(serializer, /getField\(music,\s*["'](?:looped|paused|playbackRate|buffer|positionOffset|fadeState)["']/);
     assert.doesNotMatch(serializer, /(?:getField|setField|numberField)\(main\.random/);
-    assert.match(snapshot, /GAME_STATE_VERSION = 4/);
-    assert.match(snapshot, /FIRST_PUBLIC_GAME_STATE_VERSION = 4/);
+    assert.match(snapshot, /GAME_STATE_VERSION = 5/);
+    assert.doesNotMatch(snapshot, /FIRST_PUBLIC_GAME_STATE_VERSION/);
+    assert.match(browserStorageKeys, /game-state-v5/);
+});
+
+test("save-state inspection is read-only while explicit clear remains separate", () => {
+    const readSnapshot = sliceBetween(stateStore, "public readSnapshot", "public hasValidSave");
+    assert.doesNotMatch(readSnapshot, /this\.clear\(|removeItem\(/);
+    assert.match(stateStore, /public clear\(\): boolean/);
 });
 
 test("save state normalizes in-flight score submission state", () => {
@@ -82,13 +91,19 @@ test("browser-native responsibilities are decomposed and generation owned", () =
     assert.match(browserMain, /new RuntimeLoader\(/);
     assert.match(browserMain, /new SessionGeneration\(\)/);
     assert.match(browserMain, /sessionGeneration\.isCurrent/);
-    assert.doesNotMatch(browserMain, /ResourceLoader\.preloadResources|preloadAudioBuffers/);
+    assert.match(browserMain, /beginGameAudio\(\)/);
+    assert.match(browserMain, /commitGameAudio\(audio\)/);
+    assert.match(browserMain, /sessionCleanup\.run/);
+    assert.doesNotMatch(browserMain, /ResourceLoader\.preloadResources|preloadAudioBuffers|unlockAudio/);
     assert.doesNotMatch(browserMain, /function safeReadVolume|function safeReadScalingPreference|function registerServiceWorker/);
     assert.match(browserPreferences, /setVolume\(value: number, persist = true\)/);
     assert.match(browserPreferences, /BrowserPreferences\.isScaling/);
     assert.match(runtimeLoader, /setCacheVersionResolver\(getResourceVersion\)/);
     assert.match(runtimeLoader, /concurrency: RESOURCE_PRELOAD_CONCURRENCY/);
     assert.match(sessionGeneration, /isCurrent\(generation: number\)/);
+    assert.match(playbackSession, /let revision = 0/);
+    assert.match(playbackSession, /isLatestGameAudio/);
+    assert.match(sessionCleanup, /private unsafe: Error \| null = null/);
     assert.match(serviceWorkerRegistrar, /navigator\.serviceWorker\.register/);
 
     const inputHandler = sliceBetween(browserMain, 'volumeInput?.addEventListener("input"', 'volumeInput?.addEventListener("change"');
