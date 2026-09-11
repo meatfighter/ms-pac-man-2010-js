@@ -4,6 +4,16 @@ import test from "node:test";
 import vm from "node:vm";
 import ts from "typescript";
 
+function transpileModule(path, globals = {}) {
+    const context = { exports: {}, console, ...globals };
+    const source = readFileSync(path, "utf8");
+    const compiled = ts.transpileModule(source, {
+        compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
+    });
+    vm.runInNewContext(compiled.outputText, context);
+    return context.exports;
+}
+
 function loadPlaybackAdapter() {
     let instance = null;
     let nextId = 0;
@@ -44,27 +54,25 @@ function loadPlaybackAdapter() {
         }
     }
 
-    const context = {
-        exports: {},
-        console,
+    const api = transpileModule("pwa/src/app/PlaybackSession.ts", {
         require: (specifier) => {
             assert.equal(specifier, "slick2d-ts/slick/openal/PlaybackSession");
             return { PlaybackSession: FakePlaybackSession };
         }
-    };
-    const source = readFileSync("pwa/src/app/PlaybackSession.ts", "utf8");
-    const compiled = ts.transpileModule(source, {
-        compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }
     });
-    vm.runInNewContext(compiled.outputText, context);
     assert.ok(instance, "adapter must construct exactly one engine PlaybackSession");
     return {
-        api: context.exports,
+        api,
         playback: instance,
         setOnBegin(callback) {
             onBegin = callback;
         }
     };
+}
+
+function loadSessionCleanup() {
+    const { SessionCleanup } = transpileModule("pwa/src/app/SessionCleanup.ts");
+    return new SessionCleanup();
 }
 
 test("begin publishes one current activation and commit stays scoped to it", async () => {
@@ -127,4 +135,55 @@ test("interruption routing is delegated to the engine transaction", () => {
     assert.deepEqual(reasons, ["device-change"]);
     loaded.api.setGameAudioInterruptionHandler(null);
     assert.equal(loaded.playback.interruptionHandler, null);
+});
+
+test("session cleanup attempts every essential step and keeps unsafe failure latched", () => {
+    const cleanup = loadSessionCleanup();
+    const calls = [];
+
+    assert.equal(
+        cleanup.run(
+            () => {
+                calls.push("first");
+                throw new Error("first cleanup failed");
+            },
+            () => calls.push("second"),
+            () => {
+                calls.push("third");
+                throw new Error("third cleanup failed");
+            }
+        ),
+        false
+    );
+    assert.deepEqual(calls, ["first", "second", "third"]);
+    const failure = cleanup.failure;
+    assert.notEqual(failure, null);
+
+    assert.equal(cleanup.run(() => calls.push("retry")), false);
+    assert.equal(cleanup.failure, failure);
+    assert.deepEqual(calls, ["first", "second", "third", "retry"]);
+    assert.throws(() => cleanup.assertSafe());
+});
+
+test("save failure is recoverable and does not poison resource safety", () => {
+    const cleanup = loadSessionCleanup();
+    const originalWarn = console.warn;
+    let warnings = 0;
+    console.warn = () => warnings++;
+    try {
+        assert.equal(cleanup.trySave(() => false), false);
+        assert.equal(
+            cleanup.trySave(() => {
+                throw new Error("quota");
+            }),
+            false
+        );
+    } finally {
+        console.warn = originalWarn;
+    }
+
+    assert.equal(warnings, 1);
+    assert.equal(cleanup.safe, true);
+    assert.equal(cleanup.failure, null);
+    assert.doesNotThrow(() => cleanup.assertSafe());
 });
