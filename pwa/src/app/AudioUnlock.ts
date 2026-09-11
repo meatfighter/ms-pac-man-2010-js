@@ -1,52 +1,43 @@
-import { PwaAudioManager } from "slick2d-ts/slick/openal/PwaAudioManager";
+import { PlaybackSession, type PlaybackAttempt } from "slick2d-ts/slick/openal/PlaybackSession";
 
-const AUDIO_UNLOCK_TIMEOUT_MS = 3000;
-const pwaAudioManager = PwaAudioManager.get();
-let activationGeneration = 0;
+export type GameAudioAttempt = PlaybackAttempt;
 
-export type GameAudioActivation = "ready" | "unavailable" | "superseded";
+// Install decode-only preparation before any runtime loader begins preloading.
+// The engine owns deadlines, cancellation, generation tokens, and silent fallback.
+const playback = new PlaybackSession();
+let latestAttempt: GameAudioAttempt | null = null;
 
-// Install decode-only boot preparation before any runtime loader starts audio preload.
-pwaAudioManager.install();
-
-/**
- * Create a fresh playback generation from the current user activation.
- * Audio failure permits silent gameplay; a superseded activation must not resume it.
- */
-export async function unlockGameAudio(): Promise<GameAudioActivation> {
-    const generation = ++activationGeneration;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-    let failure: unknown;
-    try {
-        // Keep construction and native resume inside the original user activation.
-        const activation = pwaAudioManager.beginPlaybackGeneration();
-        const unlocked = await Promise.race([
-            activation,
-            new Promise<boolean>((resolve) => {
-                timeout = setTimeout(() => resolve(false), AUDIO_UNLOCK_TIMEOUT_MS);
-            })
-        ]);
-        if (generation !== activationGeneration) {
-            return "superseded";
-        }
-        if (unlocked) {
-            return "ready";
-        }
-    } catch (error) {
-        failure = error;
-    } finally {
-        clearTimeout(timeout);
+/** Call synchronously from New Game/Continue, before the activation's first await. */
+export function beginGameAudio(): GameAudioAttempt {
+    const attempt = playback.begin();
+    if (latestAttempt === null || attempt.id > latestAttempt.id) {
+        latestAttempt = attempt;
     }
-    if (generation !== activationGeneration) {
-        return "superseded";
-    }
-    console.warn("Unable to start a fresh Web Audio playback generation; continuing without audio.", failure);
-    pwaAudioManager.endPlaybackGeneration();
-    return "unavailable";
+    return attempt;
 }
 
-/** Retire playback and invalidate pending activations while retaining decoded AudioBuffers. */
-export function releaseGameAudio(): void {
-    activationGeneration++;
-    pwaAudioManager.endPlaybackGeneration();
+export function isGameAudioCurrent(attempt: GameAudioAttempt): boolean {
+    return playback.isCurrent(attempt);
+}
+
+/** Identity only: a failed attempt can clean up its shell, but never its replacement. */
+export function isGameAudioLatest(attempt: GameAudioAttempt): boolean {
+    return latestAttempt === attempt;
+}
+
+/** Commit only after game initialization and logical save restoration have finished. */
+export function commitGameAudio(attempt: GameAudioAttempt): Promise<boolean> {
+    return playback.commit(attempt);
+}
+
+/** A stale continuation may retire its own attempt, never a replacement's playback. */
+export function releaseGameAudio(attempt?: GameAudioAttempt): void {
+    if (attempt === undefined || latestAttempt === attempt) {
+        latestAttempt = null;
+        playback.cancel();
+    }
+}
+
+export function setGameAudioInterruptionHandler(handler: ((reason: string) => void) | null): void {
+    playback.setInterruptionHandler(handler);
 }
