@@ -1,4 +1,4 @@
-/* global window, document, caches, performance, navigator, location */
+/* global caches, location */
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -167,10 +167,14 @@ try {
         await waitForRunning(page, `new-game cycle ${i + 1}`);
     }
 
-    await page.waitForFunction(() => {
-        const stats = globalThis.__cutoverLifecycleStats?.();
-        return stats === undefined || ((!stats.audioInstrumented || stats.audioLive <= 1) && (!stats.wakeInstrumented || stats.wakeLive <= 1));
-    }, undefined, { timeout: 5_000 });
+    await page.waitForFunction(
+        () => {
+            const stats = globalThis.__cutoverLifecycleStats?.();
+            return stats === undefined || ((!stats.audioInstrumented || stats.audioLive <= 1) && (!stats.wakeInstrumented || stats.wakeLive <= 1));
+        },
+        undefined,
+        { timeout: 5_000 }
+    );
 
     const finalLifecycle = await readLifecycleStats(page);
     if (baselineLifecycle.audioInstrumented && baselineLifecycle.audioCreated > 0) {
@@ -234,14 +238,17 @@ async function waitForRunning(page, label = "start") {
 }
 
 async function readLifecycleStats(page) {
-    return page.evaluate(() => globalThis.__cutoverLifecycleStats?.() ?? {
-        audioInstrumented: false,
-        audioCreated: 0,
-        audioClosed: 0,
-        audioLive: 0,
-        wakeInstrumented: false,
-        wakeAcquired: 0,
-        wakeReleased: 0,
-        wakeLive: 0
-    });
+    return page.evaluate(
+        () =>
+            globalThis.__cutoverLifecycleStats?.() ?? {
+                audioInstrumented: false,
+                audioCreated: 0,
+                audioClosed: 0,
+                audioLive: 0,
+                wakeInstrumented: false,
+                wakeAcquired: 0,
+                wakeReleased: 0,
+                wakeLive: 0
+            }
+    );
 }

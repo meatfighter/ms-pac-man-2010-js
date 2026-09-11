@@ -17,8 +17,7 @@
         "src/app/ServiceWorkerRegistrar.ts",
         "src/app/SessionGeneration.ts",
         "src/mspacman/HighScoreProtocol.ts",
-        "src/mspacman/HighScoreService.ts",
-        "src/app/AudioUnlock.ts"
+        "src/mspacman/HighScoreService.ts"
     ],
     "include": []
 }

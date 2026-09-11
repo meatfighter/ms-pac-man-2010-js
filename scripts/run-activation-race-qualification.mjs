@@ -1,4 +1,4 @@
-/* global window, navigator */
+/* global window, document */
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -142,20 +142,23 @@ try {
 }
 
 async function armReentrantSecondClick(page, selector) {
-    await page.locator(selector).first().evaluate((button) => {
-        let reentered = false;
-        button.addEventListener(
-            "click",
-            () => {
-                if (reentered) {
-                    return;
-                }
-                reentered = true;
-                button.click();
-            },
-            { once: true }
-        );
-    });
+    await page
+        .locator(selector)
+        .first()
+        .evaluate((button) => {
+            let reentered = false;
+            button.addEventListener(
+                "click",
+                () => {
+                    if (reentered) {
+                        return;
+                    }
+                    reentered = true;
+                    button.click();
+                },
+                { once: true }
+            );
+        });
 }
 
 async function openLiveMenu(page, label) {

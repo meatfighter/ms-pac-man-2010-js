@@ -506,14 +506,20 @@ export class Main extends BasicGame {
     public downloadScores(): void {
         this.scoresDownloadComplete = false;
         const revision = this.leaderboardRevision;
+        const lifetime = this.captureBrowserLifetimeGeneration();
         void HighScoreService.downloadScores()
             .then((scores) => {
+                if (!this.isBrowserLifetimeGenerationCurrent(lifetime)) {
+                    return;
+                }
                 if (scores !== null) {
                     this.applyRemoteScoresIfCurrent(scores, revision);
                 }
             })
             .finally(() => {
-                this.scoresDownloadComplete = true;
+                if (this.isBrowserLifetimeGenerationCurrent(lifetime)) {
+                    this.scoresDownloadComplete = true;
+                }
             });
     }
 
@@ -527,14 +533,20 @@ export class Main extends BasicGame {
         }
 
         const revision = this.leaderboardRevision;
+        const lifetime = this.captureBrowserLifetimeGeneration();
         void HighScoreService.submitScore(submittedScore.world, submittedScore.score, submittedScore.initials)
             .then((scores) => {
+                if (!this.isBrowserLifetimeGenerationCurrent(lifetime)) {
+                    return;
+                }
                 if (scores !== null) {
                     this.applyRemoteScoresIfCurrent(scores, revision);
                 }
             })
             .finally(() => {
-                this.uploadComplete = true;
+                if (this.isBrowserLifetimeGenerationCurrent(lifetime)) {
+                    this.uploadComplete = true;
+                }
             });
     }
 

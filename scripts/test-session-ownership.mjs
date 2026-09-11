@@ -190,7 +190,10 @@ function world() {
                 env,
                 log,
                 button: () => descendants(root).find((node) => node.tag === "button"),
-                text: () => descendants(root).map((node) => node.textContent).join(" ")
+                text: () =>
+                    descendants(root)
+                        .map((node) => node.textContent)
+                        .join(" ")
             };
         }
     };

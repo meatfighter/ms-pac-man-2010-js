@@ -103,8 +103,11 @@ test("browser-native responsibilities are decomposed and generation owned", () =
     assert.match(runtimeLoader, /concurrency: RESOURCE_PRELOAD_CONCURRENCY/);
     assert.match(sessionGeneration, /isCurrent\(generation: number\)/);
     assert.match(playbackSession, /let revision = 0/);
-    assert.match(playbackSession, /isLatestGameAudio/);
-    assert.match(sessionCleanup, /private unsafe: Error \| null = null/);
+    assert.match(playbackSession, /isGameAudioCurrent/);
+    assert.match(playbackSession, /isGameAudioLatest/);
+    assert.match(sessionCleanup, /private error: Error \| null = null/);
+    assert.match(sessionCleanup, /this\.error \?\?= new AggregateError/);
+    assert.match(sessionCleanup, /return this\.error === null/);
     assert.match(serviceWorkerRegistrar, /navigator\.serviceWorker\.register/);
 
     const inputHandler = sliceBetween(browserMain, 'volumeInput?.addEventListener("input"', 'volumeInput?.addEventListener("change"');

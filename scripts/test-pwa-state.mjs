@@ -180,13 +180,13 @@ const server = await createServer({
 });
 
 try {
-    const { MsPacManGameStateSerializer, isFutureMsPacManGameStateSnapshot, isValidMsPacManGameStateSnapshot } = await server.ssrLoadModule(
+    const { MsPacManGameStateSerializer, isValidMsPacManGameStateSnapshot } = await server.ssrLoadModule(
         "/src/mspacman/persistence/MsPacManGameStateSerializer.ts"
     );
     const { MsPacManGameStateStore } = await server.ssrLoadModule("/src/mspacman/persistence/MsPacManGameStateStore.ts");
     const { createBrowserStorageKeys } = await server.ssrLoadModule("/src/app/BrowserStorageKeys.ts");
 
-    await runTest("store clears malformed and current-version invalid local-storage snapshots", () => {
+    await runTest("save inspection rejects malformed and invalid snapshots without deleting them", () => {
         const storage = installMemoryLocalStorage();
         const store = new MsPacManGameStateStore(APP_VERSION);
         setTestLocation(STAGE_URL);
@@ -194,33 +194,34 @@ try {
 
         storage.setItem(storageKey, "{");
         assert.equal(store.hasValidSave(), false);
-        assert.equal(storage.getItem(storageKey), null);
+        assert.equal(storage.getItem(storageKey), "{");
 
-        storage.setItem(storageKey, JSON.stringify({ version: 3 }));
+        const invalidCurrent = JSON.stringify({ version: 5 });
+        storage.setItem(storageKey, invalidCurrent);
         assert.equal(store.hasValidSave(), false);
-        assert.equal(storage.getItem(storageKey), null);
+        assert.equal(storage.getItem(storageKey), invalidCurrent);
     });
 
-    await runTest("store discards obsolete saves and protects future saves from overwrite", () => {
+    await runTest("obsolete and future saves remain untouched by inspection while explicit writes stay explicit", () => {
         const storage = installMemoryLocalStorage();
         const store = new MsPacManGameStateStore(APP_VERSION);
         setTestLocation(STAGE_URL);
         const storageKey = createBrowserStorageKeys().gameState;
 
-        storage.setItem(storageKey, JSON.stringify({ version: 1 }));
+        const obsoleteSnapshot = JSON.stringify({ version: 4 });
+        storage.setItem(storageKey, obsoleteSnapshot);
         assert.equal(store.hasValidSave(), false);
-        assert.equal(storage.getItem(storageKey), null);
+        assert.equal(storage.getItem(storageKey), obsoleteSnapshot);
 
         const futureSnapshot = JSON.stringify({ version: 999, futureShape: true });
         storage.setItem(storageKey, futureSnapshot);
         assert.equal(store.hasValidSave(), false);
         assert.equal(storage.getItem(storageKey), futureSnapshot);
-        assert.equal(store.save(createFakeMain("attract", "source")), false);
-        assert.equal(storage.getItem(storageKey), futureSnapshot);
 
-        store.clear();
         assert.equal(store.save(createFakeMain("attract", "source")), true);
         assert.notEqual(storage.getItem(storageKey), futureSnapshot);
+        store.clear();
+        assert.equal(storage.getItem(storageKey), null);
     });
 
     await runTest("browser storage keys isolate save state by deployment path", () => {
@@ -249,7 +250,7 @@ try {
         assert.equal(store.hasValidSave(), true);
         storage.setItem(stageKeys.gameState, "{");
         assert.equal(store.hasValidSave(), false);
-        assert.equal(storage.getItem(stageKeys.gameState), null);
+        assert.equal(storage.getItem(stageKeys.gameState), "{");
         assert.equal(storage.getItem(productionKeys.gameState), productionSnapshot);
 
         assert.equal(store.save(stageSource), true);
@@ -290,12 +291,10 @@ try {
         const unsupportedVersion = clone(snapshot);
         unsupportedVersion.version = 999;
         assert.equal(serializer.isSupportedSnapshot(unsupportedVersion), false);
-        assert.equal(isFutureMsPacManGameStateSnapshot(unsupportedVersion), true);
 
         const missingMainField = clone(snapshot);
         delete missingMainField.mainFields.score;
         assert.equal(serializer.isSupportedSnapshot(missingMainField), false);
-        assert.equal(isFutureMsPacManGameStateSnapshot(missingMainField), false);
 
         const extraModeField = clone(snapshot);
         extraModeField.mode.fields.extra = 1;
@@ -327,6 +326,12 @@ try {
         assert.equal(store.hasValidSave(), true);
         assert.notEqual(storage.getItem(storageKey), null);
 
+        const savedText = storage.getItem(storageKey);
+        assert.notEqual(savedText, null);
+        const savedSnapshot = JSON.parse(savedText);
+        savedSnapshot.audioSettings = { musicOn: true, soundOn: false };
+        storage.setItem(storageKey, JSON.stringify(savedSnapshot));
+
         assert.equal(store.restore(target, gc), true);
         assert.deepEqual(pickFields(target, MAIN_FIELDS), pickFields(source, MAIN_FIELDS));
         assert.deepEqual(pickFields(target.mode, ATTRACT_FIELDS), pickFields(source.mode, ATTRACT_FIELDS));
@@ -335,11 +340,12 @@ try {
             target.robotInputs.map((input) => input.index),
             source.robotInputs.map((input) => input.index)
         );
-        assert.equal(target.browserSuspended, false);
+        assert.equal(target.browserSuspended, true);
         assert.equal(target.stopAllSoundsCalls, 1);
         assert.equal(target.stopAllSoundEffectsCalls >= 1, true);
         assert.equal(target.input.clearCalls > 0, true);
         assert.deepEqual(gc.musicOnValues, [true]);
+        assert.deepEqual(gc.soundOnValues, [false]);
     });
 
     await runTest("store preserves saved snapshot when restore throws", () => {
@@ -379,13 +385,18 @@ try {
         sourceMusic.looped = true;
         sourceMusic.position = 143;
         sourceMusic.volume = 0.625;
+        sourceMusic.playingState = true;
         source.currentMusic = sourceMusic;
 
         const snapshot = serializer.createSnapshot(source, APP_VERSION);
+        snapshot.audioSettings = { musicOn: false, soundOn: true };
         assert.equal(isValidMsPacManGameStateSnapshot(snapshot), true);
         assert.equal(snapshot.mode.id, "playing");
         assert.equal(snapshot.music.id, "stage:1");
-        assert.equal(snapshot.music.position, 23);
+        assert.equal(snapshot.music.playback.transport, "playing");
+        assert.equal(snapshot.music.playback.looped, true);
+        assert.equal(snapshot.music.playback.positionSeconds, 23);
+        assert.equal(snapshot.music.playback.volume, 0.625);
 
         const target = createFakeMain("playing", "target");
         const targetMusic = target.stageMusic[1];
@@ -425,8 +436,9 @@ try {
         assert.equal(targetMusic.position, 23);
         assert.equal(targetMusic.volume, 0.625);
         assert.equal(targetMusic.stopCalls, 1);
-        assert.deepEqual(gc.musicOnValues, [true]);
-        assert.equal(target.browserSuspended, false);
+        assert.deepEqual(gc.musicOnValues, [false]);
+        assert.deepEqual(gc.soundOnValues, [true]);
+        assert.equal(target.browserSuspended, true);
     });
 
     await runTest("restoring an already-recorded submitted score does not submit again", () => {
@@ -838,6 +850,8 @@ function createMusic() {
         position: 0,
         volume: 1,
         playingState: false,
+        completionPending: false,
+        fade: null,
         buffer: {
             duration: 60
         },
@@ -845,6 +859,32 @@ function createMusic() {
         playCalls: [],
         loopCalls: [],
         pauseCalls: 0,
+        capturePlaybackState() {
+            const duration = this.buffer?.duration ?? null;
+            let positionSeconds = Number.isFinite(this.position) ? Math.max(0, this.position) : 0;
+            if (duration !== null && duration > 0) {
+                positionSeconds = this.looped ? ((positionSeconds % duration) + duration) % duration : Math.min(positionSeconds, duration);
+            }
+            return {
+                transport: this.completionPending ? "ended-pending" : this.paused ? "paused" : this.playingState ? "playing" : "stopped",
+                looped: this.looped,
+                playbackRate: this.playbackRate,
+                positionSeconds,
+                volume: this.volume,
+                fade: this.fade === null ? null : { ...this.fade }
+            };
+        },
+        restorePlaybackState(snapshot) {
+            this.stopCalls++;
+            this.looped = snapshot.looped;
+            this.playbackRate = snapshot.playbackRate;
+            this.position = snapshot.positionSeconds;
+            this.volume = snapshot.volume;
+            this.paused = snapshot.transport === "paused";
+            this.playingState = snapshot.transport === "playing";
+            this.completionPending = snapshot.transport === "ended-pending";
+            this.fade = snapshot.fade === null ? null : { ...snapshot.fade };
+        },
         isLooped() {
             return this.looped;
         },
@@ -878,6 +918,7 @@ function createMusic() {
             this.paused = false;
             this.looped = false;
             this.playingState = true;
+            this.completionPending = false;
         },
         loop(rate, volume) {
             this.loopCalls.push({ rate, volume });
@@ -885,15 +926,18 @@ function createMusic() {
             this.paused = false;
             this.looped = true;
             this.playingState = true;
+            this.completionPending = false;
         },
         stop() {
             this.stopCalls++;
             this.paused = false;
             this.playingState = false;
+            this.completionPending = false;
         },
         pause() {
             this.pauseCalls++;
             this.paused = true;
+            this.playingState = false;
         },
         ready() {
             return Promise.resolve();
@@ -923,8 +967,12 @@ function createGhostSprites() {
 function createGameContainer() {
     return {
         musicOnValues: [],
+        soundOnValues: [],
         setMusicOn(value) {
             this.musicOnValues.push(value);
+        },
+        setSoundOn(value) {
+            this.soundOnValues.push(value);
         }
     };
 }

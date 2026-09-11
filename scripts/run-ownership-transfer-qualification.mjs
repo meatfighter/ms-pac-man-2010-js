@@ -1,4 +1,4 @@
-/* global window, navigator */
+/* global window, document */
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -87,7 +87,9 @@ try {
     await waitForRunning(second, "second tab after stale first-tab pageshow");
 
     assert.deepEqual(errors, [], "ownership-transfer qualification produced uncaught browser errors");
-    console.log("Ownership-transfer qualification passed: final save/disposal precedes lock transfer, new owner cold-continues explicitly, stale old-tab wake cannot reclaim gameplay.");
+    console.log(
+        "Ownership-transfer qualification passed: final save/disposal precedes lock transfer, new owner cold-continues explicitly, stale old-tab wake cannot reclaim gameplay."
+    );
     await context.close();
 } finally {
     if (browser !== null) {

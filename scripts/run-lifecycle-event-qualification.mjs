@@ -1,4 +1,4 @@
-/* global window, document, navigator */
+/* global window, document */
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";

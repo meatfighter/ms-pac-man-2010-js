@@ -56,7 +56,11 @@ function storageContract() {
 
 function ownershipName(href) {
     const { GameSessionOwnership } = loadTs("pwa/src/app/GameSessionOwnership.ts", { location: { href } });
-    return new GameSessionOwnership({}, () => {}, () => {}).name;
+    return new GameSessionOwnership(
+        {},
+        () => {},
+        () => {}
+    ).name;
 }
 
 test("storage and writer-lock scope use the same deployment directory", () => {

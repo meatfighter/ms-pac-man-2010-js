@@ -19,7 +19,7 @@ test("new game requires boot-prepared runtime before fresh playback activation",
     const startGame = mainSource.slice(mainSource.indexOf("async function startGame"), mainSource.indexOf("function renderBoot"));
     assert.match(startGame, /const runtime = runtimeLoader\.prepared;/);
     assert.match(startGame, /if \(runtime === null\) \{\s*startPwaMenu\(\);\s*return;\s*\}/);
-    assert.ok(startGame.indexOf("destroyGame();") > startGame.indexOf("const runtime = runtimeLoader.prepared;"));
+    assert.ok(startGame.indexOf("if (!destroyGame())") > startGame.indexOf("const runtime = runtimeLoader.prepared;"));
     assert.ok(startGame.indexOf("const generation = sessionGeneration.begin();") < startGame.indexOf("const audio = beginGameAudio();"));
     assert.ok(startGame.indexOf('pwaSessionState = "starting";') < startGame.indexOf("const audio = beginGameAudio();"));
     assert.match(startGame, /await audio\.ready/);

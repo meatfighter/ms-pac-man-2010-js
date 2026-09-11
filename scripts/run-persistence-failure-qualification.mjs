@@ -1,4 +1,3 @@
-/* global navigator, Storage */
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";

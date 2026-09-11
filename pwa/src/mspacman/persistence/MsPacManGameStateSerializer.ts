@@ -23,10 +23,34 @@ import { FRUIT_TARGET_FIELDS, GHOST_FIELDS, MAIN_FIELDS, MODE_FIELDS, MSPACMAN_F
 type FieldBag = Record<string, unknown>;
 
 const MODE_IDS: ModeId[] = [
-    "act1", "act2", "act3", "act4", "act5", "act6", "act7", "attract", "ending", "enterInitials", "hallOfFame", "intro", "playing", "selectWorld"
+    "act1",
+    "act2",
+    "act3",
+    "act4",
+    "act5",
+    "act6",
+    "act7",
+    "attract",
+    "ending",
+    "enterInitials",
+    "hallOfFame",
+    "intro",
+    "playing",
+    "selectWorld"
 ];
 const MUSIC_IDS: MusicId[] = [
-    "act:0", "act:1", "act:2", "gameOver", "highScore", "intro", "levelSelect", "stage:0", "stage:1", "stage:2", "stage:3", "training"
+    "act:0",
+    "act:1",
+    "act:2",
+    "gameOver",
+    "highScore",
+    "intro",
+    "levelSelect",
+    "stage:0",
+    "stage:1",
+    "stage:2",
+    "stage:3",
+    "training"
 ];
 const SNAPSHOT_KEYS = ["version", "appVersion", "savedAt", "mainFields", "mode", "music", "audioSettings", "random", "robotInputs", "submittedScore"] as const;
 const MODE_SNAPSHOT_KEYS = ["id", "fields"] as const;
@@ -37,11 +61,43 @@ const MUSIC_SNAPSHOT_KEYS = ["id", "playback"] as const;
 const RANDOM_SNAPSHOT_KEYS = ["seed0", "seed1", "seed2"] as const;
 const ROBOT_INPUT_SNAPSHOT_KEYS = ["index"] as const;
 const BOOLEAN_FIELD_NAMES = new Set<string>([
-    "paused", "fadeMusicFlag", "uploadComplete", "demoMode", "pellotDampensSpeed", "corneringEnhancesSpeed", "speedBoost", "blue", "eyeBalls",
-    "inHome", "exitingHome", "enteringHome", "goingAroundHome", "clockwise", "exiting", "eaten", "chaseMode", "ghostsBlue", "showGhostPoints",
-    "energizersVisible", "finished", "finishedWhite", "fruitTargetPresent", "redEnergizerPresent", "greenEnergizerPresent", "playerKilledFlag",
-    "playerSpiraling", "gameOver", "bumped", "showHeart", "stringDone", "pressEnterVisible", "enterPressed", "juniorReturning", "juniorFruits",
-    "editVisible", "selecting"
+    "paused",
+    "fadeMusicFlag",
+    "uploadComplete",
+    "demoMode",
+    "pellotDampensSpeed",
+    "corneringEnhancesSpeed",
+    "speedBoost",
+    "blue",
+    "eyeBalls",
+    "inHome",
+    "exitingHome",
+    "enteringHome",
+    "goingAroundHome",
+    "clockwise",
+    "exiting",
+    "eaten",
+    "chaseMode",
+    "ghostsBlue",
+    "showGhostPoints",
+    "energizersVisible",
+    "finished",
+    "finishedWhite",
+    "fruitTargetPresent",
+    "redEnergizerPresent",
+    "greenEnergizerPresent",
+    "playerKilledFlag",
+    "playerSpiraling",
+    "gameOver",
+    "bumped",
+    "showHeart",
+    "stringDone",
+    "pressEnterVisible",
+    "enterPressed",
+    "juniorReturning",
+    "juniorFruits",
+    "editVisible",
+    "selecting"
 ]);
 const STRING_FIELD_NAMES = new Set<string>(["stageMessage", "initials", "blinkingInitials", "newScoreOf"]);
 const NUMBER_ARRAY_FIELD_NAMES = new Set<string>(["regionCounts"]);
@@ -120,7 +176,9 @@ function isValidGhostSnapshots(value: unknown): boolean {
 function isValidFruitTargetSnapshot(value: unknown): value is FruitTargetSnapshot {
     const snapshot = asRecord(value);
     return (
-        snapshot !== null && hasExactKeys(snapshot, FRUIT_TARGET_SNAPSHOT_KEYS) && isValidFieldBag(snapshot.fields, FRUIT_TARGET_FIELDS) &&
+        snapshot !== null &&
+        hasExactKeys(snapshot, FRUIT_TARGET_SNAPSHOT_KEYS) &&
+        isValidFieldBag(snapshot.fields, FRUIT_TARGET_FIELDS) &&
         (snapshot.exitPath === null || isValidNumberMatrix(snapshot.exitPath, 31, 28, (entry) => isIntegerInRange(entry, 0, 3)))
     );
 }
@@ -133,8 +191,11 @@ function isValidMusicSnapshot(value: unknown): value is MusicSnapshot {
 function isValidRandomSnapshot(value: unknown): value is RandomSnapshot {
     const snapshot = asRecord(value);
     return (
-        snapshot !== null && hasExactKeys(snapshot, RANDOM_SNAPSHOT_KEYS) &&
-        isIntegerInRange(snapshot.seed0, 0, 65535) && isIntegerInRange(snapshot.seed1, 0, 65535) && isIntegerInRange(snapshot.seed2, 0, 65535)
+        snapshot !== null &&
+        hasExactKeys(snapshot, RANDOM_SNAPSHOT_KEYS) &&
+        isIntegerInRange(snapshot.seed0, 0, 65535) &&
+        isIntegerInRange(snapshot.seed1, 0, 65535) &&
+        isIntegerInRange(snapshot.seed2, 0, 65535)
     );
 }
 
@@ -184,13 +245,15 @@ function isValidNumberMatrix(value: unknown, rows: number, columns: number, entr
 }
 
 function isValidEnergizerLocations(value: unknown): boolean {
-    return Array.isArray(value) && value.length === 4 && value.every((row) =>
-        Array.isArray(row) && row.length === 2 && isIntegerInRange(row[0], 0, 27) && isIntegerInRange(row[1], 0, 30)
+    return (
+        Array.isArray(value) &&
+        value.length === 4 &&
+        value.every((row) => Array.isArray(row) && row.length === 2 && isIntegerInRange(row[0], 0, 27) && isIntegerInRange(row[1], 0, 30))
     );
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-    return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : null;
+    return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
 function hasExactKeys(record: Record<string, unknown>, keys: readonly string[]): boolean {
@@ -319,7 +382,7 @@ export class MsPacManGameStateSerializer {
             this.setField(ghost, "sprites", main.ghostSprites[ghost.ghostIndex]);
         }
         this.restoreFruitTarget(mode, snapshot.fruitTarget);
-        mode.eatenGhost = snapshot.eatenGhostIndex === null ? null : mode.ghosts[snapshot.eatenGhostIndex] ?? null;
+        mode.eatenGhost = snapshot.eatenGhostIndex === null ? null : (mode.ghosts[snapshot.eatenGhostIndex] ?? null);
         this.rebindPlayingMode(mode, main, snapshot.inputRobotIndex);
     }
 
@@ -327,7 +390,7 @@ export class MsPacManGameStateSerializer {
         const exitPath = this.getField(fruitTarget, "exitPath");
         return {
             fields: this.captureFields(fruitTarget, FRUIT_TARGET_FIELDS),
-            exitPath: Array.isArray(exitPath) ? this.cloneJson(exitPath as JsonValue) as number[][] : null
+            exitPath: Array.isArray(exitPath) ? (this.cloneJson(exitPath as JsonValue) as number[][]) : null
         };
     }
 
@@ -506,18 +569,30 @@ export class MsPacManGameStateSerializer {
 
     private musicForId(main: Main, id: MusicId): Music {
         switch (id) {
-            case "act:0": return main.actMusic[0];
-            case "act:1": return main.actMusic[1];
-            case "act:2": return main.actMusic[2];
-            case "gameOver": return main.gameOverMusic;
-            case "highScore": return main.highScoreMusic;
-            case "intro": return main.introMusic;
-            case "levelSelect": return main.levelSelectMusic;
-            case "stage:0": return main.stageMusic[0];
-            case "stage:1": return main.stageMusic[1];
-            case "stage:2": return main.stageMusic[2];
-            case "stage:3": return main.stageMusic[3];
-            case "training": return main.trainingMusic;
+            case "act:0":
+                return main.actMusic[0];
+            case "act:1":
+                return main.actMusic[1];
+            case "act:2":
+                return main.actMusic[2];
+            case "gameOver":
+                return main.gameOverMusic;
+            case "highScore":
+                return main.highScoreMusic;
+            case "intro":
+                return main.introMusic;
+            case "levelSelect":
+                return main.levelSelectMusic;
+            case "stage:0":
+                return main.stageMusic[0];
+            case "stage:1":
+                return main.stageMusic[1];
+            case "stage:2":
+                return main.stageMusic[2];
+            case "stage:3":
+                return main.stageMusic[3];
+            case "training":
+                return main.trainingMusic;
         }
     }
 }
