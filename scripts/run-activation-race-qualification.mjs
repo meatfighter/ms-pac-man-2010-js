@@ -91,30 +91,36 @@ try {
     await waitForRunning(page, "double Continue");
     let after = await expectOneFreshContext(page, before, "double Continue");
 
-    // Multiple departure signals in one task are one effective departure.
+    // Any sequence containing pagehide crosses the ownership boundary: final save + full disposal.
+    before = after;
     await page.evaluate(() => {
         window.dispatchEvent(new Event("blur"));
         window.dispatchEvent(new Event("pagehide"));
     });
-    await waitForMenu(page, "blur then pagehide");
-    assert.equal((await readAudioCreates(page)).created, after.created, "departure signals created audio");
+    await waitForOwnershipDisposal(page, "blur then pagehide");
+    assert.equal((await readAudioCreates(page)).created, before.created, "departure signals created audio");
+    await page.evaluate(() => window.dispatchEvent(new Event("pageshow")));
+    await waitForColdMenu(page, "pageshow after blur/pagehide");
     await page.locator(continueSelector).first().click();
     await page.locator(continueSelector).first().waitFor({ state: "hidden" });
-    await waitForRunning(page, "Continue after blur/pagehide");
-    after = await expectOneFreshContext(page, after, "Continue after blur/pagehide");
+    await waitForRunning(page, "cold Continue after blur/pagehide");
+    after = await expectOneFreshContext(page, before, "cold Continue after blur/pagehide");
 
+    before = after;
     await page.evaluate(() => {
         window.dispatchEvent(new Event("pagehide"));
         window.dispatchEvent(new Event("blur"));
     });
-    await waitForMenu(page, "pagehide then blur");
-    assert.equal((await readAudioCreates(page)).created, after.created, "reversed departure signals created audio");
+    await waitForOwnershipDisposal(page, "pagehide then blur");
+    assert.equal((await readAudioCreates(page)).created, before.created, "reversed departure signals created audio");
+    await page.evaluate(() => window.dispatchEvent(new Event("pageshow")));
+    await waitForColdMenu(page, "pageshow after pagehide/blur");
     await page.locator(continueSelector).first().click();
     await page.locator(continueSelector).first().waitFor({ state: "hidden" });
-    await waitForRunning(page, "Continue after pagehide/blur");
-    after = await expectOneFreshContext(page, after, "Continue after pagehide/blur");
+    await waitForRunning(page, "cold Continue after pagehide/blur");
+    after = await expectOneFreshContext(page, before, "cold Continue after pagehide/blur");
 
-    // Apply the same deterministic reentrant-click pattern to New Game.
+    // Apply the same deterministic reentrant-click pattern to New Game from a retained live menu.
     await openLiveMenu(page, "double New Game");
     before = await readAudioCreates(page);
     await armReentrantSecondClick(page, newGameSelector);
@@ -124,7 +130,9 @@ try {
     await expectOneFreshContext(page, before, "double New Game");
 
     assert.deepEqual(errors, [], "activation-race qualification produced uncaught browser errors");
-    console.log("Activation-race qualification passed: reentrant double starts accept one fresh generation and duplicate departure signals are idempotent.");
+    console.log(
+        "Activation-race qualification passed: reentrant double starts accept one fresh generation and duplicate pagehide departure sequences dispose/reacquire safely."
+    );
     await context.close();
 } finally {
     if (browser !== null) {
@@ -154,13 +162,22 @@ async function openLiveMenu(page, label) {
     const menu = page.locator(menuButtonSelector).first();
     await menu.waitFor({ state: "visible" });
     await menu.click();
-    await waitForMenu(page, label);
-}
-
-async function waitForMenu(page, label) {
     await page.locator(continueSelector).first().waitFor({ state: "visible" });
     assert.equal(await page.locator("canvas").count(), 1, `${label}: expected one retained canvas`);
     assert.equal(await page.locator(menuButtonSelector).count(), 0, `${label}: gameplay menu control remained active`);
+}
+
+async function waitForOwnershipDisposal(page, label) {
+    await page.waitForFunction(() => document.querySelectorAll("canvas").length === 0);
+    assert.equal(await page.locator(menuButtonSelector).count(), 0, `${label}: gameplay control survived ownership disposal`);
+}
+
+async function waitForColdMenu(page, label) {
+    const button = page.locator(continueSelector).first();
+    await button.waitFor({ state: "visible" });
+    assert.equal(await button.isEnabled(), true, `${label}: final save is unavailable for cold Continue`);
+    assert.equal(await page.locator("canvas").count(), 0, `${label}: cold menu unexpectedly retained a canvas`);
+    assert.equal(await page.locator(menuButtonSelector).count(), 0, `${label}: gameplay control is active in cold menu`);
 }
 
 async function waitForRunning(page, label) {
