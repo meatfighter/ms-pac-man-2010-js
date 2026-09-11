@@ -1,4 +1,4 @@
-/* global window, document, caches, performance, navigator */
+/* global window, document, caches, performance, navigator, location */
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -7,6 +7,7 @@ import { chromium } from "playwright";
 
 const LIVE_CONTINUE_CYCLES = 20;
 const NEW_GAME_CYCLES = 5;
+const EXPECTED_FRESH_ACTIVATIONS = LIVE_CONTINUE_CYCLES + NEW_GAME_CYCLES;
 const root = resolve(process.env.PWA_ROOT ?? "dist/pwa");
 assert(existsSync(resolve(root, "index.html")), `Missing production PWA: ${root}`);
 
@@ -48,6 +49,90 @@ try {
     });
     const context = await browser.newContext();
     context.setDefaultTimeout(60_000);
+    await context.addInitScript(() => {
+        const state = {
+            audioInstrumented: false,
+            audioCreated: 0,
+            audioClosed: 0,
+            audioLive: new Set(),
+            wakeInstrumented: false,
+            wakeAcquired: 0,
+            wakeReleased: 0,
+            wakeLive: new Set()
+        };
+
+        const NativeAudioContext = globalThis.AudioContext ?? globalThis.webkitAudioContext;
+        if (typeof NativeAudioContext === "function") {
+            try {
+                const WrappedAudioContext = new Proxy(NativeAudioContext, {
+                    construct(target, args) {
+                        const audioContext = Reflect.construct(target, args, target);
+                        state.audioCreated++;
+                        state.audioLive.add(audioContext);
+                        const noteClosed = () => {
+                            if (audioContext.state === "closed" && state.audioLive.delete(audioContext)) {
+                                state.audioClosed++;
+                            }
+                        };
+                        audioContext.addEventListener?.("statechange", noteClosed);
+                        return audioContext;
+                    }
+                });
+                if (globalThis.AudioContext === NativeAudioContext) {
+                    Object.defineProperty(globalThis, "AudioContext", { configurable: true, writable: true, value: WrappedAudioContext });
+                }
+                if (globalThis.webkitAudioContext === NativeAudioContext) {
+                    Object.defineProperty(globalThis, "webkitAudioContext", { configurable: true, writable: true, value: WrappedAudioContext });
+                }
+                state.audioInstrumented = true;
+            } catch {
+                // Instrumentation is observational only; production behavior must still run.
+            }
+        }
+
+        const wakeLock = navigator.wakeLock;
+        if (wakeLock && typeof wakeLock.request === "function") {
+            try {
+                const request = wakeLock.request.bind(wakeLock);
+                Object.defineProperty(wakeLock, "request", {
+                    configurable: true,
+                    value: async (...args) => {
+                        const sentinel = await request(...args);
+                        state.wakeAcquired++;
+                        state.wakeLive.add(sentinel);
+                        const noteReleased = () => {
+                            if (state.wakeLive.delete(sentinel)) {
+                                state.wakeReleased++;
+                            }
+                        };
+                        sentinel.addEventListener?.("release", noteReleased, { once: true });
+                        if (sentinel.released) {
+                            noteReleased();
+                        }
+                        return sentinel;
+                    }
+                });
+                state.wakeInstrumented = true;
+            } catch {
+                // Wake locks are optional and the wrapper must never change app behavior.
+            }
+        }
+
+        Object.defineProperty(globalThis, "__cutoverLifecycleStats", {
+            configurable: true,
+            value: () => ({
+                audioInstrumented: state.audioInstrumented,
+                audioCreated: state.audioCreated,
+                audioClosed: state.audioClosed,
+                audioLive: [...state.audioLive].filter((audioContext) => audioContext.state !== "closed").length,
+                wakeInstrumented: state.wakeInstrumented,
+                wakeAcquired: state.wakeAcquired,
+                wakeReleased: state.wakeReleased,
+                wakeLive: [...state.wakeLive].filter((sentinel) => !sentinel.released).length
+            })
+        });
+    });
+
     const errors = [];
     const page = await context.newPage();
     page.on("pageerror", (error) => errors.push(error.message));
@@ -61,6 +146,7 @@ try {
     await waitForRunning(page);
 
     const baselineCacheKeys = await page.evaluate(async () => (await caches.keys()).sort());
+    const baselineLifecycle = await readLifecycleStats(page);
     await page.evaluate(() => performance.clearResourceTimings());
 
     for (let i = 0; i < LIVE_CONTINUE_CYCLES; i++) {
@@ -81,6 +167,26 @@ try {
         await waitForRunning(page, `new-game cycle ${i + 1}`);
     }
 
+    await page.waitForFunction(() => {
+        const stats = globalThis.__cutoverLifecycleStats?.();
+        return stats === undefined || ((!stats.audioInstrumented || stats.audioLive <= 1) && (!stats.wakeInstrumented || stats.wakeLive <= 1));
+    }, undefined, { timeout: 5_000 });
+
+    const finalLifecycle = await readLifecycleStats(page);
+    if (baselineLifecycle.audioInstrumented && baselineLifecycle.audioCreated > 0) {
+        assert.equal(
+            finalLifecycle.audioCreated - baselineLifecycle.audioCreated,
+            EXPECTED_FRESH_ACTIVATIONS,
+            "Each explicit Continue/New Game activation must construct exactly one fresh AudioContext."
+        );
+    }
+    if (finalLifecycle.audioInstrumented) {
+        assert.ok(finalLifecycle.audioLive <= 1, `Retired AudioContexts accumulated: ${JSON.stringify(finalLifecycle)}`);
+    }
+    if (finalLifecycle.wakeInstrumented) {
+        assert.ok(finalLifecycle.wakeLive <= 1, `Wake-lock sentinels accumulated: ${JSON.stringify(finalLifecycle)}`);
+    }
+
     const finalCacheKeys = await page.evaluate(async () => (await caches.keys()).sort());
     assert.deepEqual(finalCacheKeys, baselineCacheKeys, "Lifecycle cycles created or removed a cache namespace.");
 
@@ -97,7 +203,8 @@ try {
     assert.deepEqual(errors, [], "Lifecycle stress produced uncaught browser errors.");
 
     console.log(
-        `Lifecycle stress passed: ${LIVE_CONTINUE_CYCLES} live MENU/Continue cycles and ${NEW_GAME_CYCLES} repeated New Game cycles with stable caches/resources.`
+        `Lifecycle stress passed: ${LIVE_CONTINUE_CYCLES} live MENU/Continue cycles and ${NEW_GAME_CYCLES} repeated New Game cycles; ` +
+            `caches/resources remained stable; lifecycle stats ${JSON.stringify(finalLifecycle)}.`
     );
     await context.close();
 } finally {
@@ -124,4 +231,17 @@ async function waitForRunning(page, label = "start") {
     assert.equal(await page.locator("canvas").count(), 1, `${label}: expected exactly one game canvas`);
     assert.equal(await page.locator(menuButtonSelector).count(), 1, `${label}: expected exactly one visible gameplay menu button`);
     assert.equal(await page.locator(".session-ownership-message").count(), 0, `${label}: ownership UI unexpectedly replaced the active game`);
+}
+
+async function readLifecycleStats(page) {
+    return page.evaluate(() => globalThis.__cutoverLifecycleStats?.() ?? {
+        audioInstrumented: false,
+        audioCreated: 0,
+        audioClosed: 0,
+        audioLive: 0,
+        wakeInstrumented: false,
+        wakeAcquired: 0,
+        wakeReleased: 0,
+        wakeLive: 0
+    });
 }
