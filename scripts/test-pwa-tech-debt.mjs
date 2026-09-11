@@ -70,9 +70,10 @@ test("persistence uses public Slick random and logical Music snapshot APIs", () 
 });
 
 test("save-state inspection is read-only while explicit clear remains separate", () => {
-    const readSnapshot = sliceBetween(stateStore, "public readSnapshot", "public hasValidSave");
+    const readSnapshot = sliceBetween(stateStore, "private readSnapshot", "\n}\n\nfunction normalizeTransientState");
     assert.doesNotMatch(readSnapshot, /this\.clear\(|removeItem\(/);
-    assert.match(stateStore, /public clear\(\): boolean/);
+    assert.match(stateStore, /public clear\(\): void/);
+    assert.match(stateStore, /localStorage\.removeItem\(createBrowserStorageKeys\(\)\.gameState\)/);
 });
 
 test("save state normalizes in-flight score submission state", () => {
@@ -109,6 +110,13 @@ test("browser-native responsibilities are decomposed and generation owned", () =
     const inputHandler = sliceBetween(browserMain, 'volumeInput?.addEventListener("input"', 'volumeInput?.addEventListener("change"');
     assert.doesNotMatch(inputHandler, /setVolume\(volume, true\)/);
     assert.match(browserMain, /volumeInput\?\.addEventListener\("change"/);
+});
+
+test("stale launch cleanup is ownership-safe and exception-safe", () => {
+    const launch = sliceBetween(browserMain, "async function mountGame", "function applyVolume");
+    assert.match(browserMain, /function disposeStaleLaunch\(mainGame: MsPacManMain, appContainer: AppGameContainer\): void/);
+    assert.match(browserMain, /sessionCleanup\.run\(\s*\(\) => mainGame\.invalidateBrowserLifetime\(\),\s*\(\) => appContainer\.destroy\(\)/s);
+    assert.doesNotMatch(launch, /mainGame\.invalidateBrowserLifetime\(\);\s*appContainer\.destroy\(\);/s);
 });
 
 test("the historical /91 loop remains the Java 10 ms fixed-step cadence", () => {
