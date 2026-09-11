@@ -81,10 +81,12 @@ try {
     await page.locator(newGameSelector).first().click();
     await waitForRunning(page, "initial New Game");
 
-    // Two trusted Continue clicks while STARTING must still publish one accepted attempt.
+    // The first trusted click reaches the production listener first and publishes STARTING.
+    // Our later listener then issues one reentrant second click in the same activation stack.
     await openLiveMenu(page, "double Continue");
     let before = await readAudioCreates(page);
-    await page.locator(continueSelector).first().dblclick({ delay: 0 });
+    await armReentrantSecondClick(page, continueSelector);
+    await page.locator(continueSelector).first().click();
     await page.locator(continueSelector).first().waitFor({ state: "hidden" });
     await waitForRunning(page, "double Continue");
     let after = await expectOneFreshContext(page, before, "double Continue");
@@ -112,22 +114,40 @@ try {
     await waitForRunning(page, "Continue after pagehide/blur");
     after = await expectOneFreshContext(page, after, "Continue after pagehide/blur");
 
-    // Two trusted New Game clicks from a retained live menu must destroy/replace once and accept one new start.
+    // Apply the same deterministic reentrant-click pattern to New Game.
     await openLiveMenu(page, "double New Game");
     before = await readAudioCreates(page);
-    await page.locator(newGameSelector).first().dblclick({ delay: 0 });
+    await armReentrantSecondClick(page, newGameSelector);
+    await page.locator(newGameSelector).first().click();
     await page.locator(newGameSelector).first().waitFor({ state: "hidden" });
     await waitForRunning(page, "double New Game");
     await expectOneFreshContext(page, before, "double New Game");
 
     assert.deepEqual(errors, [], "activation-race qualification produced uncaught browser errors");
-    console.log("Activation-race qualification passed: double starts accept one fresh generation and duplicate departure signals are idempotent.");
+    console.log("Activation-race qualification passed: reentrant double starts accept one fresh generation and duplicate departure signals are idempotent.");
     await context.close();
 } finally {
     if (browser !== null) {
         await browser.close();
     }
     await new Promise((resolveClose) => server.close(resolveClose));
+}
+
+async function armReentrantSecondClick(page, selector) {
+    await page.locator(selector).first().evaluate((button) => {
+        let reentered = false;
+        button.addEventListener(
+            "click",
+            () => {
+                if (reentered) {
+                    return;
+                }
+                reentered = true;
+                button.click();
+            },
+            { once: true }
+        );
+    });
 }
 
 async function openLiveMenu(page, label) {
