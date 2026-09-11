@@ -31,7 +31,7 @@
         "build": "node scripts/build-release.mjs --target=full --key-source=active",
         "release": "npm run verify:dependencies && npm run build",
         "qualify": "node scripts/assert-clean-git.mjs && npm run format:check && npm run lint && npm test && npm run release && npm run verify:release && npm run verify:browser && npm run verify:offline && node scripts/assert-clean-git.mjs",
-        "qualify:browsers": "npm run verify:production-browser && npm run verify:lifecycle-stress",
+        "qualify:browsers": "npm run verify:production-browser && npm run verify:lifecycle-events && npm run verify:lifecycle-stress",
         "release:provision": "node scripts/release-provision.mjs",
         "release:rotate-hmac": "node scripts/release-rotate-hmac.mjs",
         "release:finalize-hmac": "node scripts/release-finalize-hmac.mjs",
@@ -90,6 +90,7 @@
         "verify:offline": "node scripts/run-offline-verification.mjs",
         "test:session-ownership": "node --test scripts/test-session-ownership.mjs",
         "verify:production-browser": "node scripts/run-production-browser-qualification.mjs",
+        "verify:lifecycle-events": "node scripts/run-lifecycle-event-qualification.mjs",
         "verify:lifecycle-stress": "node scripts/run-lifecycle-stress-qualification.mjs",
         "release:archive": "node scripts/archive-release.mjs"
     },
