@@ -89,29 +89,33 @@ try {
 
     let audio = await readAudioCreates(page);
 
-    // A foreground event cannot undo a blur-triggered departure.
+    // Blur is an ordinary live departure. Foreground signals cannot undo it.
     await page.evaluate(() => window.dispatchEvent(new Event("blur")));
-    await waitForMenu(page, "blur");
+    await waitForLiveMenu(page, "blur");
     const afterBlur = await readAudioCreates(page);
     await page.evaluate(() => {
         window.dispatchEvent(new Event("focus"));
         window.dispatchEvent(new Event("pageshow"));
         document.dispatchEvent(new Event("visibilitychange"));
     });
-    await assertStillMenu(page, "focus/pageshow after blur");
+    await assertStillMenu(page, "focus/pageshow after blur", true);
     assert.equal((await readAudioCreates(page)).created, afterBlur.created, "foreground events created audio without explicit activation");
     await continueGame(page, "Continue after blur");
     audio = await expectOneFreshContext(page, audio, "Continue after blur");
 
-    // pagehide has the same one-way policy; pageshow is not a resume command.
+    // pagehide is also an ownership sleep boundary. It may first enter the live menu,
+    // but ownership relinquishment then performs the final save and destroys the retained game.
+    const beforePageHide = await readAudioCreates(page);
     await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
-    await waitForMenu(page, "pagehide");
-    const afterPageHide = await readAudioCreates(page);
+    await waitForOwnershipDisposal(page, "pagehide");
+    assert.equal((await readAudioCreates(page)).created, beforePageHide.created, "pagehide created replacement audio");
+
+    // pageshow reacquires ownership and returns to a cold menu only. It must not resume gameplay.
     await page.evaluate(() => window.dispatchEvent(new Event("pageshow")));
-    await assertStillMenu(page, "pageshow after pagehide");
-    assert.equal((await readAudioCreates(page)).created, afterPageHide.created, "pageshow created audio without explicit activation");
-    await continueGame(page, "Continue after pagehide");
-    audio = await expectOneFreshContext(page, audio, "Continue after pagehide");
+    await waitForColdMenu(page, "pageshow after pagehide");
+    assert.equal((await readAudioCreates(page)).created, beforePageHide.created, "pageshow created audio without explicit activation");
+    await continueGame(page, "cold Continue after pagehide");
+    audio = await expectOneFreshContext(page, audio, "cold Continue after pagehide");
 
     // Drive the actual AppGameContainer WebGL event handlers. Restoration may prepare rendering,
     // but the shell must remain in MENU until explicit Continue.
@@ -119,10 +123,10 @@ try {
     assert.ok(graphicsCanvas, "missing canvas before graphics-loss test");
     const beforeLoss = await readAudioCreates(page);
     await graphicsCanvas.evaluate((canvas) => canvas.dispatchEvent(new Event("webglcontextlost", { cancelable: true })));
-    await waitForMenu(page, "graphics context loss");
+    await waitForLiveMenu(page, "graphics context loss");
     assert.equal((await readAudioCreates(page)).created, beforeLoss.created, "graphics loss created replacement audio");
     await graphicsCanvas.evaluate((canvas) => canvas.dispatchEvent(new Event("webglcontextrestored")));
-    await assertStillMenu(page, "graphics context restoration");
+    await assertStillMenu(page, "graphics context restoration", true);
     assert.equal((await readAudioCreates(page)).created, beforeLoss.created, "graphics restoration created/resumed audio automatically");
     await continueGame(page, "Continue after graphics restoration");
     audio = await expectOneFreshContext(page, audio, "Continue after graphics restoration");
@@ -145,7 +149,9 @@ try {
     assert.equal((await readAudioCreates(page)).created, audio.created, "stale canvas events affected current playback generation");
 
     assert.deepEqual(errors, [], "lifecycle-event qualification produced uncaught browser errors");
-    console.log("Lifecycle-event qualification passed: foreground signals do not resume; graphics restore is inert until Continue; stale canvas events are fenced.");
+    console.log(
+        "Lifecycle-event qualification passed: blur retains MENU, pagehide disposes ownership, foreground/restoration signals do not resume, and stale canvas events are fenced."
+    );
     await context.close();
 } finally {
     if (browser !== null) {
@@ -158,19 +164,33 @@ async function openLiveMenu(page, label) {
     const menu = page.locator(menuButtonSelector).first();
     await menu.waitFor({ state: "visible" });
     await menu.click();
-    await waitForMenu(page, label);
+    await waitForLiveMenu(page, label);
 }
 
-async function waitForMenu(page, label) {
+async function waitForLiveMenu(page, label) {
     await page.locator(continueSelector).first().waitFor({ state: "visible" });
     assert.equal(await page.locator("canvas").count(), 1, `${label}: expected retained game canvas`);
     assert.equal(await page.locator(menuButtonSelector).count(), 0, `${label}: gameplay menu control remained active`);
 }
 
-async function assertStillMenu(page, label) {
+async function waitForOwnershipDisposal(page, label) {
+    await page.waitForFunction(() => document.querySelectorAll("canvas").length === 0);
+    assert.equal(await page.locator(menuButtonSelector).count(), 0, `${label}: gameplay control survived ownership disposal`);
+}
+
+async function waitForColdMenu(page, label) {
+    const button = page.locator(continueSelector).first();
+    await button.waitFor({ state: "visible" });
+    assert.equal(await button.isEnabled(), true, `${label}: saved game is not available for cold Continue`);
+    assert.equal(await page.locator("canvas").count(), 0, `${label}: cold menu unexpectedly retained a game canvas`);
+    assert.equal(await page.locator(menuButtonSelector).count(), 0, `${label}: gameplay control is active in cold menu`);
+}
+
+async function assertStillMenu(page, label, retained) {
     await page.waitForTimeout(50);
     await page.locator(continueSelector).first().waitFor({ state: "visible" });
     assert.equal(await page.locator(menuButtonSelector).count(), 0, `${label}: gameplay resumed without explicit activation`);
+    assert.equal(await page.locator("canvas").count(), retained ? 1 : 0, `${label}: menu retention state changed unexpectedly`);
 }
 
 async function continueGame(page, label) {
