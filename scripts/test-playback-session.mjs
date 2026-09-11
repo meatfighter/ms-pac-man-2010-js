@@ -187,3 +187,9 @@ test("save failure is recoverable and does not poison resource safety", () => {
     assert.equal(cleanup.failure, null);
     assert.doesNotThrow(() => cleanup.assertSafe());
 });
+
+test("wake-lock request and release failures remain best-effort browser behavior", () => {
+    const source = readFileSync("pwa/src/app/ScreenWakeLockManager.ts", "utf8");
+    assert.match(source, /try\s*\{\s*sentinel = await navigator\.wakeLock\.request\("screen"\);\s*\}\s*catch\s*\{\s*return;\s*\}/s);
+    assert.match(source, /private async releaseSentinel[\s\S]*?try\s*\{\s*await sentinel\.release\(\);\s*\}\s*catch\s*\{[\s\S]*?Wake locks are best-effort;/s);
+});
