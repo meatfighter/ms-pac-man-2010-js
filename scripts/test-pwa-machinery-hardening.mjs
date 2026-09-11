@@ -62,6 +62,7 @@ test("live Continue is scoped to its playback attempt and retained session", () 
     assert.match(resume, /const audio = beginGameAudio\(\)/);
     assert.match(resume, /commitGameAudio\(audio\)/);
     assert.match(resume, /isGameAudioLatest\(audio\)/);
+    assert.equal((resume.match(/isGameAudioLatest\(audio\)/g) ?? []).length, 2, "Continue catch and finally must both reject stale attempts.");
     assert.match(resume, /isStartingGameSession\(session, audio\)/);
 });
 
