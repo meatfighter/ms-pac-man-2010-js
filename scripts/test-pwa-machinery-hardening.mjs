@@ -5,6 +5,7 @@ import test from "node:test";
 
 const rootDir = process.cwd();
 const mainSource = readFileSync(join(rootDir, "pwa", "src", "app", "main.ts"), "utf8");
+const gameMainSource = readFileSync(join(rootDir, "pwa", "src", "mspacman", "Main.ts"), "utf8");
 const runtimeLoaderSource = readFileSync(join(rootDir, "pwa", "src", "app", "RuntimeLoader.ts"), "utf8");
 const serviceWorkerSource = readFileSync(join(rootDir, "pwa", "public", "sw.js"), "utf8");
 
@@ -69,6 +70,22 @@ test("failed persistence keeps the initialized live game continuable", () => {
     assert.match(liveMenu, /Progress could not be saved\. Continue still preserves this live game\./);
     assert.match(liveMenu, /pwaSessionState = "menu";/);
     assert.doesNotMatch(liveMenu, /destroyGame\(/);
+});
+
+test("ownership relinquishment performs the final save before destructive cleanup", () => {
+    const release = mainSource.slice(mainSource.indexOf("function releaseOwnedSession"), mainSource.indexOf("function showCleanupFailure"));
+    const save = mainSource.slice(mainSource.indexOf("function saveCurrentGameState"), mainSource.indexOf("function getGameStateStore"));
+    assert.ok(release.indexOf("sessionCleanup.trySave(saveCurrentGameState);") < release.indexOf("destroyGame();"));
+    assert.match(save, /if \(!ownership\.owned\) \{\s*return false;\s*\}/);
+});
+
+test("high-score network callbacks are fenced by the Main browser lifetime", () => {
+    const download = gameMainSource.slice(gameMainSource.indexOf("public downloadScores"), gameMainSource.indexOf("public accessScoresDatabaseAsync"));
+    const submit = gameMainSource.slice(gameMainSource.indexOf("public accessScoresDatabaseAsync"), gameMainSource.indexOf("public accessScoresDatabase("));
+    assert.match(download, /const lifetime = this\.captureBrowserLifetimeGeneration\(\)/);
+    assert.ok((download.match(/this\.isBrowserLifetimeGenerationCurrent\(lifetime\)/g) ?? []).length >= 2);
+    assert.match(submit, /const lifetime = this\.captureBrowserLifetimeGeneration\(\)/);
+    assert.ok((submit.match(/this\.isBrowserLifetimeGenerationCurrent\(lifetime\)/g) ?? []).length >= 2);
 });
 
 test("live Continue is scoped to its playback attempt and retained session", () => {
