@@ -87,6 +87,25 @@ test("synchronous departure during native begin cannot republish the cancelled a
     assert.equal(loaded.playback.commitCount, 0);
 });
 
+test("synchronous replacement begin cannot be overwritten by the outer activation", async () => {
+    const loaded = loadPlaybackAdapter();
+    let replacement = null;
+    loaded.setOnBegin(() => {
+        loaded.setOnBegin(null);
+        replacement = loaded.api.beginGameAudio();
+    });
+
+    const outer = loaded.api.beginGameAudio();
+
+    assert.notEqual(replacement, null);
+    assert.equal(loaded.api.isGameAudioLatest(outer), false);
+    assert.equal(loaded.api.isGameAudioCurrent(outer), false);
+    assert.equal(await loaded.api.commitGameAudio(outer), false);
+    assert.equal(loaded.api.isGameAudioLatest(replacement), true);
+    assert.equal(loaded.api.isGameAudioCurrent(replacement), true);
+    assert.equal(await loaded.api.commitGameAudio(replacement), true);
+});
+
 test("stale release cannot cancel a newer activation", () => {
     const loaded = loadPlaybackAdapter();
     const first = loaded.api.beginGameAudio();
