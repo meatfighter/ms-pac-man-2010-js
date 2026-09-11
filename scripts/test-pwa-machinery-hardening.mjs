@@ -14,13 +14,15 @@ test("forced runtime retry supersedes pending preparation cleanly", () => {
     assert.match(runtimeLoaderSource, /await this\.preparationPromise;/);
 });
 
-test("new game requires boot-prepared runtime before fresh audio activation", () => {
+test("new game requires boot-prepared runtime before fresh playback activation", () => {
     const startGame = mainSource.slice(mainSource.indexOf("async function startGame"), mainSource.indexOf("function renderBoot"));
     assert.match(startGame, /const runtime = runtimeLoader\.prepared;/);
     assert.match(startGame, /if \(runtime === null\) \{\s*startPwaMenu\(\);\s*return;\s*\}/);
     assert.ok(startGame.indexOf("destroyGame();") > startGame.indexOf("const runtime = runtimeLoader.prepared;"));
-    assert.ok(startGame.indexOf("destroyGame();") < startGame.indexOf("const audioUnlockPromise = unlockAudio();"));
-    assert.doesNotMatch(startGame, /runtimeLoader\.prepare\s*\(|renderBoot/);
+    assert.ok(startGame.indexOf("const generation = sessionGeneration.begin();") < startGame.indexOf("const audio = beginGameAudio();"));
+    assert.ok(startGame.indexOf('pwaSessionState = "starting";') < startGame.indexOf("const audio = beginGameAudio();"));
+    assert.match(startGame, /await audio\.ready/);
+    assert.doesNotMatch(startGame, /unlockAudio|runtimeLoader\.prepare\s*\(|renderBoot/);
 });
 
 test("runtime preload waits for both resource branches before exposing failure", () => {
@@ -41,19 +43,30 @@ test("browser lifecycle only enters the PWA menu and never auto-resumes", () => 
     assert.match(mainSource, /document\.visibilityState === "hidden"/);
     assert.doesNotMatch(mainSource, /window\.addEventListener\("focus"/);
     assert.doesNotMatch(mainSource, /window\.addEventListener\("pageshow"/);
-    assert.match(mainSource, /if \(pwaSessionState === "starting"\) \{[\s\S]*renderMenu\(\);[\s\S]*return;/);
-    assert.match(mainSource, /releaseGameAudio\(\);[\s\S]*menuOverlay = renderMenuUi/);
+    assert.match(mainSource, /function requestPwaMenu[\s\S]*?pwaSessionState = "stopping";[\s\S]*?suspendGameForMenu\(\)/);
+    assert.match(mainSource, /function suspendGameForMenu[\s\S]*?releaseGameAudio\(\)/);
 });
 
-test("live-menu transition freezes gameplay before saving and retiring audio", () => {
+test("live-menu transition freezes and retires playback before serializing progress", () => {
     const liveMenu = mainSource.slice(mainSource.indexOf("function showLiveMenuOverlay"), mainSource.indexOf("async function resumeLiveGameFromMenu"));
-    assert.ok(liveMenu.indexOf("game.setBrowserSuspended(true);") < liveMenu.indexOf("const saved = saveCurrentGameState();"));
-    assert.ok(liveMenu.indexOf("container.setLoopSuspended(true);") < liveMenu.indexOf("const saved = saveCurrentGameState();"));
-    assert.ok(liveMenu.indexOf("const saved = saveCurrentGameState();") < liveMenu.indexOf("releaseGameAudio();"));
+    assert.ok(liveMenu.indexOf("suspendGameForMenu();") < liveMenu.indexOf("saveCurrentGameState"));
+    const suspend = mainSource.slice(mainSource.indexOf("function suspendGameForMenu"), mainSource.indexOf("function showLiveMenuOverlay"));
+    assert.match(suspend, /setLoopSuspended\(true\)/);
+    assert.match(suspend, /setBrowserSuspended\(true\)/);
+    assert.match(suspend, /getInput\(\)\.pause\(\)/);
+    assert.match(suspend, /releaseGameAudio\(\)/);
+});
+
+test("live Continue is scoped to its playback attempt and retained session", () => {
+    const resume = mainSource.slice(mainSource.indexOf("async function resumeLiveGameFromMenu"), mainSource.indexOf("function removeMenuOverlay"));
+    assert.match(resume, /const audio = beginGameAudio\(\)/);
+    assert.match(resume, /commitGameAudio\(audio\)/);
+    assert.match(resume, /isGameAudioLatest\(audio\)/);
+    assert.match(resume, /isStartingGameSession\(session, audio\)/);
 });
 
 test("STARTING container is owned before the first asynchronous display operation", () => {
-    const mount = mainSource.slice(mainSource.indexOf("async function mountGame"), mainSource.indexOf("async function unlockAudio"));
+    const mount = mainSource.slice(mainSource.indexOf("async function mountGame"), mainSource.indexOf("function applyVolume"));
     const ownership = mount.indexOf("container = appContainer;");
     const firstDisplayAwait = mount.indexOf("await appContainer.setDisplayMode");
     assert.ok(ownership >= 0);
