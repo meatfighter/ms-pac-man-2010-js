@@ -63,6 +63,14 @@ test("live-menu transition freezes and retires playback before serializing progr
     assert.match(suspend, /releaseGameAudio\(\)/);
 });
 
+test("failed persistence keeps the initialized live game continuable", () => {
+    const liveMenu = mainSource.slice(mainSource.indexOf("function showLiveMenuOverlay"), mainSource.indexOf("async function resumeLiveGameFromMenu"));
+    assert.match(liveMenu, /const saved = sessionCleanup\.trySave\(saveCurrentGameState\)/);
+    assert.match(liveMenu, /Progress could not be saved\. Continue still preserves this live game\./);
+    assert.match(liveMenu, /pwaSessionState = "menu";/);
+    assert.doesNotMatch(liveMenu, /destroyGame\(/);
+});
+
 test("live Continue is scoped to its playback attempt and retained session", () => {
     const resume = mainSource.slice(mainSource.indexOf("async function resumeLiveGameFromMenu"), mainSource.indexOf("function removeMenuOverlay"));
     assert.match(resume, /const audio = beginGameAudio\(\)/);
@@ -70,6 +78,20 @@ test("live Continue is scoped to its playback attempt and retained session", () 
     assert.match(resume, /isGameAudioLatest\(audio\)/);
     assert.equal((resume.match(/isGameAudioLatest\(audio\)/g) ?? []).length, 2, "Continue catch and finally must both reject stale attempts.");
     assert.match(resume, /isStartingGameSession\(session, audio\)/);
+});
+
+test("synchronous post-commit UI hooks are rechecked before RUNNING", () => {
+    const mount = mainSource.slice(mainSource.indexOf("async function mountGame"), mainSource.indexOf("function applyVolume"));
+    const mountFocus = mount.indexOf("focusGameCanvas();");
+    const mountGuard = mount.indexOf("if (!isStartingGameSession(generation, audio) || game !== mainGame || container !== appContainer)", mountFocus);
+    const mountRunning = mount.indexOf('pwaSessionState = "running";', mountFocus);
+    assert.ok(mountFocus >= 0 && mountGuard > mountFocus && mountRunning > mountGuard);
+
+    const resume = mainSource.slice(mainSource.indexOf("async function resumeLiveGameFromMenu"), mainSource.indexOf("function removeMenuOverlay"));
+    const resumeFocus = resume.indexOf("focusGameCanvas();");
+    const resumeGuard = resume.indexOf("if (!isStartingGameSession(session, audio))", resumeFocus);
+    const resumeRunning = resume.indexOf('pwaSessionState = "running";', resumeFocus);
+    assert.ok(resumeFocus >= 0 && resumeGuard > resumeFocus && resumeRunning > resumeGuard);
 });
 
 test("STARTING container is owned before the first asynchronous display operation", () => {
