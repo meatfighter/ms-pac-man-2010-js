@@ -6,6 +6,8 @@ const scripts = [
     "scripts/run-activation-race-qualification.mjs",
     "scripts/run-audio-interruption-qualification.mjs",
     "scripts/run-lifecycle-event-qualification.mjs",
+    "scripts/run-ownership-transfer-qualification.mjs",
+    "scripts/run-persistence-failure-qualification.mjs",
     "scripts/run-lifecycle-stress-qualification.mjs"
 ];
 
