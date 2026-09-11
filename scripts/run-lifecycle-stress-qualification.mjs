@@ -147,6 +147,12 @@ try {
 
     const baselineCacheKeys = await page.evaluate(async () => (await caches.keys()).sort());
     const baselineLifecycle = await readLifecycleStats(page);
+    const baselineResourceUrls = await page.evaluate(() =>
+        performance
+            .getEntriesByType("resource")
+            .map((entry) => entry.name)
+            .filter((name) => !new URL(name, location.href).pathname.includes("/api/"))
+    );
     await page.evaluate(() => performance.clearResourceTimings());
 
     for (let i = 0; i < LIVE_CONTINUE_CYCLES; i++) {
@@ -194,16 +200,28 @@ try {
     const finalCacheKeys = await page.evaluate(async () => (await caches.keys()).sort());
     assert.deepEqual(finalCacheKeys, baselineCacheKeys, "Lifecycle cycles created or removed a cache namespace.");
 
-    const unexpectedResources = await page.evaluate(() =>
-        performance
-            .getEntriesByType("resource")
-            .map((entry) => entry.name)
-            .filter((name) => {
-                const resourceUrl = new URL(name, location.href);
-                return !resourceUrl.pathname.includes("/api/");
-            })
+    const unexpectedResources = await page.evaluate((baselineUrls) => {
+        const baseline = new Set(baselineUrls);
+        const observed = new Map();
+
+        for (const entry of performance.getEntriesByType("resource")) {
+            const name = entry.name;
+            const resourceUrl = new URL(name, location.href);
+            if (resourceUrl.pathname.includes("/api/")) {
+                continue;
+            }
+            observed.set(name, (observed.get(name) ?? 0) + 1);
+        }
+
+        return [...observed.entries()]
+            .filter(([name, count]) => baseline.has(name) || count > 1)
+            .map(([name, count]) => `${name} (post-baseline requests: ${count})`);
+    }, baselineResourceUrls);
+    assert.deepEqual(
+        unexpectedResources,
+        [],
+        `Lifecycle cycles refetched previously loaded assets or repeatedly fetched late resources: ${unexpectedResources.join(", ")}`
     );
-    assert.deepEqual(unexpectedResources, [], `Lifecycle cycles refetched page/game assets: ${unexpectedResources.join(", ")}`);
     assert.deepEqual(errors, [], "Lifecycle stress produced uncaught browser errors.");
 
     console.log(
