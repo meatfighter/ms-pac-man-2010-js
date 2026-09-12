@@ -1,126 +1,74 @@
-# Release qualification and retention
+# Releasing
 
-Release from a clean checkout of one reviewed commit. Preserve existing Git history.
-Run `npm run qualify` against that exact commit before pushing or tagging it. Local
-qualification is the normal gate; GitHub Actions Verify is manual-only and optional
-as a second Linux environment.
+This file contains the reproducible repository-local release procedure. Detailed maintainer rollout matrices, browser/device acceptance history, key-rotation coordination, and cross-project deployment notes are intentionally kept outside the public source tree.
 
-Archive an already verified build on a host with Node.js, Git, and tar:
+## Prerequisites
+
+Use a Node.js version supported by [package.json](package.json), Git, and the JDK required by the desktop build. Install dependencies from the lockfile:
 
 ```sh
-node scripts/archive-release.mjs dist /absolute/path/outside/repository/release-artifacts
+npm ci --ignore-scripts
 ```
 
-Use a new empty output directory for each archive. The command refuses a dirty
-checkout or an existing same-commit archive. Verify `SHA256SUMS` after transferring
-an archive, and verify the contained files against `RELEASE.json` after extracting.
-Rebuilds can have new timestamps: the archive hash identifies the exact deployed
-bytes, while the commit identifies their source. Retain the last known good archive
-for rollback instead of rebuilding it during an incident.
+Release from one reviewed commit with a clean working tree. Local qualification is the primary gate; GitHub Actions is optional and is not required for release.
 
-A manually run Verify workflow provides an independent Linux check using a synthetic
-HMAC key and retains its qualified artifact for 90 days. It is optional and does not
-replace local qualification of the active-key production build.
+## Production signing
 
-After all required checks pass, create an annotated release tag on that exact
-commit and push the tag. Choose a unique version tag matching the release; never
-move an existing tag. Record the tag, commit, archive hash, qualification run, and
-actual deployment time together. Creating an archive or tag does not deploy it.
-Do not change repository visibility as part of the build.
+Production release builds require the existing active Ms. Pac-Man score-submission HMAC key. Keep key material outside version control.
 
-## Browser qualification
-
-`npm run qualify` includes the production build, release verification, real Chromium
-boot/save/restore, and offline PWA verification. `npm run qualify:browsers` is an
-optional additional Chromium/Firefox/WebKit pass against the built `dist/pwa/`.
-It checks resource preparation, game entry, real-tab save takeover, two service-worker
-cache generations, offline Continue, and preservation of a newer public save. WebKit's
-cache fallback is tested by dropping all connections to the origin; Playwright's
-offline emulation has a known WebKit service-worker navigation limitation. Chromium
-and Firefox also use browser offline emulation. The cache-generation fixture uses the
-same candidate's assets with two worker identities; it does not claim compatibility
-between arbitrary historical releases. Existing browser fixtures exercise real Main
-save/restore.
-
-Before the first deployment, record a short real-device pass on supported Safari/iOS
-and Android devices: launch from the home screen, enter gameplay, exercise audio and
-controls, background/foreground, save/Continue, and cold offline launch. Automated
-WebKit is useful coverage but is not a real iOS device qualification. Record failures
-and supported browser versions rather than claiming untested support.
-
-During active music, repeat the browser/app Home or background -> foreground cycle at
-least ten times. Include an immediate return, a return after several minutes in the
-background, a return with no input, and a return followed immediately by a real
-pointer/touch or keyboard gesture. After every return, confirm the existing game
-resumes, music becomes audible again without restarting the game, and a subsequent
-sound effect is audible. Exercise this in iOS Safari/browser mode and the installed
-PWA where available; also check Android browser/PWA behavior. Hamburger/Continue may
-be used as normal input, but audio recovery must not depend on destroying/reloading
-the game. On desktop, move the game between displays with different OS scaling and
-change browser zoom through several values; confirm the logical game size/aspect stays
-correct while the canvas backing resolution remains sharp after each device-pixel-ratio
-change.
-
-On a real phone with a short auto-lock interval, confirm that user-initiated loading
-and the launched game keep the screen awake without screen input, including title or
-attract behavior and in-game Pause where applicable. Confirm browser/PWA menus allow
-normal auto-lock and that backgrounding releases the lock; returning to the game should
-reacquire it. Screen wake lock is best-effort, so record an OS/browser refusal under
-power-saving conditions rather than treating it as a game failure.
-
-Use a separate browser profile for staging PWA installation and update tests. Staging
-and production intentionally resolve to the same manifest app identity for Ms. Pac-Man
-2010, so installing or updating the staged app in the same profile as production can
-replace installed-app metadata even though game saves and preferences remain scoped
-to the deployment path.
-
-Before the first public release, install the staged Ms. Pac-Man 2010, Stickvania, and
-Jackal PWAs together in one clean profile. Confirm that all three appear as distinct
-installed apps, launch and relaunch independently, and that uninstalling one leaves
-the other two intact. Close all older app tabs and windows before the final offline
-and update pass so a waiting service worker can activate.
-
-Before a later release, keep the currently deployed build open with a real save,
-serve the new build at the same deployment path, reload and Continue, then go offline
-and Continue again. Test rollback against the same save. Never raise
-`FIRST_PUBLIC_GAME_STATE_VERSION` to make an old client delete an unfamiliar save;
-New Game and Reset are the explicit destructive paths. Close pre-ownership legacy
-tabs during the first rollout, because an already-loaded older client cannot follow
-the new single-session protocol.
-
-## Ms. Pac-Man signing
-
-The optional manual Verify workflow uses the explicitly synthetic full-build path and
-fixture HMAC key. Its archive is marked `synthetic-test-not-for-deployment`; never
-deploy it or relabel it as a production release. Build production `dist` with the
-existing active-key release tooling, qualify those bytes, and archive that directory.
-Keep the local key files and rotation state outside version control.
-
-The active signing key is stored locally in
-`.release-secrets/ms-pac-man-2010-hmac.hex`. This directory is ignored by Git.
-When setting up a new checkout for an existing deployment, obtain the existing
-primary server key privately and import it through the hidden input prompt:
+If an existing deployment checkout does not have the active local key, import the existing server-compatible key rather than generating a replacement merely because the file is absent:
 
 ```sh
 npm run hmac:import
 npm run hmac:check
 ```
 
-Import is only needed when the active key file is absent. The check prints a
-fingerprint, not the key. Confirm that the imported key matches the server's
-primary key and that no rotation is staged before qualification:
+The check prints a fingerprint, not the secret. Confirm the active key is the intended server key before building a production release. Synthetic/manual verification artifacts are test artifacts and must not be deployed as production builds.
+
+Unsigned development remains available through the repository's unsigned build commands and does not require production key material.
+
+## Qualify the exact commit
+
+From the repository root:
 
 ```sh
+git status --short
 npm run qualify
 ```
 
-This produces the complete verified distribution in `dist/`: the about page,
-signed PWA, desktop download, release metadata, and checksums. Upload the contents
-of that directory while preserving its structure. Run these commands locally;
-GitHub Actions is not required. On Windows PowerShell, use `npm.cmd` if needed.
+`npm run qualify` runs formatting/lint/tests, the dependency audit, active-key production build, release verification, Chromium/browser checks, offline verification, and clean-tree checks defined by the repository scripts. It produces the complete verified distribution in `dist/`.
 
-Keep key files out of source control and uploaded source archives. Do not generate
-a new key merely because a checkout lacks one; the client must use a key accepted
-by the existing server. If rotation is staged, resolve that rotation before an
-active-key release. The embedded client key is recoverable from distributed builds
-and does not authenticate legitimate play.
+For browser-facing changes, also run the extended browser qualification against the built PWA:
+
+```sh
+npm run qualify:browsers
+```
+
+Install the Playwright browser engines and platform dependencies required by that command. Automated browser checks do not replace appropriate real-device acceptance for material PWA, audio, input, lifecycle, fullscreen, high-score, or offline changes.
+
+## Inspect and preview
+
+Confirm the working tree is still clean and preview the exact release output:
+
+```sh
+git status --short
+npm run preview:dist
+```
+
+Before production deployment, stage the exact qualified `dist/` bytes and smoke-test the affected browser, Java desktop, and score-networking behavior. Do not rebuild after stage acceptance and substitute different bytes for deployment.
+
+## Archive
+
+Archive an already-qualified distribution outside the repository:
+
+```sh
+node scripts/archive-release.mjs dist /absolute/path/outside/repository/release-artifacts
+```
+
+Use a new output directory for each archive. Preserve and verify the generated release metadata/checksums after transfer. Keep the previous known-good archive available for rollback.
+
+## Tag
+
+After qualification and acceptance, create an annotated tag on the exact qualified commit. Use a new version tag and never move an existing release tag. Record the source commit, exact `slick2d-ts` dependency commit, archive/checksum information, and deployment time together.
+
+Creating a build, archive, or tag does not deploy it.
