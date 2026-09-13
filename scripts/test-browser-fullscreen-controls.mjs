@@ -10,8 +10,10 @@ const webApp = read("pwa/src/app/main.ts");
 const viewport = read("pwa/src/app/GameViewportController.ts");
 const preferences = read("pwa/src/app/BrowserPreferences.ts");
 const storageKeys = read("pwa/src/app/BrowserStorageKeys.ts");
+const inputInterface = read("pwa/src/mspacman/IInput.ts");
 const humanInput = read("pwa/src/mspacman/HumanInput.ts");
 const robotInput = read("pwa/src/mspacman/RobotInput.ts");
+const translatedMain = read("pwa/src/mspacman/Main.ts");
 const viteConfig = read("pwa/vite.config.ts");
 const styles = read("pwa/src/app/styles.css");
 
@@ -47,14 +49,15 @@ test("cold New Game and retained Continue request fullscreen before their first 
     assert.ok(liveAudio >= 0 && liveFullscreen > liveAudio && liveAwait > liveFullscreen);
 });
 
-test("Esc belongs to the PWA shell and translated browser fullscreen hooks are inert", () => {
+test("Esc belongs to the PWA shell and translated browser fullscreen machinery is removed", () => {
     const reserved = webApp.match(/function handleBrowserReservedKey\([\s\S]*?\n}/)?.[0] ?? "";
     assert.match(reserved, /event\.key !== "Escape"|event\.key === "Escape"/);
     assert.match(reserved, /requestPwaMenu\("escape"\)/);
-    assert.match(humanInput, /isFullscreenTogglePressed\(\): boolean \{\s*return false;\s*\}/);
-    assert.match(humanInput, /isFullscreenExitPressed\(\): boolean \{\s*return false;\s*\}/);
-    assert.match(robotInput, /isFullscreenTogglePressed\(\): boolean \{\s*return false;\s*\}/);
-    assert.match(robotInput, /isFullscreenExitPressed\(\): boolean \{\s*return false;\s*\}/);
+    for (const source of [inputInterface, humanInput, robotInput]) {
+        assert.doesNotMatch(source, /isFullscreenTogglePressed|isFullscreenExitPressed/);
+    }
+    assert.doesNotMatch(translatedMain, /fullScreenToggleCheck/);
+    assert.doesNotMatch(translatedMain, /isFullscreenTogglePressed|isFullscreenExitPressed/);
 });
 
 test("native fullscreen invocation is fenced before and after synchronous reentry", () => {
