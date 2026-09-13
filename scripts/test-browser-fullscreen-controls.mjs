@@ -143,6 +143,7 @@ test("fullscreen CSS owns wrapper fill, safe-area chrome and disabled OFF presen
     assert.match(styles, /-webkit-full-screen/);
     assert.match(styles, /safe-area-inset-left/);
     assert.match(styles, /safe-area-inset-top/);
-    assert.match(styles, /\.fullscreen-switch:disabled/);
+    assert.match(styles, /\.fullscreen-switch:disabled\s*\{[^}]*border-color:\s*#6f6501;[^}]*background:\s*#6f6501;/s);
+    assert.match(styles, /\.fullscreen-switch:disabled span\s*\{[^}]*background:\s*#191405;[^}]*transform:\s*translateX\(0\);/s);
     assert.match(styles, /touch-action:\s*manipulation/);
 });
