@@ -1,74 +1,70 @@
 # Releasing
 
-This file contains the reproducible repository-local release procedure. Detailed maintainer rollout matrices, browser/device acceptance history, key-rotation coordination, and cross-project deployment notes are intentionally kept outside the public source tree.
+Releases are built and qualified locally from a clean Git checkout.
 
-## Prerequisites
+## 1. Install dependencies
 
-Use a Node.js version supported by [package.json](package.json), Git, and the JDK required by the desktop build. Install dependencies from the lockfile:
+Use a Node.js version supported by [package.json](package.json), Git, and the JDK required by the desktop build.
 
 ```sh
 npm ci --ignore-scripts
 ```
 
-Release from one reviewed commit with a clean working tree. Local qualification is the primary gate; GitHub Actions is optional and is not required for release.
+## 2. Check the production signing key
 
-## Production signing
+Production builds require the active Ms. Pac-Man score-submission HMAC key. Keep key material outside version control.
 
-Production release builds require the existing active Ms. Pac-Man score-submission HMAC key. Keep key material outside version control.
-
-If an existing deployment checkout does not have the active local key, import the existing server-compatible key rather than generating a replacement merely because the file is absent:
+If this checkout does not already have the active server-compatible key, import the existing key rather than generating a replacement:
 
 ```sh
 npm run hmac:import
 npm run hmac:check
 ```
 
-The check prints a fingerprint, not the secret. Confirm the active key is the intended server key before building a production release. Synthetic/manual verification artifacts are test artifacts and must not be deployed as production builds.
+`hmac:check` prints a fingerprint, not the secret. Confirm that it matches the intended server key before creating the release. Unsigned development builds remain available through the repository's unsigned build commands.
 
-Unsigned development remains available through the repository's unsigned build commands and does not require production key material.
+## 3. Qualify the release
 
-## Qualify the exact commit
-
-From the repository root:
+Start from a clean committed checkout:
 
 ```sh
 git status --short
 npm run qualify
 ```
 
-`npm run qualify` runs formatting/lint/tests, the dependency audit, active-key production build, release verification, Chromium/browser checks, offline verification, and clean-tree checks defined by the repository scripts. It produces the complete verified distribution in `dist/`.
+`npm run qualify` runs the repository's source checks, tests, dependency audit, active-key production build, release verification, browser verification, offline verification, and clean-tree checks. It produces the complete deployable release in `dist/`.
 
-For browser-facing changes, also run the extended browser qualification against the built PWA:
+For browser-facing changes, also run:
 
 ```sh
 npm run qualify:browsers
 ```
 
-Install the Playwright browser engines and platform dependencies required by that command. Automated browser checks do not replace appropriate real-device acceptance for material PWA, audio, input, lifecycle, fullscreen, high-score, or offline changes.
+This command first builds a fresh production PWA under `.release-components/pwa/pwa` and runs the extended browser qualification against that temporary component output. It does not replace the complete release tree in `dist/`.
 
-## Inspect and preview
+Material PWA, fullscreen, audio, lifecycle, input, offline, or high-score changes should also receive appropriate real-device testing.
 
-Confirm the working tree is still clean and preview the exact release output:
+## 4. Preview the complete release
 
 ```sh
 git status --short
 npm run preview:dist
 ```
 
-Before production deployment, stage the exact qualified `dist/` bytes and smoke-test the affected browser, Java desktop, and score-networking behavior. Do not rebuild after stage acceptance and substitute different bytes for deployment.
+Check the browser version, Java desktop download, project page, and score-networking behavior that changed.
 
-## Archive
+## 5. Stage and deploy
 
-Archive an already-qualified distribution outside the repository:
+Deploy the **contents of `dist/`** as one release unit. Do not deploy only `dist/pwa/`.
+
+Stage the same `dist/` tree first, smoke-test it, and then deploy those exact bytes to production. Do not rebuild after stage acceptance and substitute a different artifact.
+
+## 6. Archive if desired
+
+An already-qualified `dist/` can be archived outside the repository:
 
 ```sh
 node scripts/archive-release.mjs dist /absolute/path/outside/repository/release-artifacts
 ```
 
-Use a new output directory for each archive. Preserve and verify the generated release metadata/checksums after transfer. Keep the previous known-good archive available for rollback.
-
-## Tag
-
-After qualification and acceptance, create an annotated tag on the exact qualified commit. Use a new version tag and never move an existing release tag. Record the source commit, exact `slick2d-ts` dependency commit, archive/checksum information, and deployment time together.
-
-Creating a build, archive, or tag does not deploy it.
+Keep the previous known-good release available for rollback.
