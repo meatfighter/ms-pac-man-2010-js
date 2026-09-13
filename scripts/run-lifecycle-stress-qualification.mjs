@@ -4,6 +4,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, resolve, sep } from "node:path";
 import { chromium } from "playwright";
+import { disableFullscreenPreference } from "./fullscreen-test-utils.mjs";
 
 const LIVE_CONTINUE_CYCLES = 20;
 const NEW_GAME_CYCLES = 5;
@@ -139,6 +140,7 @@ try {
 
     await page.goto(url);
     await page.locator(newGameSelector).first().waitFor({ state: "visible" });
+    await disableFullscreenPreference(page);
     await page.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, { timeout: 120_000 });
     await page.reload();
     await page.locator(newGameSelector).first().waitFor({ state: "visible" });
