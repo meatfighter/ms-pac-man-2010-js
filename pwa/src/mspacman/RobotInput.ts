@@ -65,11 +65,11 @@ export class RobotInput implements IInput {
     }
 
     public isFullscreenTogglePressed(): boolean {
-        return this.input.isKeyPressed(Input.KEY_SPACE);
+        return false;
     }
 
     public isFullscreenExitPressed(): boolean {
-        return this.input.isKeyPressed(Input.KEY_ESCAPE);
+        return false;
     }
 
     public clearKeyPressedRecord(): void {
