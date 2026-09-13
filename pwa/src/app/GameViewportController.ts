@@ -37,6 +37,7 @@ export class GameViewportController {
     private resizeObserver: ResizeObserver | null = null;
     private resizeAnimationFrame = 0;
     private fullscreenResizeSettleAnimationFrame = 0;
+    private hamburgerVisibilityAnimationFrame = 0;
     private cursorHost: HTMLElement | null = null;
     private cursorHideTimer = 0;
     private pointerOverHost = false;
@@ -310,10 +311,15 @@ export class GameViewportController {
     }
 
     public startHamburgerVisibilityMonitor(): void {
+        this.stopHamburgerVisibilityMonitor();
         this.updateHamburgerVisibility();
     }
 
     public stopHamburgerVisibilityMonitor(): void {
+        if (this.hamburgerVisibilityAnimationFrame !== 0) {
+            cancelAnimationFrame(this.hamburgerVisibilityAnimationFrame);
+            this.hamburgerVisibilityAnimationFrame = 0;
+        }
         this.hideHamburger();
     }
 
@@ -547,9 +553,16 @@ export class GameViewportController {
     private updateHamburgerVisibility(): void {
         const hamburger = this.root.querySelector<HTMLButtonElement>("#menuButton");
         const fullscreenWithoutTouchExit = this.isFullscreen() && !hasTouchCapability();
-        const hidden = !this.callbacks.isGameplayRunning() || fullscreenWithoutTouchExit;
+        const gameplayRunning = this.callbacks.isGameplayRunning();
+        const hidden = !gameplayRunning || fullscreenWithoutTouchExit;
         if (hamburger !== null) {
             hamburger.hidden = hidden;
+        }
+        if (this.callbacks.isGameplayActive() && !gameplayRunning && this.hamburgerVisibilityAnimationFrame === 0) {
+            this.hamburgerVisibilityAnimationFrame = requestAnimationFrame(() => {
+                this.hamburgerVisibilityAnimationFrame = 0;
+                this.updateHamburgerVisibility();
+            });
         }
     }
 
