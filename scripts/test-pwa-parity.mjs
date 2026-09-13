@@ -31,6 +31,12 @@ assert.ok(tsStopSoundMethod, "TypeScript stopSound method is missing.");
 assert.match(tsStopSoundMethod[1], /sound\.stop\(\);/, "TypeScript stopSound must stop the Sound instance passed by the caller.");
 assert.doesNotMatch(tsStopSoundMethod[1], /blueGhostsSound/, "TypeScript stopSound must not hard-code blueGhostsSound.");
 
+const javaAttractMode = readFileSync(join(rootDir, "desktop", "src", "mspacman", "AttractMode.java"), "utf8");
+const tsAttractMode = readFileSync(join(rootDir, "pwa", "src", "mspacman", "AttractMode.ts"), "utf8");
+const desktopFullscreenInstruction = "SPACE BAR - TOGGLE FULL-SCREEN MODE";
+assert.ok(javaAttractMode.includes(desktopFullscreenInstruction), "Java desktop title screen must retain its Space-bar fullscreen instruction.");
+assert.ok(!tsAttractMode.includes(desktopFullscreenInstruction), "Browser title screen must not advertise the Java desktop Space-bar fullscreen control.");
+
 const hotFloatSources = {
     Thing: readFileSync(join(rootDir, "pwa", "src", "mspacman", "Thing.ts"), "utf8"),
     MsPacMan: readFileSync(join(rootDir, "pwa", "src", "mspacman", "MsPacMan.ts"), "utf8"),
