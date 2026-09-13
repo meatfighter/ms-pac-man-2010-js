@@ -178,7 +178,6 @@ export class AttractMode implements IMode {
         }
         this.main.drawString("STARRING", 246, Main.WHITE);
         this.main.drawString("@ 2010, 2026 MEATFIGHTER.COM", 536, Main.WHITE);
-        this.main.drawString("SPACE BAR - TOGGLE FULL-SCREEN MODE", 488, Main.WHITE);
 
         for (let i = 0; i < this.ghostsVisible; i++) {
             const y = 300 + (i << 5);
