@@ -64,14 +64,6 @@ export class RobotInput implements IInput {
         return this.input.isKeyPressed(Input.KEY_P);
     }
 
-    public isFullscreenTogglePressed(): boolean {
-        return false;
-    }
-
-    public isFullscreenExitPressed(): boolean {
-        return false;
-    }
-
     public clearKeyPressedRecord(): void {
         this.input.clearKeyPressedRecord();
         this.input.clearControlPressedRecord();
