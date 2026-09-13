@@ -136,12 +136,14 @@ export class HumanInput implements IInput {
         return this.input.isKeyPressed(Input.KEY_P);
     }
 
+    // Browser fullscreen belongs to the PWA shell. These Java-shaped interface
+    // hooks remain inert until the translated interface is removed completely.
     public isFullscreenTogglePressed(): boolean {
-        return this.input.isKeyPressed(Input.KEY_SPACE);
+        return false;
     }
 
     public isFullscreenExitPressed(): boolean {
-        return this.input.isKeyPressed(Input.KEY_ESCAPE);
+        return false;
     }
 
     public clearKeyPressedRecord(): void {
