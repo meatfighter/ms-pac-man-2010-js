@@ -7,6 +7,7 @@ const qualification = [
     ["verify:fullscreen", "scripts/run-fullscreen-qualification.mjs"],
     ["verify:fullscreen-timeout", "scripts/run-fullscreen-timeout-qualification.mjs"],
     ["verify:fullscreen-reentry", "scripts/run-fullscreen-reentry-qualification.mjs"],
+    ["verify:fullscreen-settings", "scripts/run-fullscreen-settings-qualification.mjs"],
     ["verify:production-browser", "scripts/run-production-browser-qualification.mjs"],
     ["verify:activation-races", "scripts/run-activation-race-qualification.mjs"],
     ["verify:audio-interruption", "scripts/run-audio-interruption-qualification.mjs"],
@@ -15,7 +16,7 @@ const qualification = [
     ["verify:persistence-failure", "scripts/run-persistence-failure-qualification.mjs"],
     ["verify:lifecycle-stress", "scripts/run-lifecycle-stress-qualification.mjs"]
 ];
-const unrelatedBrowserSuites = qualification.slice(3).map(([, path]) => path);
+const unrelatedBrowserSuites = qualification.slice(4).map(([, path]) => path);
 const suitePath = "scripts/run-browser-qualification-suite.mjs";
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const suiteSource = readFileSync(suitePath, "utf8");
