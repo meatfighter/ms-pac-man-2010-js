@@ -58,6 +58,7 @@ test("Esc belongs to the PWA shell and translated browser fullscreen machinery i
     }
     assert.doesNotMatch(translatedMain, /fullScreenToggleCheck/);
     assert.doesNotMatch(translatedMain, /isFullscreenTogglePressed|isFullscreenExitPressed/);
+    assert.doesNotMatch(translatedMain, /nativeCursor|showMouseCursor|hideMouseCursor/);
 });
 
 test("native fullscreen invocation is fenced before and after synchronous reentry", () => {
