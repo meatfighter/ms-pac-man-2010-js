@@ -12,8 +12,6 @@ export interface IInput {
     isConfirmPressed(): boolean;
     isGameplayStartPressed(): boolean;
     isPausePressed(): boolean;
-    isFullscreenTogglePressed(): boolean;
-    isFullscreenExitPressed(): boolean;
     clearKeyPressedRecord(): void;
     update(): boolean;
 }
