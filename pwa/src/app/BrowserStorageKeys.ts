@@ -5,6 +5,7 @@ export interface BrowserStorageKeys {
     readonly deploymentId: string;
     readonly gameState: string;
     readonly scaling: string;
+    readonly fullscreen: string;
     readonly volume: string;
 }
 
@@ -14,6 +15,7 @@ export function createBrowserStorageKeys(locationHref = getCurrentLocationHref()
         deploymentId,
         gameState: createStorageKey(deploymentId, "game-state-v5"),
         scaling: createStorageKey(deploymentId, "scaling"),
+        fullscreen: createStorageKey(deploymentId, "fullscreen"),
         volume: createStorageKey(deploymentId, "volume")
     };
 }
