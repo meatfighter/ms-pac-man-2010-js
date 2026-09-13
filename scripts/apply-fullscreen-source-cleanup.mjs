@@ -2,11 +2,15 @@ import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const mainPath = "pwa/src/mspacman/Main.ts";
+const appMainPath = "pwa/src/app/main.ts";
+const lifecycleStressPath = "scripts/run-lifecycle-stress-qualification.mjs";
 const stateTestPath = "scripts/test-pwa-state.mjs";
 const stateFieldPolicyPath = "pwa/src/mspacman/persistence/StateFieldPolicy.ts";
 const stylesPath = "pwa/src/app/styles.css";
 
 let mainSource = readFileSync(mainPath, "utf8");
+let appMainSource = readFileSync(appMainPath, "utf8");
+let lifecycleStressSource = readFileSync(lifecycleStressPath, "utf8");
 let stateTestSource = readFileSync(stateTestPath, "utf8");
 let stateFieldPolicySource = readFileSync(stateFieldPolicyPath, "utf8");
 let stylesSource = readFileSync(stylesPath, "utf8");
@@ -44,6 +48,20 @@ for (const forbidden of [
     }
 }
 
+appMainSource = replaceTextExactlyOnce(
+    appMainSource,
+    '                <div class="setting-fullscreen-row" role="group" aria-label="Fullscreen">\n                    <span>Fullscreen</span>\n                    <button id="fullscreen-switch-button" class="menu-switch fullscreen-switch" type="button" aria-label="Toggle fullscreen" aria-pressed="${fullscreenPresented}" data-enabled="${fullscreenPresented}"${fullscreenUnavailable ? \' disabled title="Fullscreen is unavailable in this browser"\' : ""}><span></span></button>\n                </div>\n                <div class="setting-scaling-row" role="group" aria-label="Scaling">\n                    <span>Scaling</span>\n                    ${scalingPickerHtml()}\n                </div>',
+    '                <div class="settings-row settings-fullscreen-scaling-row">\n                    <div class="setting-fullscreen-row" role="group" aria-label="Fullscreen">\n                        <span>Fullscreen</span>\n                        <button id="fullscreen-switch-button" class="menu-switch fullscreen-switch" type="button" aria-label="Toggle fullscreen" aria-pressed="${fullscreenPresented}" data-enabled="${fullscreenPresented}"${fullscreenUnavailable ? \' disabled title="Fullscreen is unavailable in this browser"\' : ""}><span></span></button>\n                    </div>\n                    <div class="setting-scaling-row" role="group" aria-label="Scaling">\n                        <span>Scaling</span>\n                        ${scalingPickerHtml()}\n                    </div>\n                </div>',
+    "Fullscreen/Scaling responsive settings group"
+);
+
+lifecycleStressSource = replaceTextExactlyOnce(
+    lifecycleStressSource,
+    '    if (finalLifecycle.wakeInstrumented) {\n        assert.ok(finalLifecycle.wakeLive <= 1, `Wake-lock sentinels accumulated: ${JSON.stringify(finalLifecycle)}`);\n    }',
+    '    if (finalLifecycle.wakeInstrumented) {\n        assert.ok(finalLifecycle.wakeLive <= 1, `Wake-lock sentinels accumulated: ${JSON.stringify(finalLifecycle)}`);\n        assert.equal(\n            finalLifecycle.wakeAcquired - finalLifecycle.wakeReleased,\n            finalLifecycle.wakeLive,\n            `Wake-lock acquisition/release accounting is unbalanced: ${JSON.stringify(finalLifecycle)}`\n        );\n    }',
+    "exact wake-lock accounting assertion"
+);
+
 stateTestSource = replaceTextExactlyOnce(
     stateTestSource,
     'await runTest("obsolete and future saves remain untouched by inspection while explicit writes stay explicit", () => {',
@@ -70,6 +88,12 @@ if (stateFieldPolicySource.includes('"nativeCursor"')) {
     throw new Error(`Obsolete fullscreen state-field policy still exists in ${stateFieldPolicyPath}`);
 }
 
+stylesSource = replaceTextExactlyOnce(
+    stylesSource,
+    ".menu-actions {\n    display: grid;\n    gap: 25px;\n    justify-items: center;\n}\n",
+    ".menu-actions {\n    display: grid;\n    gap: 25px;\n    justify-items: center;\n}\n\n.settings-row {\n    display: flex;\n    width: min(480px, 100%);\n    flex-wrap: wrap;\n    align-items: center;\n    justify-content: center;\n    gap: 20px 24px;\n}\n\n.settings-row > .setting-fullscreen-row,\n.settings-row > .setting-scaling-row {\n    flex: 0 0 auto;\n}\n",
+    "responsive settings-row CSS"
+);
 stylesSource = replaceExactlyOnce(
     stylesSource,
     /\.fullscreen-switch:disabled \{\n    border-color: #5b2448;\n    background: #5b2448;/,
@@ -84,12 +108,14 @@ stylesSource = replaceExactlyOnce(
 );
 
 writeFileSync(mainPath, mainSource);
+writeFileSync(appMainPath, appMainSource);
+writeFileSync(lifecycleStressPath, lifecycleStressSource);
 writeFileSync(stateTestPath, stateTestSource);
 writeFileSync(stateFieldPolicyPath, stateFieldPolicySource);
 writeFileSync(stylesPath, stylesSource);
 unlinkSync(fileURLToPath(import.meta.url));
 console.log(
-    "Removed obsolete Ms. Pac-Man browser fullscreen/cursor code and pre-release save-schema fixture; removed stale state-field policy; aligned unavailable Fullscreen styling; cleanup helper deleted itself. Regenerate StateFieldRegistry.generated.ts with npm run generate:state-fields before qualification."
+    "Removed obsolete Ms. Pac-Man browser fullscreen/cursor code and pre-release save-schema fixture; removed stale state-field policy; grouped Fullscreen/Scaling responsively; strengthened wake-lock accounting; aligned unavailable Fullscreen styling; cleanup helper deleted itself. Regenerate StateFieldRegistry.generated.ts with npm run generate:state-fields before qualification."
 );
 
 function replaceExactlyOnce(text, pattern, replacement, label) {
