@@ -17,15 +17,9 @@ test("menu launch admission is state-gated without sticky disabled buttons", () 
 });
 
 test("Fullscreen and Scaling share a non-compressing responsive row", () => {
-    assert.match(
-        mainSource,
-        /class="settings-row settings-fullscreen-scaling-row"[\s\S]*?class="setting-fullscreen-row"[\s\S]*?class="setting-scaling-row"/
-    );
+    assert.match(mainSource, /class="settings-row settings-fullscreen-scaling-row"[\s\S]*?class="setting-fullscreen-row"[\s\S]*?class="setting-scaling-row"/);
     assert.match(stylesSource, /\.settings-row\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap;/s);
-    assert.match(
-        stylesSource,
-        /\.settings-row\s*>\s*\.setting-fullscreen-row,\s*\.settings-row\s*>\s*\.setting-scaling-row\s*\{[^}]*flex:\s*0\s+0\s+auto;/s
-    );
+    assert.match(stylesSource, /\.settings-row\s*>\s*\.setting-fullscreen-row,\s*\.settings-row\s*>\s*\.setting-scaling-row\s*\{[^}]*flex:\s*0\s+0\s+auto;/s);
 });
 
 test("Scaling preference is applied both to fresh and retained gameplay", () => {

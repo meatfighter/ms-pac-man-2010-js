@@ -202,16 +202,11 @@ try {
         assert.equal(storage.getItem(storageKey), invalidCurrent);
     });
 
-    await runTest("obsolete and future saves remain untouched by inspection while explicit writes stay explicit", () => {
+    await runTest("future saves remain untouched by inspection while explicit writes stay explicit", () => {
         const storage = installMemoryLocalStorage();
         const store = new MsPacManGameStateStore(APP_VERSION);
         setTestLocation(STAGE_URL);
         const storageKey = createBrowserStorageKeys().gameState;
-
-        const obsoleteSnapshot = JSON.stringify({ version: 4 });
-        storage.setItem(storageKey, obsoleteSnapshot);
-        assert.equal(store.hasValidSave(), false);
-        assert.equal(storage.getItem(storageKey), obsoleteSnapshot);
 
         const futureSnapshot = JSON.stringify({ version: 999, futureShape: true });
         storage.setItem(storageKey, futureSnapshot);

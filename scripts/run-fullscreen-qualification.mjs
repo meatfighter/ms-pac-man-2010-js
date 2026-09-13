@@ -1,4 +1,4 @@
-/* global document, navigator, window, HTMLElement */
+/* global document, window, HTMLElement */
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -329,6 +329,9 @@ async function installFullscreenHarness(context, initialMode, touch) {
             let mode = initialMode;
             let exitMode = "success";
             let fullscreenElement = null;
+            const setSyntheticFullscreenElement = (element) => {
+                fullscreenElement = element;
+            };
             let requestCount = 0;
             let pendingResolve = null;
             Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: touch ? 1 : 0 });
@@ -368,7 +371,7 @@ async function installFullscreenHarness(context, initialMode, touch) {
                         }
                         return new Promise((resolvePending) => {
                             pendingResolve = () => {
-                                fullscreenElement = this;
+                                setSyntheticFullscreenElement(this);
                                 document.dispatchEvent(new Event("fullscreenchange"));
                                 resolvePending();
                                 pendingResolve = null;
@@ -377,12 +380,12 @@ async function installFullscreenHarness(context, initialMode, touch) {
                     }
                     if (mode === "delayed-void") {
                         window.setTimeout(() => {
-                            fullscreenElement = this;
+                            setSyntheticFullscreenElement(this);
                             document.dispatchEvent(new Event("fullscreenchange"));
                         }, 25);
                         return undefined;
                     }
-                    fullscreenElement = this;
+                    setSyntheticFullscreenElement(this);
                     document.dispatchEvent(new Event("fullscreenchange"));
                     return Promise.resolve();
                 }

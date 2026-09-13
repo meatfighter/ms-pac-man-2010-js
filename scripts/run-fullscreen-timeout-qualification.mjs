@@ -1,4 +1,4 @@
-/* global document, navigator, HTMLElement */
+/* global document, HTMLElement */
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -100,6 +100,9 @@ async function waitForWindowedRunning(page) {
 async function installHungFullscreenHarness(context) {
     await context.addInitScript(() => {
         let fullscreenElement = null;
+        const setSyntheticFullscreenElement = (element) => {
+            fullscreenElement = element;
+        };
         let requestCount = 0;
         let pendingResolve = null;
         Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: 0 });
@@ -122,7 +125,7 @@ async function installHungFullscreenHarness(context) {
                 requestCount++;
                 return new Promise((resolvePending) => {
                     pendingResolve = () => {
-                        fullscreenElement = this;
+                        setSyntheticFullscreenElement(this);
                         document.dispatchEvent(new Event("fullscreenchange"));
                         resolvePending();
                         pendingResolve = null;

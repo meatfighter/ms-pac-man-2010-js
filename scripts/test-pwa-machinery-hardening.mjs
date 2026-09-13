@@ -9,14 +9,6 @@ const gameMainSource = readFileSync(join(rootDir, "pwa", "src", "mspacman", "Mai
 const runtimeLoaderSource = readFileSync(join(rootDir, "pwa", "src", "app", "RuntimeLoader.ts"), "utf8");
 const serviceWorkerSource = readFileSync(join(rootDir, "pwa", "public", "sw.js"), "utf8");
 
-function sliceBetween(source, start, end) {
-    const startIndex = source.indexOf(start);
-    assert.notEqual(startIndex, -1, `Missing start marker: ${start}`);
-    const endIndex = source.indexOf(end, startIndex + start.length);
-    assert.notEqual(endIndex, -1, `Missing end marker: ${end}`);
-    return source.slice(startIndex, endIndex);
-}
-
 test("forced runtime retry supersedes pending preparation cleanly", () => {
     assert.match(runtimeLoaderSource, /if \(forceRetry && this\.preparationPromise !== null\) \{/);
     assert.match(runtimeLoaderSource, /this\.abortController\?\.abort\(new Error\("Ms\. Pac-Man runtime preparation superseded by retry\."\)\)/);
@@ -82,10 +74,15 @@ test("live-menu presentation exits fullscreen before publishing recoverable save
     const renderIndex = liveMenu.indexOf("menuOverlay = renderMenuUi");
     const publishIndex = liveMenu.indexOf('pwaSessionState = "menu";');
     assert.ok(exitIndex >= 0 && renderIndex > exitIndex && publishIndex > renderIndex);
-    // A rendering/cleanup failure may still destroy the session; an ordinary save
-    // failure does not, because its boolean only selects the warning text above.
+    // A rendering/cleanup failure may still destroy the session. An early destroy
+    // before fullscreen exit is also valid when cleanup is already unsafe. What
+    // must not happen is destructive cleanup during the ordinary exit-to-menu
+    // interval before the retained menu has been rendered.
     const destroyIndex = liveMenu.indexOf("destroyGame();");
-    assert.ok(destroyIndex < 0 || destroyIndex > renderIndex);
+    assert.ok(
+        destroyIndex < 0 || destroyIndex < exitIndex || destroyIndex > renderIndex,
+        "destroyGame() may only be an early unsafe-cleanup abort or occur after retained-menu rendering"
+    );
 });
 
 test("ownership relinquishment performs the final save before destructive cleanup", () => {

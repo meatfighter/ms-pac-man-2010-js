@@ -14,18 +14,27 @@ const qualificationScripts = [
     "verify:persistence-failure",
     "verify:lifecycle-stress"
 ];
+
 const pwaRoot = resolve(".release-components", "pwa", "pwa");
 
 runNpmScript("build:pwa");
 for (const script of qualificationScripts) {
-    runNpmScript(script, { PWA_ROOT: pwaRoot });
+    runNpmScript(script, {
+        PWA_ROOT: pwaRoot
+    });
 }
 
 function runNpmScript(script, extraEnv = {}) {
-    const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-    const result = spawnSync(npm, ["run", script], {
+    const npmExecPath = process.env.npm_execpath;
+    if (!npmExecPath) {
+        throw new Error("npm_execpath is unavailable; run this suite through npm run qualify:browsers.");
+    }
+    const result = spawnSync(process.execPath, [npmExecPath, "run", script], {
         stdio: "inherit",
-        env: { ...process.env, ...extraEnv }
+        env: {
+            ...process.env,
+            ...extraEnv
+        }
     });
     if (result.error) {
         throw result.error;

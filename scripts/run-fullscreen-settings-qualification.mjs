@@ -1,4 +1,4 @@
-/* global document, navigator, window, HTMLElement, EventTarget */
+/* global document, HTMLElement */
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -169,11 +169,7 @@ async function waitForLiveMenu(page) {
 }
 
 async function assertWakeAccounting(page, expectedLive, label) {
-    await page.waitForFunction(
-        (expected) => globalThis.__msPacManSettingsHarness?.wakeStats().live === expected,
-        expectedLive,
-        { timeout: 5_000 }
-    );
+    await page.waitForFunction((expected) => globalThis.__msPacManSettingsHarness?.wakeStats().live === expected, expectedLive, { timeout: 5_000 });
     const stats = await page.evaluate(() => globalThis.__msPacManSettingsHarness.wakeStats());
     assert.equal(stats.live, expectedLive, `${label}: unexpected live wake-lock count`);
     assert.equal(stats.acquired - stats.released, stats.live, `${label}: wake-lock acquisitions/releases are not balanced`);
@@ -183,6 +179,9 @@ async function assertWakeAccounting(page, expectedLive, label) {
 async function installFullscreenAndWakeLockHarness(context) {
     await context.addInitScript(() => {
         let fullscreenElement = null;
+        const setSyntheticFullscreenElement = (element) => {
+            fullscreenElement = element;
+        };
         let fullscreenRequests = 0;
         let wakeAcquired = 0;
         let wakeReleased = 0;
@@ -235,7 +234,7 @@ async function installFullscreenAndWakeLockHarness(context) {
             configurable: true,
             value: function () {
                 fullscreenRequests++;
-                fullscreenElement = this;
+                setSyntheticFullscreenElement(this);
                 document.dispatchEvent(new Event("fullscreenchange"));
                 return Promise.resolve();
             }

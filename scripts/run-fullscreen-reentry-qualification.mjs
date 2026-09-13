@@ -1,4 +1,4 @@
-/* global document, navigator, window, HTMLElement */
+/* global document, window, HTMLElement */
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
@@ -97,6 +97,9 @@ async function installReentrantFullscreenHarness(context) {
     await context.addInitScript(() => {
         let mode = "success";
         let fullscreenElement = null;
+        const setSyntheticFullscreenElement = (element) => {
+            fullscreenElement = element;
+        };
         let requestCount = 0;
         let pendingResolve = null;
         Object.defineProperty(navigator, "maxTouchPoints", { configurable: true, value: 0 });
@@ -121,14 +124,14 @@ async function installReentrantFullscreenHarness(context) {
                     window.dispatchEvent(new Event("blur"));
                     return new Promise((resolvePending) => {
                         pendingResolve = () => {
-                            fullscreenElement = this;
+                            setSyntheticFullscreenElement(this);
                             document.dispatchEvent(new Event("fullscreenchange"));
                             resolvePending();
                             pendingResolve = null;
                         };
                     });
                 }
-                fullscreenElement = this;
+                setSyntheticFullscreenElement(this);
                 document.dispatchEvent(new Event("fullscreenchange"));
                 return Promise.resolve();
             }

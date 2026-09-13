@@ -154,13 +154,15 @@ function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: stri
     menuRoot.innerHTML = `
         <section class="menu" aria-label="Ms. Pac-Man 2010 menu">
             <div class="menu-actions">
-                <div class="setting-fullscreen-row" role="group" aria-label="Fullscreen">
-                    <span>Fullscreen</span>
-                    <button id="fullscreen-switch-button" class="menu-switch fullscreen-switch" type="button" aria-label="Toggle fullscreen" aria-pressed="${fullscreenPresented}" data-enabled="${fullscreenPresented}"${fullscreenUnavailable ? ' disabled title="Fullscreen is unavailable in this browser"' : ""}><span></span></button>
-                </div>
-                <div class="setting-scaling-row" role="group" aria-label="Scaling">
-                    <span>Scaling</span>
-                    ${scalingPickerHtml()}
+                <div class="settings-row settings-fullscreen-scaling-row">
+                    <div class="setting-fullscreen-row" role="group" aria-label="Fullscreen">
+                        <span>Fullscreen</span>
+                        <button id="fullscreen-switch-button" class="menu-switch fullscreen-switch" type="button" aria-label="Toggle fullscreen" aria-pressed="${fullscreenPresented}" data-enabled="${fullscreenPresented}"${fullscreenUnavailable ? ' disabled title="Fullscreen is unavailable in this browser"' : ""}><span></span></button>
+                    </div>
+                    <div class="setting-scaling-row" role="group" aria-label="Scaling">
+                        <span>Scaling</span>
+                        ${scalingPickerHtml()}
+                    </div>
                 </div>
                 <div class="volume-control">
                     <span class="volume-icon" id="volumeIcon" aria-hidden="true">${volumeIcon(volume)}</span>
@@ -433,7 +435,6 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean, ge
     appContainer.setHighDpiEnabled(HIGH_DPI_ENABLED);
     appContainer.setMaxDevicePixelRatio(MAX_DEVICE_PIXEL_RATIO);
     mainGame.appGameContainer = appContainer;
-    mainGame.windowedDisplayModeProvider = () => viewport.getResponsiveDisplayMode();
     mainGame.pauseStateChangeHandler = handleGamePauseStateChanged;
     container = appContainer;
     game = mainGame;
@@ -1073,14 +1074,7 @@ async function restoreExistingLiveMenuAfterInterruptedResume(session: number): P
     if (!(await viewport.exitFullscreenForMenu())) {
         return;
     }
-    if (
-        !isCurrentGameSession(session) ||
-        pwaSessionState !== "stopping" ||
-        !liveMenuOpen ||
-        menuOverlay === null ||
-        game === null ||
-        container === null
-    ) {
+    if (!isCurrentGameSession(session) || pwaSessionState !== "stopping" || !liveMenuOpen || menuOverlay === null || game === null || container === null) {
         return;
     }
     pwaSessionState = "menu";

@@ -62,7 +62,7 @@ test("Esc belongs to the PWA shell and translated browser fullscreen machinery i
 });
 
 test("native fullscreen invocation is fenced before and after synchronous reentry", () => {
-    const request = viewport.match(/public requestFullscreen\(\): Promise<boolean> \{[\s\S]*?\n    }/)?.[0] ?? "";
+    const request = viewport.match(/public requestFullscreen\(\): Promise<boolean> \{[\s\S]*?\n {4}}/)?.[0] ?? "";
     const preflightSession = request.indexOf("!this.callbacks.isSessionCurrent(session)");
     const preflightActivity = request.indexOf("!this.callbacks.isGameplayActive()");
     const nativeRequest = request.indexOf("requestBrowserFullscreen(shell)");
@@ -85,23 +85,23 @@ test("fullscreen authority is fenced to exact presentation and session identitie
 
 test("MENU exit starts actual shell exit before bounded pending-entry wait", () => {
     assert.match(viewport, /FULLSCREEN_REQUEST_SETTLE_TIMEOUT_MS = 1500/);
-    const exit = viewport.match(/private async exitFullscreenForPresentation\([\s\S]*?\n    }/)?.[0] ?? "";
+    const exit = viewport.match(/private async exitFullscreenForPresentation\([\s\S]*?\n {4}}/)?.[0] ?? "";
     const actualExit = exit.indexOf("requestExitForSpecificShell(targetShell)");
     const pendingWait = exit.indexOf("waitForPendingFullscreenRequests(targetShell, targetPresentation)");
     assert.ok(actualExit >= 0 && pendingWait > actualExit);
     assert.match(exit, /this\.fullscreenRequestSerial\+\+/);
     assert.match(exit, /this\.fullscreenEntryAuthorized = false/);
 
-    const pending = viewport.match(/private async waitForPendingFullscreenRequests\([\s\S]*?\n    }/)?.[0] ?? "";
+    const pending = viewport.match(/private async waitForPendingFullscreenRequests\([\s\S]*?\n {4}}/)?.[0] ?? "";
     assert.match(pending, /Promise\.race/);
     assert.match(pending, /FULLSCREEN_REQUEST_SETTLE_TIMEOUT_MS/);
 });
 
 test("retired or unauthorized shell success is hidden until exact-shell exit", () => {
-    const clear = viewport.match(/public clear\(\): void \{[\s\S]*?\n    }/)?.[0] ?? "";
+    const clear = viewport.match(/public clear\(\): void \{[\s\S]*?\n {4}}/)?.[0] ?? "";
     assert.match(clear, /retiredFullscreenShells\.add\(targetShell\)/);
     assert.match(clear, /this\.root\.style\.visibility = "hidden"/);
-    const retired = viewport.match(/private hideRootUntilRetiredShellExits\([\s\S]*?\n    }/)?.[0] ?? "";
+    const retired = viewport.match(/private hideRootUntilRetiredShellExits\([\s\S]*?\n {4}}/)?.[0] ?? "";
     assert.match(retired, /requestExitForSpecificShell\(shell\)/);
     assert.match(retired, /this\.root\.style\.visibility = "hidden"/);
     assert.match(retired, /this\.root\.style\.visibility = ""/);
@@ -119,15 +119,15 @@ test("retained Continue reconciles display before input and loop resume", () => 
 
 test("hamburger visibility keeps polling until the running game leaves its loading screen", () => {
     assert.match(viewport, /private hamburgerVisibilityAnimationFrame = 0/);
-    const start = viewport.match(/public startHamburgerVisibilityMonitor\(\): void \{[\s\S]*?\n    }/)?.[0] ?? "";
+    const start = viewport.match(/public startHamburgerVisibilityMonitor\(\): void \{[\s\S]*?\n {4}}/)?.[0] ?? "";
     assert.match(start, /this\.stopHamburgerVisibilityMonitor\(\)/);
     assert.match(start, /this\.updateHamburgerVisibility\(\)/);
 
-    const stop = viewport.match(/public stopHamburgerVisibilityMonitor\(\): void \{[\s\S]*?\n    }/)?.[0] ?? "";
+    const stop = viewport.match(/public stopHamburgerVisibilityMonitor\(\): void \{[\s\S]*?\n {4}}/)?.[0] ?? "";
     assert.match(stop, /cancelAnimationFrame\(this\.hamburgerVisibilityAnimationFrame\)/);
     assert.match(stop, /this\.hideHamburger\(\)/);
 
-    const update = viewport.match(/private updateHamburgerVisibility\(\): void \{[\s\S]*?\n    }/)?.[0] ?? "";
+    const update = viewport.match(/private updateHamburgerVisibility\(\): void \{[\s\S]*?\n {4}}/)?.[0] ?? "";
     assert.match(update, /const gameplayRunning = this\.callbacks\.isGameplayRunning\(\)/);
     assert.match(update, /this\.callbacks\.isGameplayActive\(\) && !gameplayRunning/);
     assert.match(update, /requestAnimationFrame\(\(\) =>/);

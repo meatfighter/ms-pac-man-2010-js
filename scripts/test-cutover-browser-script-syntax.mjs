@@ -36,6 +36,9 @@ test("qualify:browsers builds a fresh PWA and runs the audited suite in order", 
     }
     assert.equal(packageJson.scripts?.["qualify:browsers"], `node ${suitePath}`);
     assert.match(suiteSource, /resolve\("\.release-components", "pwa", "pwa"\)/);
+    assert.match(suiteSource, /const npmExecPath = process\.env\.npm_execpath;/);
+    assert.match(suiteSource, /spawnSync\(process\.execPath, \[npmExecPath, "run", script\]/);
+    assert.doesNotMatch(suiteSource, /npm\.cmd|process\.platform === "win32"/);
 
     const arrayStart = suiteSource.indexOf("const qualificationScripts = [");
     const arrayEnd = suiteSource.indexOf("];", arrayStart);
@@ -57,7 +60,11 @@ test("qualify:browsers builds a fresh PWA and runs the audited suite in order", 
 test("unrelated browser qualifiers explicitly disable the default-on Fullscreen preference", () => {
     for (const path of unrelatedBrowserSuites) {
         const source = readFileSync(path, "utf8");
-        assert.match(source, /import \{ disableFullscreenPreference \} from "\.\/fullscreen-test-utils\.mjs";/, `${path} must import the shared Fullscreen-OFF helper`);
+        assert.match(
+            source,
+            /import \{ disableFullscreenPreference \} from "\.\/fullscreen-test-utils\.mjs";/,
+            `${path} must import the shared Fullscreen-OFF helper`
+        );
         const calls = source.match(/disableFullscreenPreference\s*\(/g) ?? [];
         assert.ok(calls.length >= 1, `${path} imports the helper but never calls it before exercising its original non-fullscreen contract`);
     }

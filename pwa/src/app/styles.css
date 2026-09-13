@@ -48,6 +48,20 @@ input {
     justify-items: center;
 }
 
+.settings-row {
+    display: flex;
+    width: min(480px, 100%);
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 20px 24px;
+}
+
+.settings-row > .setting-fullscreen-row,
+.settings-row > .setting-scaling-row {
+    flex: 0 0 auto;
+}
+
 .session-ownership-screen {
     position: fixed;
     inset: 0;
@@ -137,14 +151,14 @@ input {
 }
 
 .fullscreen-switch:disabled {
-    border-color: #5b2448;
-    background: #5b2448;
+    border-color: #6f6501;
+    background: #6f6501;
     cursor: default;
     opacity: 1;
 }
 
 .fullscreen-switch:disabled span {
-    background: #111111;
+    background: #191405;
     transform: translateX(0);
 }
 
