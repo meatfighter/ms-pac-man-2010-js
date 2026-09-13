@@ -22,6 +22,8 @@ test("new game requires boot-prepared runtime before fresh playback activation",
     assert.ok(startGame.indexOf("if (!destroyGame())") > startGame.indexOf("const runtime = runtimeLoader.prepared;"));
     assert.ok(startGame.indexOf("const generation = sessionGeneration.begin();") < startGame.indexOf("const audio = beginGameAudio();"));
     assert.ok(startGame.indexOf('pwaSessionState = "starting";') < startGame.indexOf("const audio = beginGameAudio();"));
+    assert.ok(startGame.indexOf("viewport.createShell(generation)") < startGame.indexOf("const audio = beginGameAudio();"));
+    assert.ok(startGame.indexOf("requestPreferredFullscreen()") < startGame.indexOf("await audio.ready"));
     assert.match(startGame, /await audio\.ready/);
     assert.doesNotMatch(startGame, /unlockAudio|runtimeLoader\.prepare\s*\(|renderBoot/);
 });
@@ -64,12 +66,23 @@ test("live-menu transition freezes and retires playback before serializing progr
     assert.match(suspend, /releaseGameAudio\(\)/);
 });
 
-test("failed persistence keeps the initialized live game continuable", () => {
+test("live-menu presentation exits fullscreen before publishing recoverable save state", () => {
     const liveMenu = mainSource.slice(mainSource.indexOf("function showLiveMenuOverlay"), mainSource.indexOf("async function resumeLiveGameFromMenu"));
     assert.match(liveMenu, /const saved = sessionCleanup\.trySave\(saveCurrentGameState\)/);
     assert.match(liveMenu, /Progress could not be saved\. Continue still preserves this live game\./);
-    assert.match(liveMenu, /pwaSessionState = "menu";/);
-    assert.doesNotMatch(liveMenu, /destroyGame\(/);
+    const exitIndex = liveMenu.indexOf("await viewport.exitFullscreenForMenu()");
+    const renderIndex = liveMenu.indexOf("menuOverlay = renderMenuUi");
+    const publishIndex = liveMenu.indexOf('pwaSessionState = "menu";');
+    assert.ok(exitIndex >= 0 && renderIndex > exitIndex && publishIndex > renderIndex);
+    // A rendering/cleanup failure may still destroy the session. An early destroy
+    // before fullscreen exit is also valid when cleanup is already unsafe. What
+    // must not happen is destructive cleanup during the ordinary exit-to-menu
+    // interval before the retained menu has been rendered.
+    const destroyIndex = liveMenu.indexOf("destroyGame();");
+    assert.ok(
+        destroyIndex < 0 || destroyIndex < exitIndex || destroyIndex > renderIndex,
+        "destroyGame() may only be an early unsafe-cleanup abort or occur after retained-menu rendering"
+    );
 });
 
 test("ownership relinquishment performs the final save before destructive cleanup", () => {
@@ -91,21 +104,23 @@ test("high-score network callbacks are fenced by the Main browser lifetime", () 
 test("live Continue is scoped to its playback attempt and retained session", () => {
     const resume = mainSource.slice(mainSource.indexOf("async function resumeLiveGameFromMenu"), mainSource.indexOf("function removeMenuOverlay"));
     assert.match(resume, /const audio = beginGameAudio\(\)/);
+    assert.match(resume, /requestPreferredFullscreen\(\)/);
+    assert.ok(resume.indexOf("requestPreferredFullscreen()") < resume.indexOf("await audio.ready"));
     assert.match(resume, /commitGameAudio\(audio\)/);
     assert.match(resume, /isGameAudioLatest\(audio\)/);
     assert.equal((resume.match(/isGameAudioLatest\(audio\)/g) ?? []).length, 2, "Continue catch and finally must both reject stale attempts.");
     assert.match(resume, /isStartingGameSession\(session, audio\)/);
 });
 
-test("synchronous post-commit UI hooks are rechecked before RUNNING", () => {
+test("synchronous post-commit viewport hooks are rechecked before RUNNING", () => {
     const mount = mainSource.slice(mainSource.indexOf("async function mountGame"), mainSource.indexOf("function applyVolume"));
-    const mountFocus = mount.indexOf("focusGameCanvas();");
+    const mountFocus = mount.indexOf("viewport.focusCanvas();");
     const mountGuard = mount.indexOf("if (!isStartingGameSession(generation, audio) || game !== mainGame || container !== appContainer)", mountFocus);
     const mountRunning = mount.indexOf('pwaSessionState = "running";', mountFocus);
     assert.ok(mountFocus >= 0 && mountGuard > mountFocus && mountRunning > mountGuard);
 
     const resume = mainSource.slice(mainSource.indexOf("async function resumeLiveGameFromMenu"), mainSource.indexOf("function removeMenuOverlay"));
-    const resumeFocus = resume.indexOf("focusGameCanvas();");
+    const resumeFocus = resume.indexOf("viewport.focusCanvas();");
     const resumeGuard = resume.indexOf("if (!isStartingGameSession(session, audio))", resumeFocus);
     const resumeRunning = resume.indexOf('pwaSessionState = "running";', resumeFocus);
     assert.ok(resumeFocus >= 0 && resumeGuard > resumeFocus && resumeRunning > resumeGuard);

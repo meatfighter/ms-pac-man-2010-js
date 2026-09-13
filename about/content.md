@@ -10,16 +10,14 @@ Press the **Play** button below to launch the desktop browser version of _Ms. Pa
 
 _Ms. Pac-Man 2010_ supports both keyboard and gamepad input. The controls are:
 
-| Action            | Keyboard                       | Gamepad     |
-| ----------------- | ------------------------------ | ----------- |
-| Up                | Up Arrow, W, I, 8, Numpad 8    | D-pad Up    |
-| Down              | Down Arrow, S, K, 2, Numpad 2  | D-pad Down  |
-| Left              | Left Arrow, A, J, 4, Numpad 4  | D-pad Left  |
-| Right             | Right Arrow, D, L, 6, Numpad 6 | D-pad Right |
-| Start             | Enter                          | Any         |
-| Pause             | Enter, P                       | Any         |
-| Toggle fullscreen | Space                          | —           |
-| Exit fullscreen   | Esc                            | —           |
+| Action | Keyboard                       | Gamepad     |
+| ------ | ------------------------------ | ----------- |
+| Up     | Up Arrow, W, I, 8, Numpad 8    | D-pad Up    |
+| Down   | Down Arrow, S, K, 2, Numpad 2  | D-pad Down  |
+| Left   | Left Arrow, A, J, 4, Numpad 4  | D-pad Left  |
+| Right  | Right Arrow, D, L, 6, Numpad 6 | D-pad Right |
+| Start  | Enter                          | Any         |
+| Pause  | Enter, P                       | Any         |
 
 ## Browser Menu
 
@@ -31,11 +29,10 @@ While playing outside fullscreen mode, a hamburger button appears in the upper-l
 
 The browser menu also provides:
 
+- **Fullscreen** — Makes the game fill the entire screen.
 - **Scaling** — Controls how the game is resized to fit the display.
 - **Volume** — Adjusts the game volume.
 - **Reset** — Erases saved state and restores settings to their defaults.
-
-_Ms. Pac-Man 2010_ automatically pauses when the browser loses focus and resumes when the browser regains focus.
 
 # History
 

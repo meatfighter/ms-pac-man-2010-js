@@ -57,7 +57,6 @@ async function mountMain(restore: ((main: Main, container: AppGameContainer) => 
     container.setShowFPS(false);
     container.setClearEachFrame(true);
     main.appGameContainer = container;
-    main.windowedDisplayModeProvider = () => ({ width: 1000, height: 750 });
     if (restore !== null) {
         main.loadingCompleteHandler = () => {
             assert(restore(main, container), "Saved state restore failed; default startup must not count as restoration.");

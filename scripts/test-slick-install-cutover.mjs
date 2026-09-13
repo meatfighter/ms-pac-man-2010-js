@@ -3,9 +3,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { test } from "node:test";
 
-const EXPECTED_ENGINE_SHA = "bf52fb09bfc0516efd5d62cbb368c89547b124e0";
+const EXPECTED_ENGINE_SHA = "b82492294a20640fab7e0065e9348253bd56c4a9";
 const EXPECTED_ENGINE_URL = `https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/${EXPECTED_ENGINE_SHA}`;
-const EXPECTED_ENGINE_VERSION = "1.6.0";
+const EXPECTED_ENGINE_VERSION = "1.6.2";
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const packageLock = JSON.parse(readFileSync("package-lock.json", "utf8"));
@@ -37,7 +37,9 @@ test("qualified Slick archive, lock metadata and emitted install all agree", asy
         "dist/slick/openal/PlaybackSession.js",
         "dist/slick/openal/PlaybackSession.d.ts",
         "dist/slick/MusicPlaybackState.js",
-        "dist/slick/MusicPlaybackState.d.ts"
+        "dist/slick/MusicPlaybackState.d.ts",
+        "dist/slick/util/BrowserFullscreen.js",
+        "dist/slick/util/BrowserFullscreen.d.ts"
     ]) {
         assert.equal(existsSync(resolve(installedRoot, path)), true, `installed Slick package is missing ${path}`);
     }
@@ -53,7 +55,13 @@ test("qualified Slick archive, lock metadata and emitted install all agree", asy
 
     const rootApi = await import("slick2d-ts");
     const playbackApi = await import("slick2d-ts/slick/openal/PlaybackSession");
+    const fullscreenApi = await import("slick2d-ts/slick/util/BrowserFullscreen");
     assert.equal(typeof rootApi.Music, "function");
     assert.equal(typeof rootApi.SoundStore, "function");
+    assert.equal(typeof rootApi.SoundStore.get().poll, "undefined", "retired SoundStore.poll API survived in the installed engine");
     assert.equal(typeof playbackApi.PlaybackSession, "function");
+    assert.equal(typeof fullscreenApi.getBrowserFullscreenCapability, "function");
+    assert.equal(typeof fullscreenApi.getBrowserFullscreenElement, "function");
+    assert.equal(typeof fullscreenApi.requestBrowserFullscreen, "function");
+    assert.equal(typeof fullscreenApi.exitBrowserFullscreen, "function");
 });

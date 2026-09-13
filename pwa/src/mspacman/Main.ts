@@ -62,11 +62,6 @@ function imageCube<T>(a: number, b: number, c: number): T[][][] {
     return result;
 }
 
-export type WindowedDisplayModeProvider = () => {
-    width: number;
-    height: number;
-};
-
 export type PauseStateChangeHandler = (paused: boolean) => void;
 
 export class Main extends BasicGame {
@@ -111,7 +106,6 @@ export class Main extends BasicGame {
     public stageIndex = 0;
     public input: IInput;
     public currentMusic: Music | null = null;
-    public nativeCursor: unknown;
     public score = 0;
     public lives = 0;
     public paused = false;
@@ -128,7 +122,6 @@ export class Main extends BasicGame {
     public browserSuspended = false;
     private startupLoadingComplete = false;
     public loadingCompleteHandler: ((gc: GameContainer) => boolean) | null = null;
-    public windowedDisplayModeProvider: WindowedDisplayModeProvider | null = null;
     public pauseStateChangeHandler: PauseStateChangeHandler | null = null;
     private leaderboardRevision = 0;
     private browserLifetimeGeneration = 0;
@@ -227,7 +220,6 @@ export class Main extends BasicGame {
         }
         let count = 0;
         while (this.nextFrameTime < Sys.getTime()) {
-            this.fullScreenToggleCheck(gc);
             this.mode.update(gc);
             this.nextFrameTime += intDiv(Sys.getTimerResolution(), 91);
             if (++count === 8) {
@@ -627,25 +619,6 @@ export class Main extends BasicGame {
         this.downloadScores();
     }
 
-    private fullScreenToggleCheck(gc: GameContainer): void {
-        const isEscape = this.input.isFullscreenExitPressed();
-        if (this.input.isFullscreenTogglePressed() || isEscape) {
-            if (gc.isFullscreen()) {
-                this.showMouseCursor();
-                if (this.appGameContainer) {
-                    const displayMode = this.getWindowedDisplayMode();
-                    void this.appGameContainer.setDisplayMode(displayMode.width, displayMode.height, false);
-                }
-            } else if (!isEscape) {
-                this.hideMouseCursor();
-                if (this.appGameContainer) {
-                    void this.appGameContainer.setDisplayMode(this.maxWidth, this.maxHeight, true);
-                }
-            }
-            this.resetNextFrameTime();
-        }
-    }
-
     private isGameplayPauseTogglePressed(): boolean {
         if (this.mode !== Main.playingMode || this.demoMode) {
             return false;
@@ -703,25 +676,6 @@ export class Main extends BasicGame {
         return normalizeHighScoreInitials(initials);
     }
 
-    private getWindowedDisplayMode(): { width: number; height: number } {
-        if (this.windowedDisplayModeProvider !== null) {
-            try {
-                const displayMode = this.windowedDisplayModeProvider();
-                if (Number.isFinite(displayMode.width) && Number.isFinite(displayMode.height)) {
-                    return {
-                        width: Math.max(1, Math.trunc(displayMode.width)),
-                        height: Math.max(1, Math.trunc(displayMode.height))
-                    };
-                }
-            } catch {}
-        }
-
-        return {
-            width: 800,
-            height: 600
-        };
-    }
-
     private getModeIdForState(mode: IMode): ModeId {
         if (mode === Main.act1Mode) {
             return "act1";
@@ -767,10 +721,6 @@ export class Main extends BasicGame {
         }
         throw new Error("Unsupported mode.");
     }
-
-    private showMouseCursor(): void {}
-
-    private hideMouseCursor(): void {}
 
     private findNativeDisplayMode(): void {
         for (const displayMode of Display.getAvailableDisplayModes()) {

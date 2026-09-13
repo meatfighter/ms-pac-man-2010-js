@@ -4,10 +4,12 @@ export type ScalingPreference = "smooth" | "crisp" | "pixel-perfect";
 
 export const DEFAULT_VOLUME = 0.1;
 export const DEFAULT_SCALING_PREFERENCE: ScalingPreference = "crisp";
+export const DEFAULT_FULLSCREEN_PREFERENCE = true;
 
 export class BrowserPreferences {
     public volume = this.readVolume();
     public scaling = this.readScaling();
+    public fullscreen = this.readFullscreen();
 
     public setVolume(value: number, persist = true): boolean {
         this.volume = BrowserPreferences.clampVolume(value);
@@ -17,6 +19,11 @@ export class BrowserPreferences {
     public setScaling(value: ScalingPreference): boolean {
         this.scaling = value;
         return this.write(createBrowserStorageKeys().scaling, value, "scaling preference");
+    }
+
+    public setFullscreen(value: boolean): boolean {
+        this.fullscreen = value;
+        return this.write(createBrowserStorageKeys().fullscreen, String(value), "fullscreen preference");
     }
 
     public clearGameState(): boolean {
@@ -29,12 +36,14 @@ export class BrowserPreferences {
         for (const [key, label] of [
             [keys.gameState, "saved game"],
             [keys.volume, "volume"],
-            [keys.scaling, "scaling preference"]
+            [keys.scaling, "scaling preference"],
+            [keys.fullscreen, "fullscreen preference"]
         ] as const) {
             success = this.remove(key, label) && success;
         }
         this.volume = DEFAULT_VOLUME;
         this.scaling = DEFAULT_SCALING_PREFERENCE;
+        this.fullscreen = DEFAULT_FULLSCREEN_PREFERENCE;
         return success;
     }
 
@@ -63,6 +72,21 @@ export class BrowserPreferences {
         } catch {
             return DEFAULT_SCALING_PREFERENCE;
         }
+    }
+
+    private readFullscreen(): boolean {
+        try {
+            const value = localStorage.getItem(createBrowserStorageKeys().fullscreen);
+            if (value === "true") {
+                return true;
+            }
+            if (value === "false") {
+                return false;
+            }
+        } catch {
+            return DEFAULT_FULLSCREEN_PREFERENCE;
+        }
+        return DEFAULT_FULLSCREEN_PREFERENCE;
     }
 
     private write(key: string, value: string, label: string): boolean {
