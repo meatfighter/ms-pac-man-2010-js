@@ -3,10 +3,12 @@ import { fileURLToPath } from "node:url";
 
 const mainPath = "pwa/src/mspacman/Main.ts";
 const stateTestPath = "scripts/test-pwa-state.mjs";
+const stateFieldPolicyPath = "pwa/src/mspacman/persistence/StateFieldPolicy.ts";
 const stylesPath = "pwa/src/app/styles.css";
 
 let mainSource = readFileSync(mainPath, "utf8");
 let stateTestSource = readFileSync(stateTestPath, "utf8");
+let stateFieldPolicySource = readFileSync(stateFieldPolicyPath, "utf8");
 let stylesSource = readFileSync(stylesPath, "utf8");
 
 mainSource = replaceExactlyOnce(
@@ -21,8 +23,22 @@ mainSource = replaceExactlyOnce(
     "\n",
     "fullScreenToggleCheck method"
 );
+mainSource = replaceExactlyOnce(mainSource, /\n    public nativeCursor: unknown;/, "", "nativeCursor field");
+mainSource = replaceExactlyOnce(
+    mainSource,
+    /\n    private showMouseCursor\(\): void \{\}\n\n    private hideMouseCursor\(\): void \{\}/,
+    "",
+    "translated cursor fullscreen helpers"
+);
 
-for (const forbidden of ["fullScreenToggleCheck", "isFullscreenTogglePressed", "isFullscreenExitPressed"]) {
+for (const forbidden of [
+    "fullScreenToggleCheck",
+    "isFullscreenTogglePressed",
+    "isFullscreenExitPressed",
+    "showMouseCursor",
+    "hideMouseCursor",
+    "nativeCursor"
+]) {
     if (mainSource.includes(forbidden)) {
         throw new Error(`Cleanup incomplete: ${forbidden} still exists in ${mainPath}`);
     }
@@ -44,6 +60,16 @@ if (/\bobsoleteSnapshot\b|\bversion:\s*4\b/.test(stateTestSource)) {
     throw new Error(`Old development save fixture still exists in ${stateTestPath}`);
 }
 
+stateFieldPolicySource = replaceExactlyOnce(
+    stateFieldPolicySource,
+    /\n            "nativeCursor",/,
+    "",
+    "nativeCursor state-field policy entry"
+);
+if (stateFieldPolicySource.includes('"nativeCursor"')) {
+    throw new Error(`Obsolete fullscreen state-field policy still exists in ${stateFieldPolicyPath}`);
+}
+
 stylesSource = replaceExactlyOnce(
     stylesSource,
     /\.fullscreen-switch:disabled \{\n    border-color: #5b2448;\n    background: #5b2448;/,
@@ -59,9 +85,12 @@ stylesSource = replaceExactlyOnce(
 
 writeFileSync(mainPath, mainSource);
 writeFileSync(stateTestPath, stateTestSource);
+writeFileSync(stateFieldPolicyPath, stateFieldPolicySource);
 writeFileSync(stylesPath, stylesSource);
 unlinkSync(fileURLToPath(import.meta.url));
-console.log("Removed obsolete Ms. Pac-Man browser fullscreen code and pre-release save-schema fixture; aligned unavailable Fullscreen styling; cleanup helper deleted itself.");
+console.log(
+    "Removed obsolete Ms. Pac-Man browser fullscreen/cursor code and pre-release save-schema fixture; removed stale state-field policy; aligned unavailable Fullscreen styling; cleanup helper deleted itself. Regenerate StateFieldRegistry.generated.ts with npm run generate:state-fields before qualification."
+);
 
 function replaceExactlyOnce(text, pattern, replacement, label) {
     const globalPattern = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
