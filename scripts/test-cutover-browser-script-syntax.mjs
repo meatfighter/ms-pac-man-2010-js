@@ -3,7 +3,11 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const supplemental = [
+const qualification = [
+    ["verify:fullscreen", "scripts/run-fullscreen-qualification.mjs"],
+    ["verify:fullscreen-timeout", "scripts/run-fullscreen-timeout-qualification.mjs"],
+    ["verify:fullscreen-reentry", "scripts/run-fullscreen-reentry-qualification.mjs"],
+    ["verify:production-browser", "scripts/run-production-browser-qualification.mjs"],
     ["verify:activation-races", "scripts/run-activation-race-qualification.mjs"],
     ["verify:audio-interruption", "scripts/run-audio-interruption-qualification.mjs"],
     ["verify:lifecycle-events", "scripts/run-lifecycle-event-qualification.mjs"],
@@ -11,21 +15,31 @@ const supplemental = [
     ["verify:persistence-failure", "scripts/run-persistence-failure-qualification.mjs"],
     ["verify:lifecycle-stress", "scripts/run-lifecycle-stress-qualification.mjs"]
 ];
+const suitePath = "scripts/run-browser-qualification-suite.mjs";
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+const suiteSource = readFileSync(suitePath, "utf8");
 
 test("cutover browser qualification scripts are valid JavaScript", () => {
-    for (const [, path] of supplemental) {
+    for (const [, path] of qualification) {
         const result = spawnSync(process.execPath, ["--check", path], { encoding: "utf8" });
         assert.equal(result.status, 0, `${path} failed node --check:\n${result.stderr || result.stdout}`);
     }
+    const suiteResult = spawnSync(process.execPath, ["--check", suitePath], { encoding: "utf8" });
+    assert.equal(suiteResult.status, 0, `${suitePath} failed node --check:\n${suiteResult.stderr || suiteResult.stdout}`);
 });
 
-test("qualify:browsers wires the complete cutover acceptance chain", () => {
-    for (const [name, path] of supplemental) {
+test("qualify:browsers builds a fresh PWA and runs the audited suite in order", () => {
+    for (const [name, path] of qualification) {
         assert.equal(packageJson.scripts?.[name], `node ${path}`, `${name} must invoke its audited browser qualifier`);
     }
-    assert.equal(
-        packageJson.scripts?.["qualify:browsers"],
-        ["verify:production-browser", ...supplemental.map(([name]) => name)].map((name) => `npm run ${name}`).join(" && ")
-    );
+    assert.equal(packageJson.scripts?.["qualify:browsers"], `node ${suitePath}`);
+    const buildIndex = suiteSource.indexOf('runNpmScript("build:pwa")');
+    assert.ok(buildIndex >= 0, "browser suite must build the PWA first");
+    assert.match(suiteSource, /resolve\("\.release-components", "pwa", "pwa"\)/);
+    let previous = buildIndex;
+    for (const [name] of qualification) {
+        const index = suiteSource.indexOf(`"${name}"`);
+        assert.ok(index > previous, `${name} is missing or out of order in the fresh-build browser suite`);
+        previous = index;
+    }
 });
