@@ -35,15 +35,23 @@ test("qualify:browsers builds a fresh PWA and runs the audited suite in order", 
         assert.equal(packageJson.scripts?.[name], `node ${path}`, `${name} must invoke its audited browser qualifier`);
     }
     assert.equal(packageJson.scripts?.["qualify:browsers"], `node ${suitePath}`);
-    const buildIndex = suiteSource.indexOf('runNpmScript("build:pwa")');
-    assert.ok(buildIndex >= 0, "browser suite must build the PWA first");
     assert.match(suiteSource, /resolve\("\.release-components", "pwa", "pwa"\)/);
-    let previous = buildIndex;
+
+    const arrayStart = suiteSource.indexOf("const qualificationScripts = [");
+    const arrayEnd = suiteSource.indexOf("];", arrayStart);
+    assert.ok(arrayStart >= 0 && arrayEnd > arrayStart, "browser suite qualification array is missing");
+    const qualificationArraySource = suiteSource.slice(arrayStart, arrayEnd);
+    let previous = -1;
     for (const [name] of qualification) {
-        const index = suiteSource.indexOf(`"${name}"`);
-        assert.ok(index > previous, `${name} is missing or out of order in the fresh-build browser suite`);
+        const index = qualificationArraySource.indexOf(`"${name}"`);
+        assert.ok(index > previous, `${name} is missing or out of order in the browser-suite qualification array`);
         previous = index;
     }
+
+    const buildIndex = suiteSource.indexOf('runNpmScript("build:pwa")');
+    const loopIndex = suiteSource.indexOf("for (const script of qualificationScripts)", buildIndex);
+    assert.ok(buildIndex >= 0, "browser suite must build the PWA first");
+    assert.ok(loopIndex > buildIndex, "browser suite must run the audited qualification array after the fresh PWA build");
 });
 
 test("unrelated browser qualifiers explicitly disable the default-on Fullscreen preference", () => {
