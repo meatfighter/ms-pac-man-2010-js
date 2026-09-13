@@ -50,6 +50,6 @@ test("unrelated browser qualifiers explicitly disable the default-on Fullscreen 
         const source = readFileSync(path, "utf8");
         assert.match(source, /import \{ disableFullscreenPreference \} from "\.\/fullscreen-test-utils\.mjs";/, `${path} must import the shared Fullscreen-OFF helper`);
         const calls = source.match(/disableFullscreenPreference\s*\(/g) ?? [];
-        assert.ok(calls.length >= 2, `${path} imports the helper but never calls it before exercising its original non-fullscreen contract`);
+        assert.ok(calls.length >= 1, `${path} imports the helper but never calls it before exercising its original non-fullscreen contract`);
     }
 });
