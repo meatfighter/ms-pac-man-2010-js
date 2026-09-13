@@ -116,6 +116,22 @@ test("retained Continue reconciles display before input and loop resume", () => 
     assert.match(viewport, /queueMicrotask/);
 });
 
+test("hamburger visibility keeps polling until the running game leaves its loading screen", () => {
+    assert.match(viewport, /private hamburgerVisibilityAnimationFrame = 0/);
+    const start = viewport.match(/public startHamburgerVisibilityMonitor\(\): void \{[\s\S]*?\n    }/)?.[0] ?? "";
+    assert.match(start, /this\.stopHamburgerVisibilityMonitor\(\)/);
+    assert.match(start, /this\.updateHamburgerVisibility\(\)/);
+
+    const stop = viewport.match(/public stopHamburgerVisibilityMonitor\(\): void \{[\s\S]*?\n    }/)?.[0] ?? "";
+    assert.match(stop, /cancelAnimationFrame\(this\.hamburgerVisibilityAnimationFrame\)/);
+    assert.match(stop, /this\.hideHamburger\(\)/);
+
+    const update = viewport.match(/private updateHamburgerVisibility\(\): void \{[\s\S]*?\n    }/)?.[0] ?? "";
+    assert.match(update, /const gameplayRunning = this\.callbacks\.isGameplayRunning\(\)/);
+    assert.match(update, /this\.callbacks\.isGameplayActive\(\) && !gameplayRunning/);
+    assert.match(update, /requestAnimationFrame\(\(\) =>/);
+});
+
 test("fullscreen presentation does not alter score signing or endpoint configuration", () => {
     assert.match(viteConfig, /DEFAULT_HIGH_SCORE_API_URL = "\/api\/ms-pac-man-2010\/scores"/);
     assert.match(viteConfig, /MSPACMAN_HMAC_KEY_HEX/);
