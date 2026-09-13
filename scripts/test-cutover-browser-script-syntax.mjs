@@ -15,6 +15,7 @@ const qualification = [
     ["verify:persistence-failure", "scripts/run-persistence-failure-qualification.mjs"],
     ["verify:lifecycle-stress", "scripts/run-lifecycle-stress-qualification.mjs"]
 ];
+const unrelatedBrowserSuites = qualification.slice(3).map(([, path]) => path);
 const suitePath = "scripts/run-browser-qualification-suite.mjs";
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const suiteSource = readFileSync(suitePath, "utf8");
@@ -41,5 +42,14 @@ test("qualify:browsers builds a fresh PWA and runs the audited suite in order", 
         const index = suiteSource.indexOf(`"${name}"`);
         assert.ok(index > previous, `${name} is missing or out of order in the fresh-build browser suite`);
         previous = index;
+    }
+});
+
+test("unrelated browser qualifiers explicitly disable the default-on Fullscreen preference", () => {
+    for (const path of unrelatedBrowserSuites) {
+        const source = readFileSync(path, "utf8");
+        assert.match(source, /import \{ disableFullscreenPreference \} from "\.\/fullscreen-test-utils\.mjs";/, `${path} must import the shared Fullscreen-OFF helper`);
+        const calls = source.match(/disableFullscreenPreference\s*\(/g) ?? [];
+        assert.ok(calls.length >= 2, `${path} imports the helper but never calls it before exercising its original non-fullscreen contract`);
     }
 });
