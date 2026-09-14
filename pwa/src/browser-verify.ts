@@ -82,14 +82,15 @@ async function verify(): Promise<void> {
     first.main.score = 123450;
     first.main.lives = 3;
 
-    const blueGhosts = soundState([{ positionSeconds: 1.25, gain: 0.8 }], 0);
-    const clapping = soundState([{ positionSeconds: 0.4, gain: 1 }], 0);
-    const died = soundState([{ positionSeconds: 0.9, gain: 0.6 }], 0);
-    const speech = soundState([{ positionSeconds: 0.55, gain: 1 }], 0);
-    const overlappingPellets = soundState(
+    const blueGhosts = soundStateForRef("soundfx/blue_ghosts.ogg", [{ fraction: 0.35, gain: 0.8 }], 0);
+    const clapping = soundStateForRef("soundfx/clapping.ogg", [{ fraction: 0.2, gain: 1 }], 0);
+    const died = soundStateForRef("soundfx/died.ogg", [{ fraction: 0.3, gain: 0.6 }], 0);
+    const speech = soundStateForRef("soundfx/speaking_2_7.ogg", [{ fraction: 0.4, gain: 1 }], 0);
+    const overlappingPellets = soundStateForRef(
+        "soundfx/ate_pellot.ogg",
         [
-            { positionSeconds: 0.02, gain: 0.5 },
-            { positionSeconds: 0.01, gain: 0.25 }
+            { fraction: 0.25, gain: 0.5 },
+            { fraction: 0.125, gain: 0.25 }
         ],
         null
     );
@@ -123,21 +124,33 @@ async function verify(): Promise<void> {
     store.clear();
 }
 
-function soundState(voices: Array<{ positionSeconds: number; gain: number }>, activeVoiceIndex: number | null): SoundPlaybackSnapshot {
+function soundStateForRef(
+    ref: string,
+    voices: Array<{ fraction: number; gain: number }>,
+    activeVoiceIndex: number | null
+): SoundPlaybackSnapshot {
+    const buffer = SoundStore.get().getDecodedAudioBuffer(ref);
+    assert(buffer !== null && Number.isFinite(buffer.duration) && buffer.duration > 0, `Missing decoded duration for ${ref}.`);
     return {
-        voices: voices.map(({ positionSeconds, gain }) => ({
-            looped: false,
-            playbackRate: 1,
-            positionSeconds,
-            gain,
-            spatialPosition: null
-        })),
+        voices: voices.map(({ fraction, gain }) => {
+            assert(fraction > 0 && fraction < 1, `Invalid test offset fraction for ${ref}: ${fraction}`);
+            return {
+                looped: false,
+                playbackRate: 1,
+                positionSeconds: buffer.duration * fraction,
+                gain,
+                spatialPosition: null
+            };
+        }),
         activeVoiceIndex
     };
 }
 
 function assertSoundState(actual: SoundPlaybackSnapshot, expected: SoundPlaybackSnapshot, label: string): void {
-    assert(JSON.stringify(actual) === JSON.stringify(expected), `${label} Sound playback state did not round-trip exactly.`);
+    assert(
+        JSON.stringify(actual) === JSON.stringify(expected),
+        `${label} Sound playback state did not round-trip exactly. expected=${JSON.stringify(expected)} actual=${JSON.stringify(actual)}`
+    );
 }
 
 void verify().then(
