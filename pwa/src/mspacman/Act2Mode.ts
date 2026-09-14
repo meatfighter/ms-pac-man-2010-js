@@ -196,7 +196,7 @@ export class Act2Mode implements IMode {
             }
             return;
         } else if (!this.main.actMusic[1].playing()) {
-            this.main.actMusic[1].play();
+            this.main.playMusic(this.main.actMusic[1]);
         }
 
         this.timer++;
