@@ -63,7 +63,7 @@ const DIRECT_SOUND_IDS: readonly SoundId[] = [
 ];
 
 export function registeredMusic(main: Main): readonly RegisteredMusic[] {
-    return [
+    const entries: RegisteredMusic[] = [
         { id: "act:0", music: main.actMusic[0] },
         { id: "act:1", music: main.actMusic[1] },
         { id: "act:2", music: main.actMusic[2] },
@@ -77,6 +77,8 @@ export function registeredMusic(main: Main): readonly RegisteredMusic[] {
         { id: "stage:3", music: main.stageMusic[3] },
         { id: "training", music: main.trainingMusic }
     ];
+    assertUniqueMusicObjects(entries);
+    return entries;
 }
 
 export function musicForId(main: Main, id: MusicId): Music {
@@ -186,6 +188,19 @@ export function isSoundId(value: unknown): value is SoundId {
         return true;
     }
     return /^speaking:([01]):([0-9])$/.test(value);
+}
+
+function assertUniqueMusicObjects(entries: readonly RegisteredMusic[]): void {
+    const owners = new Set<Music>();
+    for (const { id, music } of entries) {
+        if (!music) {
+            throw new Error(`Registered Music is not initialized: ${id}`);
+        }
+        if (owners.has(music)) {
+            throw new Error(`A Music object is registered under more than one stable id: ${id}`);
+        }
+        owners.add(music);
+    }
 }
 
 function assertUniqueSoundObjects(entries: readonly RegisteredSound[]): void {
