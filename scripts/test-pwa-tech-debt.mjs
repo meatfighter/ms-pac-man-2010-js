@@ -38,6 +38,14 @@ function sliceBetween(source, start, end) {
     return source.slice(startIndex, endIndex);
 }
 
+function assertBefore(source, first, second, message) {
+    const firstIndex = source.indexOf(first);
+    const secondIndex = source.indexOf(second);
+    assert.notEqual(firstIndex, -1, `Missing ordering marker: ${first}`);
+    assert.notEqual(secondIndex, -1, `Missing ordering marker: ${second}`);
+    assert.ok(firstIndex < secondIndex, message);
+}
+
 test("Slick dependency is exact and available over public HTTPS", () => {
     const dependency = packageJson.dependencies["slick2d-ts"];
     const lockedDependency = packageLock.packages[""].dependencies["slick2d-ts"];
@@ -119,6 +127,19 @@ test("browser-native responsibilities are decomposed and generation owned", () =
     const inputHandler = sliceBetween(browserMain, 'volumeInput?.addEventListener("input"', 'volumeInput?.addEventListener("change"');
     assert.doesNotMatch(inputHandler, /setVolume\(volume, true\)/);
     assert.match(browserMain, /volumeInput\?\.addEventListener\("change"/);
+});
+
+test("live-menu save/Continue keeps logical audio detached through save and reattaches before gameplay resumes", () => {
+    const suspend = sliceBetween(browserMain, "function suspendGameForMenu", "async function showLiveMenuOverlay");
+    assert.match(suspend, /releaseGameAudio\(\)/);
+    assert.doesNotMatch(suspend, /stopAllSounds|stopAllSoundEffects|destroyGame/);
+
+    const showMenu = sliceBetween(browserMain, "async function showLiveMenuOverlay", "async function resumeLiveGameFromMenu");
+    assertBefore(showMenu, "suspendGameForMenu();", "sessionCleanup.trySave(saveCurrentGameState)", "Audio must be retired before the live game is saved.");
+
+    const resume = sliceBetween(browserMain, "async function resumeLiveGameFromMenu", "function removeMenuOverlay");
+    assertBefore(resume, "commitGameAudio(audio)", "liveGame.setBrowserSuspended(false)", "Audio must commit before the game logical clock resumes.");
+    assertBefore(resume, "commitGameAudio(audio)", "liveContainer.setLoopSuspended(false)", "Audio must commit before the RAF/game loop resumes.");
 });
 
 test("stale launch cleanup is ownership-safe and exception-safe", () => {
