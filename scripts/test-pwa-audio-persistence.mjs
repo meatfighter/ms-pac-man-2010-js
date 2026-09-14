@@ -28,8 +28,14 @@ try {
         assert.equal(entries.length, 30);
         assert.equal(new Set(entries.map((entry) => entry.id)).size, 30);
         assert.equal(new Set(entries.map((entry) => entry.sound)).size, 30);
-        assert.equal(entries.some((entry) => entry.id === "blueGhosts"), true);
-        assert.equal(entries.some((entry) => entry.id === "speaking:1:9"), true);
+        assert.equal(
+            entries.some((entry) => entry.id === "blueGhosts"),
+            true
+        );
+        assert.equal(
+            entries.some((entry) => entry.id === "speaking:1:9"),
+            true
+        );
     });
 
     await runTest("audio registry rejects partial initialization and duplicate Sound aliases", () => {

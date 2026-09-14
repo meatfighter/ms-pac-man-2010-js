@@ -5,18 +5,7 @@ const SPEAKING_ROWS = [0, 1] as const;
 const SPEAKING_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export type MusicId =
-    | "act:0"
-    | "act:1"
-    | "act:2"
-    | "gameOver"
-    | "highScore"
-    | "intro"
-    | "levelSelect"
-    | "stage:0"
-    | "stage:1"
-    | "stage:2"
-    | "stage:3"
-    | "training";
+    "act:0" | "act:1" | "act:2" | "gameOver" | "highScore" | "intro" | "levelSelect" | "stage:0" | "stage:1" | "stage:2" | "stage:3" | "training";
 
 export type SoundId =
     | "atePellot"

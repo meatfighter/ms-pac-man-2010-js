@@ -124,11 +124,7 @@ async function verify(): Promise<void> {
     store.clear();
 }
 
-function soundStateForRef(
-    ref: string,
-    voices: Array<{ fraction: number; gain: number }>,
-    activeVoiceIndex: number | null
-): SoundPlaybackSnapshot {
+function soundStateForRef(ref: string, voices: Array<{ fraction: number; gain: number }>, activeVoiceIndex: number | null): SoundPlaybackSnapshot {
     const buffer = SoundStore.get().getDecodedAudioBuffer(ref);
     assert(buffer !== null && Number.isFinite(buffer.duration) && buffer.duration > 0, `Missing decoded duration for ${ref}.`);
     return {
