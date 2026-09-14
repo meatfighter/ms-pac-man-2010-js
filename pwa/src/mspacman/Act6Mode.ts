@@ -145,7 +145,7 @@ export class Act6Mode implements IMode {
             }
             return;
         } else if (!this.main.actMusic[0].playing()) {
-            this.main.actMusic[0].play();
+            this.main.playMusic(this.main.actMusic[0]);
         }
 
         this.timer++;
