@@ -56,17 +56,23 @@ test("browser input delegates controller axis calibration and dense enumeration 
     assert.doesNotMatch(humanInput, /extraAxisBaselines|getAxisValue|CONTROLLER_INDEX_LIMIT|GAMEPAD_AXIS_LIMIT|AXIS_RECENTER_THRESHOLD/);
 });
 
-test("persistence uses public Slick random and logical Music snapshot APIs", () => {
+test("persistence uses public Slick random, Music, and Sound snapshot APIs", () => {
     assert.match(serializer, /main\.random\.getState\(\)/);
     assert.match(serializer, /main\.random\.setState\(snapshot\)/);
     assert.match(serializer, /music\.capturePlaybackState\(\)/);
     assert.match(serializer, /music\.restorePlaybackState\(/);
     assert.match(serializer, /isMusicPlaybackSnapshot\(snapshot\.playback\)/);
+    assert.match(serializer, /sound\.capturePlaybackState\(\)/);
+    assert.match(serializer, /sound\.restorePlaybackState\(/);
+    assert.match(serializer, /isSoundPlaybackSnapshot\(snapshot\.playback\)/);
+    assert.match(serializer, /registeredMusic\(main\)/);
+    assert.match(serializer, /registeredSounds\(main\)/);
     assert.doesNotMatch(serializer, /getField\(music,\s*["'](?:looped|paused|playbackRate|buffer|positionOffset|fadeState)["']/);
     assert.doesNotMatch(serializer, /(?:getField|setField|numberField)\(main\.random/);
-    assert.match(snapshot, /GAME_STATE_VERSION = 5/);
+    assert.match(snapshot, /GAME_STATE_VERSION = 6/);
+    assert.match(snapshot, /soundEffects: SoundSnapshot\[\]/);
     assert.doesNotMatch(snapshot, /FIRST_PUBLIC_GAME_STATE_VERSION/);
-    assert.match(browserStorageKeys, /game-state-v5/);
+    assert.match(browserStorageKeys, /game-state-v6/);
 });
 
 test("save-state inspection is read-only while explicit clear remains separate", () => {
