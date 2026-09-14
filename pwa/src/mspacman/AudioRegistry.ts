@@ -113,7 +113,7 @@ export function isMusicId(value: unknown): value is MusicId {
 }
 
 export function registeredSounds(main: Main): readonly RegisteredSound[] {
-    const result: RegisteredSound[] = [
+    const candidates: Array<Readonly<{ id: SoundId; sound: Sound | undefined }>> = [
         { id: "atePellot", sound: main.atePellotSound },
         { id: "ateEnergizer", sound: main.ateEnergizerSound },
         { id: "ateGhost", sound: main.ateGhostSound },
@@ -128,12 +128,21 @@ export function registeredSounds(main: Main): readonly RegisteredSound[] {
 
     for (const row of SPEAKING_ROWS) {
         for (const index of SPEAKING_INDEXES) {
-            result.push({ id: `speaking:${row}:${index}`, sound: main.speaking[row][index] });
+            candidates.push({ id: `speaking:${row}:${index}`, sound: main.speaking?.[row]?.[index] });
         }
     }
 
-    assertUniqueSoundObjects(result);
-    return result;
+    const initialized = candidates.filter((entry): entry is RegisteredSound => entry.sound !== undefined && entry.sound !== null);
+    // Production Main constructs all 30 effects synchronously before startupLoadingComplete.
+    // An entirely absent registry is permitted only for structural serializer test doubles.
+    // A partially initialized runtime registry is always a bug and must fail loudly.
+    if (initialized.length !== 0 && initialized.length !== candidates.length) {
+        const missing = candidates.filter((entry) => entry.sound === undefined || entry.sound === null).map((entry) => entry.id);
+        throw new Error(`Sound registry is partially initialized: ${missing.join(", ")}`);
+    }
+
+    assertUniqueSoundObjects(initialized);
+    return initialized;
 }
 
 export function soundForId(main: Main, id: SoundId): Sound {
@@ -176,16 +185,12 @@ export function isSoundId(value: unknown): value is SoundId {
     if ((DIRECT_SOUND_IDS as readonly string[]).includes(value)) {
         return true;
     }
-    const match = /^speaking:([01]):([0-9])$/.exec(value);
-    return match !== null;
+    return /^speaking:([01]):([0-9])$/.test(value);
 }
 
 function assertUniqueSoundObjects(entries: readonly RegisteredSound[]): void {
     const owners = new Set<Sound>();
     for (const { id, sound } of entries) {
-        if (!sound) {
-            throw new Error(`Registered Sound is not initialized: ${id}`);
-        }
         if (owners.has(sound)) {
             throw new Error(`A Sound object is registered under more than one stable id: ${id}`);
         }
