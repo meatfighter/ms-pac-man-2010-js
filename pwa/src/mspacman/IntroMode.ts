@@ -48,7 +48,7 @@ export class IntroMode implements IMode {
         if (this.fadeState === IntroMode.FADE_IN) {
             if (--this.fadeIndex === 0) {
                 this.fadeState = IntroMode.FADE_NONE;
-                this.main.introMusic.play();
+                this.main.playMusic(this.main.introMusic);
             }
         } else if (this.fadeState === IntroMode.FADE_OUT) {
             if (this.fadeIndex < 22) {
