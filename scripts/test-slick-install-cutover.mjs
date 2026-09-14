@@ -3,9 +3,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { test } from "node:test";
 
-const EXPECTED_ENGINE_SHA = "b82492294a20640fab7e0065e9348253bd56c4a9";
+const EXPECTED_ENGINE_SHA = "c154ae6ff821179aaf9a19a5ad60683512a3d82b";
 const EXPECTED_ENGINE_URL = `https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/${EXPECTED_ENGINE_SHA}`;
-const EXPECTED_ENGINE_VERSION = "1.6.2";
+const EXPECTED_ENGINE_VERSION = "1.7.0";
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const packageLock = JSON.parse(readFileSync("package-lock.json", "utf8"));
@@ -38,6 +38,8 @@ test("qualified Slick archive, lock metadata and emitted install all agree", asy
         "dist/slick/openal/PlaybackSession.d.ts",
         "dist/slick/MusicPlaybackState.js",
         "dist/slick/MusicPlaybackState.d.ts",
+        "dist/slick/SoundPlaybackState.js",
+        "dist/slick/SoundPlaybackState.d.ts",
         "dist/slick/util/BrowserFullscreen.js",
         "dist/slick/util/BrowserFullscreen.d.ts"
     ]) {
@@ -57,8 +59,12 @@ test("qualified Slick archive, lock metadata and emitted install all agree", asy
     const playbackApi = await import("slick2d-ts/slick/openal/PlaybackSession");
     const fullscreenApi = await import("slick2d-ts/slick/util/BrowserFullscreen");
     assert.equal(typeof rootApi.Music, "function");
+    assert.equal(typeof rootApi.Sound, "function");
     assert.equal(typeof rootApi.SoundStore, "function");
-    assert.equal(typeof rootApi.SoundStore.get().poll, "undefined", "retired SoundStore.poll API survived in the installed engine");
+    assert.equal(typeof rootApi.SoundStore.get().poll, "function", "Slick 1.7 logical Sound clock is unavailable");
+    assert.equal(typeof rootApi.Sound.prototype.capturePlaybackState, "function");
+    assert.equal(typeof rootApi.Sound.prototype.restorePlaybackState, "function");
+    assert.equal(typeof rootApi.isSoundPlaybackSnapshot, "function");
     assert.equal(typeof playbackApi.PlaybackSession, "function");
     assert.equal(typeof fullscreenApi.getBrowserFullscreenCapability, "function");
     assert.equal(typeof fullscreenApi.getBrowserFullscreenElement, "function");
