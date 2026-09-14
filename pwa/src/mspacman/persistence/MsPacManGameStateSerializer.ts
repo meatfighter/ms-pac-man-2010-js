@@ -1,4 +1,5 @@
-import { Music, SoundStore, isMusicPlaybackSnapshot, type GameContainer } from "slick2d-ts";
+import { Music, SoundStore, isMusicPlaybackSnapshot, isSoundPlaybackSnapshot, type GameContainer, type SoundPlaybackSnapshot } from "slick2d-ts";
+import { isMusicId, isSoundId, musicForId, registeredMusic, registeredSounds } from "../AudioRegistry";
 import { isValidSubmittedScoreTuple, normalizeHighScoreInitials } from "../HighScoreProtocol";
 import type { Main } from "../Main";
 import type { PlayingMode } from "../PlayingMode";
@@ -11,11 +12,11 @@ import {
     type ModeId,
     type ModeSnapshot,
     type MsPacManGameStateSnapshot,
-    type MusicId,
     type MusicSnapshot,
     type PlayingModeSnapshot,
     type RandomSnapshot,
     type RobotInputSnapshot,
+    type SoundSnapshot,
     type SubmittedScoreSnapshot
 } from "./GameStateSnapshot";
 import { FRUIT_TARGET_FIELDS, GHOST_FIELDS, MAIN_FIELDS, MODE_FIELDS, MSPACMAN_FIELDS, PLAYING_MODE_FIELDS } from "./StateFieldPolicy";
@@ -38,28 +39,18 @@ const MODE_IDS: ModeId[] = [
     "playing",
     "selectWorld"
 ];
-const MUSIC_IDS: MusicId[] = [
-    "act:0",
-    "act:1",
-    "act:2",
-    "gameOver",
-    "highScore",
-    "intro",
-    "levelSelect",
-    "stage:0",
-    "stage:1",
-    "stage:2",
-    "stage:3",
-    "training"
-];
-const SNAPSHOT_KEYS = ["version", "appVersion", "savedAt", "mainFields", "mode", "music", "audioSettings", "random", "robotInputs", "submittedScore"] as const;
+const SNAPSHOT_KEYS = ["version", "appVersion", "savedAt", "mainFields", "mode", "music", "soundEffects", "audioSettings", "random", "robotInputs", "submittedScore"] as const;
 const MODE_SNAPSHOT_KEYS = ["id", "fields"] as const;
 const PLAYING_MODE_SNAPSHOT_KEYS = ["id", "fields", "eatenGhostIndex", "fruitTarget", "ghosts", "inputRobotIndex", "mspacman"] as const;
 const THING_SNAPSHOT_KEYS = ["fields"] as const;
 const FRUIT_TARGET_SNAPSHOT_KEYS = ["fields", "exitPath"] as const;
 const MUSIC_SNAPSHOT_KEYS = ["id", "playback"] as const;
+const SOUND_SNAPSHOT_KEYS = ["id", "playback"] as const;
 const RANDOM_SNAPSHOT_KEYS = ["seed0", "seed1", "seed2"] as const;
 const ROBOT_INPUT_SNAPSHOT_KEYS = ["index"] as const;
+const MAX_SOUND_SNAPSHOTS = 30;
+const MAX_SOUND_VOICES = 62;
+const EMPTY_SOUND_PLAYBACK: SoundPlaybackSnapshot = Object.freeze({ voices: Object.freeze([]), activeVoiceIndex: null });
 const BOOLEAN_FIELD_NAMES = new Set<string>([
     "paused",
     "fadeMusicFlag",
@@ -138,6 +129,9 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
     if (snapshot.music !== null && !isValidMusicSnapshot(snapshot.music)) {
         return false;
     }
+    if (!isValidSoundEffects(snapshot.soundEffects)) {
+        return false;
+    }
     if (!isValidRandomSnapshot(snapshot.random) || !isValidRobotInputs(snapshot.robotInputs)) {
         return false;
     }
@@ -186,6 +180,29 @@ function isValidFruitTargetSnapshot(value: unknown): value is FruitTargetSnapsho
 function isValidMusicSnapshot(value: unknown): value is MusicSnapshot {
     const snapshot = asRecord(value);
     return snapshot !== null && hasExactKeys(snapshot, MUSIC_SNAPSHOT_KEYS) && isMusicId(snapshot.id) && isMusicPlaybackSnapshot(snapshot.playback);
+}
+
+function isValidSoundEffects(value: unknown): value is SoundSnapshot[] {
+    if (!Array.isArray(value) || value.length > MAX_SOUND_SNAPSHOTS) {
+        return false;
+    }
+    const ids = new Set<string>();
+    let voiceCount = 0;
+    for (const entry of value) {
+        const snapshot = asRecord(entry);
+        if (snapshot === null || !hasExactKeys(snapshot, SOUND_SNAPSHOT_KEYS) || !isSoundId(snapshot.id) || ids.has(snapshot.id)) {
+            return false;
+        }
+        if (!isSoundPlaybackSnapshot(snapshot.playback) || snapshot.playback.voices.length === 0) {
+            return false;
+        }
+        ids.add(snapshot.id);
+        voiceCount += snapshot.playback.voices.length;
+        if (voiceCount > MAX_SOUND_VOICES) {
+            return false;
+        }
+    }
+    return true;
 }
 
 function isValidRandomSnapshot(value: unknown): value is RandomSnapshot {
@@ -265,10 +282,6 @@ function isModeId(value: unknown): value is ModeId {
     return typeof value === "string" && (MODE_IDS as readonly string[]).includes(value);
 }
 
-function isMusicId(value: unknown): value is MusicId {
-    return typeof value === "string" && (MUSIC_IDS as readonly string[]).includes(value);
-}
-
 function isFiniteNumber(value: unknown): value is number {
     return typeof value === "number" && Number.isFinite(value);
 }
@@ -293,6 +306,7 @@ export class MsPacManGameStateSerializer {
             mainFields: this.captureFields(main, MAIN_FIELDS),
             mode: this.captureCurrentMode(main),
             music: this.captureMusic(main),
+            soundEffects: this.captureSoundEffects(main),
             audioSettings: { musicOn: SoundStore.get().musicOn(), soundOn: SoundStore.get().soundsOn() },
             random: this.captureRandom(main),
             robotInputs: main.robotInputs.map((input) => this.captureRobotInput(input)),
@@ -300,7 +314,7 @@ export class MsPacManGameStateSerializer {
         };
     }
 
-    /** Restore completes synchronously; no deferred seek/unmute may outlive this operation. */
+    /** Restore completes synchronously; logical audio is installed before the shell commits its prepared playback generation. */
     public restoreSnapshot(main: Main, gc: GameContainer, snapshot: MsPacManGameStateSnapshot): void {
         if (!this.isSupportedSnapshot(snapshot)) {
             throw new Error("Unsupported saved game state.");
@@ -321,6 +335,7 @@ export class MsPacManGameStateSerializer {
         gc.setMusicOn(snapshot.audioSettings.musicOn && !main.paused && !main.demoMode);
         gc.setSoundOn(snapshot.audioSettings.soundOn);
         this.restoreMusic(main, snapshot.music);
+        this.restoreSoundEffects(main, snapshot.soundEffects);
         main.input.clearKeyPressedRecord();
         main.resetNextFrameTime();
     }
@@ -458,23 +473,45 @@ export class MsPacManGameStateSerializer {
     }
 
     private captureMusic(main: Main): MusicSnapshot | null {
-        const music = main.currentMusic;
-        if (music === null) {
-            return null;
+        const active: MusicSnapshot[] = [];
+        for (const { id, music } of registeredMusic(main)) {
+            const playback = music.capturePlaybackState();
+            if (playback.transport !== "stopped") {
+                active.push({ id, playback });
+            }
         }
-        const id = this.musicIdForMusic(main, music);
-        return id === null ? null : { id, playback: music.capturePlaybackState() };
+        if (active.length > 1) {
+            throw new Error(`Multiple registered Music transports are active: ${active.map((entry) => entry.id).join(", ")}`);
+        }
+        return active[0] ?? null;
     }
 
     private restoreMusic(main: Main, snapshot: MusicSnapshot | null): void {
-        main.stopAllSoundEffects();
         if (snapshot === null) {
             main.currentMusic = null;
             return;
         }
-        const music = this.musicForId(main, snapshot.id);
+        const music = musicForId(main, snapshot.id);
         music.restorePlaybackState(main.demoMode ? { ...snapshot.playback, transport: "stopped", fade: null } : snapshot.playback);
         main.currentMusic = music;
+    }
+
+    private captureSoundEffects(main: Main): SoundSnapshot[] {
+        const snapshots: SoundSnapshot[] = [];
+        for (const { id, sound } of registeredSounds(main)) {
+            const playback = sound.capturePlaybackState();
+            if (playback.voices.length !== 0) {
+                snapshots.push({ id, playback });
+            }
+        }
+        return snapshots;
+    }
+
+    private restoreSoundEffects(main: Main, snapshots: SoundSnapshot[]): void {
+        const byId = new Map(snapshots.map((snapshot) => [snapshot.id, snapshot.playback] as const));
+        for (const { id, sound } of registeredSounds(main)) {
+            sound.restorePlaybackState(byId.get(id) ?? EMPTY_SOUND_PLAYBACK);
+        }
     }
 
     private captureRandom(main: Main): RandomSnapshot {
@@ -546,53 +583,5 @@ export class MsPacManGameStateSerializer {
 
     private setField(target: object, field: string, value: unknown): void {
         (target as FieldBag)[field] = value;
-    }
-
-    private musicIdForMusic(main: Main, music: Music): MusicId | null {
-        for (let i = 0; i < main.actMusic.length; i++) {
-            if (music === main.actMusic[i]) {
-                return `act:${i}` as MusicId;
-            }
-        }
-        for (let i = 0; i < main.stageMusic.length; i++) {
-            if (music === main.stageMusic[i]) {
-                return `stage:${i}` as MusicId;
-            }
-        }
-        if (music === main.gameOverMusic) return "gameOver";
-        if (music === main.highScoreMusic) return "highScore";
-        if (music === main.introMusic) return "intro";
-        if (music === main.levelSelectMusic) return "levelSelect";
-        if (music === main.trainingMusic) return "training";
-        return null;
-    }
-
-    private musicForId(main: Main, id: MusicId): Music {
-        switch (id) {
-            case "act:0":
-                return main.actMusic[0];
-            case "act:1":
-                return main.actMusic[1];
-            case "act:2":
-                return main.actMusic[2];
-            case "gameOver":
-                return main.gameOverMusic;
-            case "highScore":
-                return main.highScoreMusic;
-            case "intro":
-                return main.introMusic;
-            case "levelSelect":
-                return main.levelSelectMusic;
-            case "stage:0":
-                return main.stageMusic[0];
-            case "stage:1":
-                return main.stageMusic[1];
-            case "stage:2":
-                return main.stageMusic[2];
-            case "stage:3":
-                return main.stageMusic[3];
-            case "training":
-                return main.trainingMusic;
-        }
     }
 }
