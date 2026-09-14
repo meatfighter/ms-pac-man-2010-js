@@ -160,7 +160,7 @@ export class Act3Mode implements IMode {
             }
             return;
         } else if (!this.main.actMusic[2].playing()) {
-            this.main.actMusic[2].play();
+            this.main.playMusic(this.main.actMusic[2]);
         }
 
         this.timer++;
