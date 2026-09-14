@@ -1,4 +1,4 @@
-import { AppGameContainer, Display, ResourceLoader, SoundStore } from "slick2d-ts";
+import { AppGameContainer, Display, ResourceLoader, SoundStore, type SoundPlaybackSnapshot } from "slick2d-ts";
 import { RESOURCE_REFS } from "./app/resourceManifest.js";
 import { getResourceVersion } from "./app/ResourceVersions.js";
 import { Main } from "./mspacman/Main.js";
@@ -81,6 +81,24 @@ async function verify(): Promise<void> {
     assert(savedMode === "attract", `Expected the real game to start in attract mode, got ${savedMode}.`);
     first.main.score = 123450;
     first.main.lives = 3;
+
+    const blueGhosts = soundState([{ positionSeconds: 1.25, gain: 0.8 }], 0);
+    const clapping = soundState([{ positionSeconds: 0.4, gain: 1 }], 0);
+    const died = soundState([{ positionSeconds: 0.9, gain: 0.6 }], 0);
+    const speech = soundState([{ positionSeconds: 0.55, gain: 1 }], 0);
+    const overlappingPellets = soundState(
+        [
+            { positionSeconds: 0.02, gain: 0.5 },
+            { positionSeconds: 0.01, gain: 0.25 }
+        ],
+        null
+    );
+    first.main.blueGhostsSound.restorePlaybackState(blueGhosts);
+    first.main.clappingSound.restorePlaybackState(clapping);
+    first.main.diedSound.restorePlaybackState(died);
+    first.main.speaking[1][7].restorePlaybackState(speech);
+    first.main.atePellotSound.restorePlaybackState(overlappingPellets);
+
     assert(store.save(first.main), "Real browser Main could not create a save-state snapshot.");
     first.buffered.setScalingPreference("smooth");
     first.buffered.setScalingPreference("pixel-perfect");
@@ -93,10 +111,33 @@ async function verify(): Promise<void> {
     assert(second.main.getCurrentModeIdForState() === savedMode, "A fresh browser Main did not restore the saved mode.");
     assert(second.main.isStateSaveReady(), "Restored browser Main is not save-state ready.");
     assert(second.main.score === 123450 && second.main.lives === 3, "Fresh Main must restore non-default score and lives.");
+    assertSoundState(second.main.blueGhostsSound.capturePlaybackState(), blueGhosts, "blue ghosts");
+    assertSoundState(second.main.clappingSound.capturePlaybackState(), clapping, "stage-clear clapping");
+    assertSoundState(second.main.diedSound.capturePlaybackState(), died, "death");
+    assertSoundState(second.main.speaking[1][7].capturePlaybackState(), speech, "speech");
+    assertSoundState(second.main.atePellotSound.capturePlaybackState(), overlappingPellets, "overlapping pellet voices");
+    assert(second.main.extraLifeSound.capturePlaybackState().voices.length === 0, "Unlisted Sound state should restore empty.");
     second.main.invalidateBrowserLifetime();
     second.container.destroy();
     Display.setParent(null);
     store.clear();
+}
+
+function soundState(voices: Array<{ positionSeconds: number; gain: number }>, activeVoiceIndex: number | null): SoundPlaybackSnapshot {
+    return {
+        voices: voices.map(({ positionSeconds, gain }) => ({
+            looped: false,
+            playbackRate: 1,
+            positionSeconds,
+            gain,
+            spatialPosition: null
+        })),
+        activeVoiceIndex
+    };
+}
+
+function assertSoundState(actual: SoundPlaybackSnapshot, expected: SoundPlaybackSnapshot, label: string): void {
+    assert(JSON.stringify(actual) === JSON.stringify(expected), `${label} Sound playback state did not round-trip exactly.`);
 }
 
 void verify().then(
