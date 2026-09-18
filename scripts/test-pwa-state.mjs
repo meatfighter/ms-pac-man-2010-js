@@ -471,6 +471,10 @@ try {
         assert.equal(snapshot.music.playback.positionSeconds, 19.5);
         assert.equal("audioSettings" in snapshot, false);
 
+        const contradictoryUnpaused = clone(snapshot);
+        contradictoryUnpaused.mainFields.paused = false;
+        assert.equal(isValidMsPacManGameStateSnapshot(contradictoryUnpaused), false);
+
         const target = createFakeMain("playing", "paused-target");
         const targetMusic = target.stageMusic[0];
         serializer.restoreSnapshot(target, createGameContainer(), snapshot);
