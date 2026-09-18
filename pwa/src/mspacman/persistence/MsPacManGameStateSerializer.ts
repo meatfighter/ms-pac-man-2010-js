@@ -1,4 +1,4 @@
-import { Music, SoundStore, isMusicPlaybackSnapshot, isSoundPlaybackSnapshot, type GameContainer, type SoundPlaybackSnapshot } from "slick2d-ts";
+import { Music, isMusicPlaybackSnapshot, isSoundPlaybackSnapshot, type GameContainer, type SoundPlaybackSnapshot } from "slick2d-ts";
 import { isMusicId, isSoundId, musicForId, registeredMusic, registeredSounds } from "../AudioRegistry";
 import { isValidSubmittedScoreTuple, normalizeHighScoreInitials } from "../HighScoreProtocol";
 import type { Main } from "../Main";
@@ -47,7 +47,6 @@ const SNAPSHOT_KEYS = [
     "mode",
     "music",
     "soundEffects",
-    "audioSettings",
     "random",
     "robotInputs",
     "submittedScore"
@@ -132,10 +131,6 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
         return false;
     }
     if (!isValidFieldBag(snapshot.mainFields, MAIN_FIELDS) || !isValidModeSnapshot(snapshot.mode)) {
-        return false;
-    }
-    const audio = asRecord(snapshot.audioSettings);
-    if (audio === null || !hasExactKeys(audio, ["musicOn", "soundOn"]) || typeof audio.musicOn !== "boolean" || typeof audio.soundOn !== "boolean") {
         return false;
     }
     if (snapshot.music !== null && !isValidMusicSnapshot(snapshot.music)) {
@@ -319,7 +314,6 @@ export class MsPacManGameStateSerializer {
             mode: this.captureCurrentMode(main),
             music: this.captureMusic(main),
             soundEffects: this.captureSoundEffects(main),
-            audioSettings: { musicOn: SoundStore.get().musicOn(), soundOn: SoundStore.get().soundsOn() },
             random: this.captureRandom(main),
             robotInputs: main.robotInputs.map((input) => this.captureRobotInput(input)),
             submittedScore: this.captureSubmittedScore(main)
@@ -344,8 +338,6 @@ export class MsPacManGameStateSerializer {
         this.restoreSubmittedScore(main, snapshot.submittedScore);
         this.restoreCurrentMode(main, snapshot.mode);
         Music.resetPlaybackState();
-        gc.setMusicOn(snapshot.audioSettings.musicOn && !main.paused && !main.demoMode);
-        gc.setSoundOn(snapshot.audioSettings.soundOn);
         this.restoreMusic(main, snapshot.music);
         this.restoreSoundEffects(main, snapshot.soundEffects);
         main.input.clearKeyPressedRecord();
