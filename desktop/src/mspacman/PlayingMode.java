@@ -374,6 +374,7 @@ public class PlayingMode implements IMode {
 
     if (main.demoMode) {
       if (main.input.isConfirmPressed()) {
+        main.stopAllSoundEffects();
         main.demoMode = false;
         main.playSound(main.pressedEnterSound);
         main.setMode(Main.selectWorldMode, gc);
@@ -406,6 +407,7 @@ public class PlayingMode implements IMode {
         switch(fadeReason) {
           case FADE_REASON_KILLED:
             if (main.demoMode) {
+              main.stopAllSoundEffects();
               main.demoMode = false;
               main.setMode(Main.hallOfFameMode, gc);
             } else {
