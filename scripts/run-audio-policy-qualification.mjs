@@ -57,8 +57,13 @@ try {
                     Object.defineProperty(audioContext, "createBufferSource", {
                         configurable: true,
                         value: (...sourceArgs) => {
-                            bufferSourceStarts++;
-                            return createBufferSource(...sourceArgs);
+                            const source = createBufferSource(...sourceArgs);
+                            const start = source.start.bind(source);
+                            source.start = (...startArgs) => {
+                                bufferSourceStarts++;
+                                return start(...startArgs);
+                            };
+                            return source;
                         }
                     });
                     return audioContext;
