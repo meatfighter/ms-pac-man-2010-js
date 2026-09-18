@@ -125,18 +125,20 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
         return false;
     }
     const music = snapshot.music;
-    if (music !== null && !isValidMusicSnapshot(music)) {
-        return false;
-    }
     const gameplayPaused = mainFields.paused === true;
     if (gameplayPaused && mode.id !== "playing") {
         return false;
     }
-    if (music !== null && music.playback.transport === "paused" && !gameplayPaused) {
-        return false;
-    }
-    if (gameplayPaused && music?.playback.transport === "playing") {
-        return false;
+    if (music !== null) {
+        if (!isValidMusicSnapshot(music)) {
+            return false;
+        }
+        if (music.playback.transport === "paused" && !gameplayPaused) {
+            return false;
+        }
+        if (gameplayPaused && music.playback.transport === "playing") {
+            return false;
+        }
     }
     if (!isValidSoundEffects(snapshot.soundEffects)) {
         return false;
