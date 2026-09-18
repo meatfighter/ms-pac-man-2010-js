@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
@@ -197,6 +197,14 @@ try {
         assert.deepEqual(pauseTransitions, [true, false]);
     });
 
+    await runTest("only the PWA shell may mutate global Music/Sound enable policy", () => {
+        const calls = collectAudioPolicySetterCalls(resolve(rootDir, "pwa", "src"));
+        assert.deepEqual(calls, [
+            "pwa/src/app/main.ts:setMusicOn",
+            "pwa/src/app/main.ts:setSoundsOn"
+        ]);
+    });
+
     await runTest("PWA shell establishes application audio policy before activation and on Reset", () => {
         const source = readFileSync(resolve(rootDir, "pwa/src/app/main.ts"), "utf8");
         const start = functionSource(source, "async function startGame", "function renderBoot");
@@ -230,6 +238,29 @@ try {
     });
 } finally {
     await server.close();
+}
+
+function collectAudioPolicySetterCalls(directory, relative = "") {
+    const calls = [];
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const childRelative = relative ? `${relative}/${entry.name}` : entry.name;
+        const path = resolve(directory, entry.name);
+        if (entry.isDirectory()) {
+            calls.push(...collectAudioPolicySetterCalls(path, childRelative));
+            continue;
+        }
+        if (!entry.isFile() || !entry.name.endsWith(".ts")) {
+            continue;
+        }
+        const source = readFileSync(path, "utf8");
+        for (const method of ["setMusicOn", "setSoundsOn"]) {
+            const matches = source.match(new RegExp(`\\.${method}\\s*\\(`, "g")) ?? [];
+            for (let i = 0; i < matches.length; i++) {
+                calls.push(`pwa/src/${childRelative}:${method}`);
+            }
+        }
+    }
+    return calls.sort();
 }
 
 function functionSource(source, startMarker, endMarker) {
