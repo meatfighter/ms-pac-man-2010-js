@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
@@ -306,6 +307,26 @@ try {
         const invalidInitialsSubmittedScore = clone(snapshot);
         invalidInitialsSubmittedScore.submittedScore = { world: 0, score: 12340, initials: "cat" };
         assert.equal(serializer.isSupportedSnapshot(invalidInitialsSubmittedScore), false);
+    });
+
+    await runTest("shipped fruit exit maps use only the persisted 0..4 direction domain", () => {
+        const seen = new Set();
+        for (let world = 0; world < 4; world++) {
+            for (let stage = 0; stage < 8; stage++) {
+                const bytes = readFileSync(resolve(rootDir, "pwa", "public", "stages", `stage_${world}_${stage}.dat`));
+                for (const direction of readStageExitDirections(bytes)) {
+                    assert.ok(direction >= 1 && direction <= 4, `stage_${world}_${stage}.dat has invalid exit direction ${direction}`);
+                    seen.add(direction);
+                }
+            }
+        }
+        assert.equal(seen.has(4), true, "shipped stage exit maps must exercise UP direction 4");
+
+        const serializer = new MsPacManGameStateSerializer();
+        const snapshot = serializer.createSnapshot(createFakeMain("playing", "exit-direction"), APP_VERSION);
+        snapshot.mode.fruitTarget.exitPath = createMatrix(31, 28, 0);
+        snapshot.mode.fruitTarget.exitPath[0][0] = 4;
+        assert.equal(serializer.isSupportedSnapshot(snapshot), true);
     });
 
     await runTest("store saves and restores a non-playing mode snapshot", () => {
@@ -993,6 +1014,36 @@ function createGameContainer() {
             throw new Error("game-state restore must not mutate application Sound policy");
         }
     };
+}
+
+function readStageExitDirections(bytes) {
+    let offset = 8 + 31 * 28 * 3;
+    const directions = [];
+    const readInt = () => {
+        assert.ok(offset + 4 <= bytes.length, "stage data ended while reading exit maps");
+        const value = bytes.readInt32BE(offset);
+        offset += 4;
+        return value;
+    };
+    const readMaps = () => {
+        const mapCount = readInt();
+        assert.ok(mapCount >= 0 && mapCount <= 1024, `invalid exit-map count ${mapCount}`);
+        for (let map = 0; map < mapCount; map++) {
+            const size = readInt();
+            assert.ok(size >= 0 && size <= 31 * 28, `invalid exit-map size ${size}`);
+            for (let entry = 0; entry < size; entry++) {
+                const x = readInt();
+                const y = readInt();
+                const direction = readInt();
+                assert.ok(x >= 0 && x < 28, `invalid exit-map x ${x}`);
+                assert.ok(y >= 0 && y < 31, `invalid exit-map y ${y}`);
+                directions.push(direction);
+            }
+        }
+    };
+    readMaps();
+    readMaps();
+    return directions;
 }
 
 function createMatrix(rows, columns, value) {
