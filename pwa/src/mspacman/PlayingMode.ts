@@ -346,6 +346,7 @@ export class PlayingMode implements IMode {
     public update(gc: GameContainer): void {
         if (this.main.demoMode) {
             if (this.main.input.isConfirmPressed()) {
+                this.main.stopAllSoundEffects();
                 this.main.demoMode = false;
                 this.main.playSound(this.main.pressedEnterSound);
                 this.main.setMode(Main.selectWorldMode, gc);
@@ -378,6 +379,7 @@ export class PlayingMode implements IMode {
                 switch (this.fadeReason) {
                     case PlayingMode.FADE_REASON_KILLED:
                         if (this.main.demoMode) {
+                            this.main.stopAllSoundEffects();
                             this.main.demoMode = false;
                             this.main.setMode(Main.hallOfFameMode, gc);
                         } else {
