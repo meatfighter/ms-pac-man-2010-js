@@ -139,7 +139,14 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
     if (music !== null && !isValidMusicSnapshot(music)) {
         return false;
     }
-    if (music !== null && music.playback.transport === "paused" && (mode.id !== "playing" || mainFields.paused !== true)) {
+    const gameplayPaused = mainFields.paused === true;
+    if (gameplayPaused && mode.id !== "playing") {
+        return false;
+    }
+    if (music !== null && music.playback.transport === "paused" && !gameplayPaused) {
+        return false;
+    }
+    if (gameplayPaused && music?.playback.transport === "playing") {
         return false;
     }
     if (!isValidSoundEffects(snapshot.soundEffects)) {
