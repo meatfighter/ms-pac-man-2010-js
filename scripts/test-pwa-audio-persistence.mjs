@@ -18,6 +18,7 @@ const server = await createServer({
 
 try {
     const { registeredSounds } = await server.ssrLoadModule("/src/mspacman/AudioRegistry.ts");
+    const { Main } = await server.ssrLoadModule("/src/mspacman/Main.ts");
     const { MsPacManGameStateSerializer, isValidMsPacManGameStateSnapshot } = await server.ssrLoadModule(
         "/src/mspacman/persistence/MsPacManGameStateSerializer.ts"
     );
@@ -100,15 +101,20 @@ try {
         }
     });
 
-    await runTest("v6 validator enforces sparse Sound ids, shape, uniqueness, and total voice capacity", () => {
+    await runTest("v7 validator enforces sparse Sound ids, shape, uniqueness, total voice capacity, and audio-policy ownership", () => {
         const serializer = new MsPacManGameStateSerializer();
         const main = createSerializableMain();
         main.blueGhostsSound.state = soundPlayback([voice(1.5, 1, false)], 0);
         const snapshot = serializer.createSnapshot(main, APP_VERSION);
 
-        assert.equal(snapshot.version, 6);
+        assert.equal(snapshot.version, 7);
         assert.equal(snapshot.soundEffects.length, 1);
+        assert.equal("audioSettings" in snapshot, false);
         assert.equal(isValidMsPacManGameStateSnapshot(snapshot), true);
+
+        const obsoleteAudioPolicy = clone(snapshot);
+        obsoleteAudioPolicy.audioSettings = { musicOn: false, soundOn: true };
+        assert.equal(isValidMsPacManGameStateSnapshot(obsoleteAudioPolicy), false);
 
         const duplicate = clone(snapshot);
         duplicate.soundEffects.push(clone(duplicate.soundEffects[0]));
@@ -132,8 +138,63 @@ try {
         assert.equal(isValidMsPacManGameStateSnapshot(malformed), false);
 
         const oldVersion = clone(snapshot);
-        oldVersion.version = 5;
+        oldVersion.version = 6;
         assert.equal(isValidMsPacManGameStateSnapshot(oldVersion), false);
+    });
+
+    await runTest("gameplay Pause owns logical Music transport without changing application audio policy", () => {
+        let pauseCalls = 0;
+        let resumeCalls = 0;
+        let stoppedEffects = 0;
+        const pauseTransitions = [];
+        const main = Object.create(Main.prototype);
+        Object.assign(main, {
+            browserSuspended: false,
+            fadeMusicFlag: false,
+            paused: false,
+            mode: Main.playingMode,
+            nextFrameTime: Number.MAX_SAFE_INTEGER,
+            input: {
+                isPausePressed: () => true,
+                isGameplayStartPressed: () => false
+            },
+            currentMusic: {
+                pause() {
+                    pauseCalls++;
+                },
+                resume() {
+                    resumeCalls++;
+                }
+            },
+            pauseStateChangeHandler: (paused) => pauseTransitions.push(paused),
+            stopAllSoundEffects() {
+                stoppedEffects++;
+            }
+        });
+        const gc = {
+            setMusicOn() {
+                throw new Error("gameplay Pause must not mutate global Music policy");
+            },
+            setSoundOn() {
+                throw new Error("gameplay Pause must not mutate global Sound policy");
+            }
+        };
+
+        Main.prototype.update.call(main, gc, 16);
+
+        assert.equal(main.paused, true);
+        assert.equal(pauseCalls, 1);
+        assert.equal(resumeCalls, 0);
+        assert.equal(stoppedEffects, 1);
+        assert.deepEqual(pauseTransitions, [true]);
+
+        Main.prototype.update.call(main, gc, 16);
+
+        assert.equal(main.paused, false);
+        assert.equal(pauseCalls, 1);
+        assert.equal(resumeCalls, 1);
+        assert.equal(stoppedEffects, 1);
+        assert.deepEqual(pauseTransitions, [true, false]);
     });
 
     await runTest("cutscene music sources use Main ownership wrappers", () => {
