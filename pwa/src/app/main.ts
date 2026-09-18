@@ -323,6 +323,7 @@ async function startGame(restoreSavedGame: boolean): Promise<void> {
     if (!destroyGame()) {
         return;
     }
+    applyApplicationAudioPreferences();
     gameOwnershipEpoch = ownership.epoch;
     const generation = sessionGeneration.begin();
     activeSessionGeneration = generation;
@@ -539,6 +540,13 @@ function disposeStaleLaunch(mainGame: MsPacManMain, appContainer: AppGameContain
 }
 
 function applyVolume(): void {
+    applyVolumeToRuntime();
+}
+
+function applyApplicationAudioPreferences(): void {
+    const store = SoundStore.get();
+    store.setMusicOn(true);
+    store.setSoundsOn(true);
     applyVolumeToRuntime();
 }
 
@@ -884,7 +892,7 @@ function resetPwaState(): void {
     gameStateStore?.clear();
     volume = DEFAULT_VOLUME;
     scalingPreference = DEFAULT_SCALING_PREFERENCE;
-    applyVolumeToRuntime();
+    applyApplicationAudioPreferences();
     renderMenuUi(app, false, "", false);
 }
 
@@ -956,6 +964,7 @@ async function resumeLiveGameFromMenu(): Promise<void> {
     const liveHost = viewport.gameHost;
     const session = activeSessionGeneration;
     pwaSessionState = "starting";
+    applyApplicationAudioPreferences();
     const audio = beginGameAudio();
     requestPreferredFullscreen();
     try {
