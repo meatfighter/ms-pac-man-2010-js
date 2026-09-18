@@ -88,6 +88,9 @@ try {
     }
 
     const tsMain = readFileSync(resolve(rootDir, "pwa/src/mspacman/Main.ts"), "utf8");
+    const stopAllSoundEffects = sourceBetween(tsMain, "    public stopAllSoundEffects()", "    public stopAllSounds()");
+    assert.match(stopAllSoundEffects, /SoundStore\.get\(\)\.stopSoundEffects\(\)/);
+
     const setMode = sourceBetween(tsMain, "    public setMode(", "    public initModeForRestore(");
     assert.doesNotMatch(setMode, /stopAllSoundEffects|stopSoundEffects/, "generic mode changes must not become destructive");
 
