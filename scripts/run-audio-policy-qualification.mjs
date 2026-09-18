@@ -47,7 +47,7 @@ try {
     await context.addInitScript(() => {
         const NativeAudioContext = globalThis.AudioContext ?? globalThis.webkitAudioContext;
         let contextsCreated = 0;
-        let bufferSourcesCreated = 0;
+        let bufferSourceStarts = 0;
         if (typeof NativeAudioContext === "function") {
             const WrappedAudioContext = new Proxy(NativeAudioContext, {
                 construct(target, args) {
@@ -57,7 +57,7 @@ try {
                     Object.defineProperty(audioContext, "createBufferSource", {
                         configurable: true,
                         value: (...sourceArgs) => {
-                            bufferSourcesCreated++;
+                            bufferSourceStarts++;
                             return createBufferSource(...sourceArgs);
                         }
                     });
@@ -74,7 +74,7 @@ try {
         Object.defineProperty(globalThis, "__msPacManAudioPolicyQualification", {
             configurable: true,
             value: {
-                stats: () => ({ contextsCreated, bufferSourcesCreated })
+                stats: () => ({ contextsCreated, bufferSourceStarts })
             }
         });
     });
@@ -116,8 +116,8 @@ try {
     await page.waitForTimeout(100);
     const afterPausedContinue = await audioStats(page);
     assert.equal(
-        afterPausedContinue.bufferSourcesCreated,
-        beforePausedContinue.bufferSourcesCreated,
+        afterPausedContinue.bufferSourceStarts,
+        beforePausedContinue.bufferSourceStarts,
         "paused durable Continue physically started a Music/Sound source before unpause"
     );
 
@@ -125,7 +125,7 @@ try {
     await page.waitForTimeout(150);
     const afterUnpause = await audioStats(page);
     assert(
-        afterUnpause.bufferSourcesCreated > afterPausedContinue.bufferSourcesCreated,
+        afterUnpause.bufferSourceStarts > afterPausedContinue.bufferSourceStarts,
         "unpause did not attach the restored Music transport to the fresh playback generation"
     );
 
@@ -134,13 +134,14 @@ try {
     await page.locator(resetSelector).first().waitFor({ state: "visible" });
     await page.locator(resetSelector).first().click();
     await page.locator(newGameSelector).first().waitFor({ state: "visible" });
+    await disableFullscreenPreference(page);
     const beforeResetNewGame = await audioStats(page);
     await page.locator(newGameSelector).first().click();
     await waitForRunning(page, "Reset -> New Game");
     await page.waitForTimeout(150);
     const afterResetNewGame = await audioStats(page);
     assert(
-        afterResetNewGame.bufferSourcesCreated > beforeResetNewGame.bufferSourcesCreated,
+        afterResetNewGame.bufferSourceStarts > beforeResetNewGame.bufferSourceStarts,
         "Reset -> New Game did not start background Music in the same page"
     );
 
@@ -161,7 +162,7 @@ try {
     await page.waitForTimeout(150);
     const afterUnpausedContinue = await audioStats(page);
     assert(
-        afterUnpausedContinue.bufferSourcesCreated > beforeUnpausedContinue.bufferSourcesCreated,
+        afterUnpausedContinue.bufferSourceStarts > beforeUnpausedContinue.bufferSourceStarts,
         "unpaused durable Continue did not attach background Music"
     );
 
@@ -185,7 +186,7 @@ async function waitForRunning(page, label) {
 
 async function audioStats(page) {
     return page.evaluate(
-        () => globalThis.__msPacManAudioPolicyQualification?.stats() ?? { contextsCreated: 0, bufferSourcesCreated: 0 }
+        () => globalThis.__msPacManAudioPolicyQualification?.stats() ?? { contextsCreated: 0, bufferSourceStarts: 0 }
     );
 }
 
