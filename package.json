@@ -97,6 +97,7 @@
         "verify:production-browser": "node scripts/run-production-browser-qualification.mjs",
         "verify:activation-races": "node scripts/run-activation-race-qualification.mjs",
         "verify:audio-interruption": "node scripts/run-audio-interruption-qualification.mjs",
+        "verify:audio-policy": "node scripts/run-audio-policy-qualification.mjs",
         "verify:lifecycle-events": "node scripts/run-lifecycle-event-qualification.mjs",
         "verify:ownership-transfer": "node scripts/run-ownership-transfer-qualification.mjs",
         "verify:persistence-failure": "node scripts/run-persistence-failure-qualification.mjs",
