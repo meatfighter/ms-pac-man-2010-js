@@ -130,16 +130,16 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
     if (snapshot.version !== GAME_STATE_VERSION || typeof snapshot.appVersion !== "string" || typeof snapshot.savedAt !== "string") {
         return false;
     }
-    if (!isValidFieldBag(snapshot.mainFields, MAIN_FIELDS) || !isValidModeSnapshot(snapshot.mode)) {
+    const mainFields = snapshot.mainFields;
+    const mode = snapshot.mode;
+    if (!isValidFieldBag(mainFields, MAIN_FIELDS) || !isValidModeSnapshot(mode)) {
         return false;
     }
-    if (snapshot.music !== null && !isValidMusicSnapshot(snapshot.music)) {
+    const music = snapshot.music;
+    if (music !== null && !isValidMusicSnapshot(music)) {
         return false;
     }
-    if (
-        snapshot.music?.playback.transport === "paused" &&
-        (snapshot.mode.id !== "playing" || snapshot.mainFields.paused !== true)
-    ) {
+    if (music !== null && music.playback.transport === "paused" && (mode.id !== "playing" || mainFields.paused !== true)) {
         return false;
     }
     if (!isValidSoundEffects(snapshot.soundEffects)) {
