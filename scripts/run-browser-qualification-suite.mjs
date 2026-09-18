@@ -9,6 +9,7 @@ const qualificationScripts = [
     "verify:production-browser",
     "verify:activation-races",
     "verify:audio-interruption",
+    "verify:audio-policy",
     "verify:lifecycle-events",
     "verify:ownership-transfer",
     "verify:persistence-failure",
