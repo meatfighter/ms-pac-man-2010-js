@@ -2,7 +2,7 @@ import type { MusicPlaybackSnapshot, SoundPlaybackSnapshot } from "slick2d-ts";
 import type { MusicId, SoundId } from "../AudioRegistry";
 
 // Development cutover: only this schema is supported; earlier test saves are not migrated.
-export const GAME_STATE_VERSION = 6;
+export const GAME_STATE_VERSION = 7;
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | JsonRecord;
@@ -25,11 +25,6 @@ export interface MusicSnapshot {
 export interface SoundSnapshot {
     id: SoundId;
     playback: SoundPlaybackSnapshot;
-}
-
-export interface AudioSettingsSnapshot {
-    musicOn: boolean;
-    soundOn: boolean;
 }
 
 export interface RobotInputSnapshot {
@@ -73,7 +68,6 @@ export interface MsPacManGameStateSnapshot {
     mode: CurrentModeSnapshot;
     music: MusicSnapshot | null;
     soundEffects: SoundSnapshot[];
-    audioSettings: AudioSettingsSnapshot;
     random: RandomSnapshot;
     robotInputs: RobotInputSnapshot[];
     submittedScore: SubmittedScoreSnapshot | null;
