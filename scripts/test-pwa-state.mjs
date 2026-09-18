@@ -186,6 +186,7 @@ try {
     );
     const { MsPacManGameStateStore } = await server.ssrLoadModule("/src/mspacman/persistence/MsPacManGameStateStore.ts");
     const { createBrowserStorageKeys } = await server.ssrLoadModule("/src/app/BrowserStorageKeys.ts");
+    const { SoundStore } = await import("slick2d-ts");
 
     await runTest("save inspection rejects malformed and invalid snapshots without deleting them", () => {
         const storage = installMemoryLocalStorage();
@@ -377,6 +378,10 @@ try {
             throw new Error("Injected restore failure.");
         };
 
+        const soundStore = SoundStore.get();
+        soundStore.setMusicOn(false);
+        soundStore.setSoundsOn(true);
+
         const originalWarn = console.warn;
         let warnCalls = 0;
         console.warn = (...args) => {
@@ -385,8 +390,11 @@ try {
         };
         try {
             assert.equal(store.restore(target, createGameContainer()), false);
+            assert.equal(soundStore.musicOn(), false, "failed restore changed application Music policy");
+            assert.equal(soundStore.soundsOn(), true, "failed restore changed application Sound policy");
         } finally {
             console.warn = originalWarn;
+            soundStore.destroy();
         }
         assert.equal(warnCalls, 1);
         assert.equal(storage.getItem(storageKey), savedSnapshot);
