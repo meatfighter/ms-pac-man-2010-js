@@ -77,10 +77,10 @@ test("persistence uses public Slick random, Music, and Sound snapshot APIs", () 
     assert.match(serializer, /registeredSounds\(main\)/);
     assert.doesNotMatch(serializer, /getField\(music,\s*["'](?:looped|paused|playbackRate|buffer|positionOffset|fadeState)["']/);
     assert.doesNotMatch(serializer, /(?:getField|setField|numberField)\(main\.random/);
-    assert.match(snapshot, /GAME_STATE_VERSION = 6/);
+    assert.match(snapshot, /GAME_STATE_VERSION = 7/);
     assert.match(snapshot, /soundEffects: SoundSnapshot\[\]/);
     assert.doesNotMatch(snapshot, /FIRST_PUBLIC_GAME_STATE_VERSION/);
-    assert.match(browserStorageKeys, /game-state-v6/);
+    assert.match(browserStorageKeys, /game-state-v7/);
 });
 
 test("save-state inspection is read-only while explicit clear remains separate", () => {
