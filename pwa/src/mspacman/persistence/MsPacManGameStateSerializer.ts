@@ -39,18 +39,7 @@ const MODE_IDS: ModeId[] = [
     "playing",
     "selectWorld"
 ];
-const SNAPSHOT_KEYS = [
-    "version",
-    "appVersion",
-    "savedAt",
-    "mainFields",
-    "mode",
-    "music",
-    "soundEffects",
-    "random",
-    "robotInputs",
-    "submittedScore"
-] as const;
+const SNAPSHOT_KEYS = ["version", "appVersion", "savedAt", "mainFields", "mode", "music", "soundEffects", "random", "robotInputs", "submittedScore"] as const;
 const MODE_SNAPSHOT_KEYS = ["id", "fields"] as const;
 const PLAYING_MODE_SNAPSHOT_KEYS = ["id", "fields", "eatenGhostIndex", "fruitTarget", "ghosts", "inputRobotIndex", "mspacman"] as const;
 const THING_SNAPSHOT_KEYS = ["fields"] as const;

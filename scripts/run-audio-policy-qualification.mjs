@@ -145,10 +145,7 @@ try {
     await waitForRunning(page, "Reset -> New Game");
     await page.waitForTimeout(150);
     const afterResetNewGame = await audioStats(page);
-    assert(
-        afterResetNewGame.bufferSourceStarts > beforeResetNewGame.bufferSourceStarts,
-        "Reset -> New Game did not start background Music in the same page"
-    );
+    assert(afterResetNewGame.bufferSourceStarts > beforeResetNewGame.bufferSourceStarts, "Reset -> New Game did not start background Music in the same page");
 
     // Save an unpaused title session, reload, and prove durable Continue attaches
     // Music automatically without requiring an in-game unpause.
@@ -166,10 +163,7 @@ try {
     await waitForRunning(page, "unpaused durable Continue");
     await page.waitForTimeout(150);
     const afterUnpausedContinue = await audioStats(page);
-    assert(
-        afterUnpausedContinue.bufferSourceStarts > beforeUnpausedContinue.bufferSourceStarts,
-        "unpaused durable Continue did not attach background Music"
-    );
+    assert(afterUnpausedContinue.bufferSourceStarts > beforeUnpausedContinue.bufferSourceStarts, "unpaused durable Continue did not attach background Music");
 
     assert.deepEqual(errors, [], "audio-policy qualification produced uncaught browser errors");
     console.log(
@@ -190,9 +184,7 @@ async function waitForRunning(page, label) {
 }
 
 async function audioStats(page) {
-    return page.evaluate(
-        () => globalThis.__msPacManAudioPolicyQualification?.stats() ?? { contextsCreated: 0, bufferSourceStarts: 0 }
-    );
+    return page.evaluate(() => globalThis.__msPacManAudioPolicyQualification?.stats() ?? { contextsCreated: 0, bufferSourceStarts: 0 });
 }
 
 async function readSave(page) {
