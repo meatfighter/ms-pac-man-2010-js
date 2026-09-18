@@ -180,7 +180,7 @@ function isValidFruitTargetSnapshot(value: unknown): value is FruitTargetSnapsho
         snapshot !== null &&
         hasExactKeys(snapshot, FRUIT_TARGET_SNAPSHOT_KEYS) &&
         isValidFieldBag(snapshot.fields, FRUIT_TARGET_FIELDS) &&
-        (snapshot.exitPath === null || isValidNumberMatrix(snapshot.exitPath, 31, 28, (entry) => isIntegerInRange(entry, 0, 3)))
+        (snapshot.exitPath === null || isValidNumberMatrix(snapshot.exitPath, 31, 28, (entry) => isIntegerInRange(entry, 0, 4)))
     );
 }
 
