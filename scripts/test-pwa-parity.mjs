@@ -24,6 +24,13 @@ assert.match(javaMain, /nextFrameTime \+= Sys\.getTimerResolution\(\) \/ 91;/);
 assert.match(tsMain, /nextFrameTime \+= intDiv\(Sys\.getTimerResolution\(\), 91\);/);
 assert.equal(Math.trunc(1000 / 91), 10, "The historical /91 loop must remain the Java 10 ms fixed-step cadence.");
 
+// Browser gameplay Pause deliberately uses logical Music transport ownership.
+assert.match(javaMain, /gc\.setMusicOn\(false\)/, "Java desktop retains its legacy global Music-off Pause implementation.");
+assert.match(javaMain, /gc\.setMusicOn\(true\)/, "Java desktop retains its legacy global Music-on unpause implementation.");
+assert.doesNotMatch(tsMain, /gc\.setMusicOn\(/, "Browser gameplay must not mutate application-wide Music policy.");
+assert.match(tsMain, /this\.currentMusic\?\.pause\(\)/, "Browser gameplay Pause must pause the exact logical Music transport.");
+assert.match(tsMain, /this\.currentMusic\?\.resume\(\)/, "Browser gameplay unpause must resume the exact logical Music transport.");
+
 const javaStopSound = /public void stopSound\(Sound sound\)\s*\{\s*sound\.stop\(\);\s*\}/s;
 const tsStopSoundMethod = /public stopSound\(sound: Sound\): void\s*\{([\s\S]*?)\n {4}\}/.exec(tsMain);
 assert.match(javaMain, javaStopSound, "Java stopSound must stop the Sound instance passed by the caller.");
