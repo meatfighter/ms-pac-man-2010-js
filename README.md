@@ -79,7 +79,7 @@ Use `build:pwa:unsigned`, `build:web:unsigned`, and `build:desktop` for developm
 
 Production browser builds use the fixed same-origin endpoint `/api/ms-pac-man-2010/scores`. Moving a build to another directory on the same host does not isolate leaderboard requests. The same leaderboard may be used for staging and production when that is intentional. The current release build does not accept an alternate API path.
 
-The embedded HMAC key deters casual tampering; it cannot authenticate legitimate play. See the public [client implementation](pwa/src/mspacman/) for protocol handling and [RELEASING.md](RELEASING.md#production-signing) for maintainer signing configuration.
+The embedded HMAC key deters casual tampering; it cannot authenticate legitimate play. See the public [client implementation](pwa/src/mspacman/) for protocol handling and [RELEASING.md](RELEASING.md#2-check-the-production-signing-key) for maintainer signing configuration.
 
 ## Further documentation
 
