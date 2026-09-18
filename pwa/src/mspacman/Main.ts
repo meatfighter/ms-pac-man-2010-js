@@ -208,15 +208,14 @@ export class Main extends BasicGame {
         if (this.paused) {
             if (this.isGameplayPauseTogglePressed()) {
                 this.setPaused(false);
-                gc.setMusicOn(true);
-                this.resumeCurrentMusicAfterPause(gc);
+                this.resumeCurrentMusicAfterPause();
             }
             this.resetNextFrameTime();
             return;
         } else if (this.isGameplayPauseTogglePressed()) {
             this.setPaused(true);
             this.stopAllSoundEffects();
-            gc.setMusicOn(false);
+            this.pauseCurrentMusicForPause();
         }
         let count = 0;
         while (this.nextFrameTime < Sys.getTime()) {
@@ -401,8 +400,12 @@ export class Main extends BasicGame {
         this.resetNextFrameTime();
     }
 
-    private resumeCurrentMusicAfterPause(gc: GameContainer | null | undefined): void {
-        if (this.paused || gc === null || gc === undefined || !gc.isMusicOn()) {
+    private pauseCurrentMusicForPause(): void {
+        this.currentMusic?.pause();
+    }
+
+    private resumeCurrentMusicAfterPause(): void {
+        if (this.paused) {
             return;
         }
         this.currentMusic?.resume();
