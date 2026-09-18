@@ -116,6 +116,13 @@ try {
         obsoleteAudioPolicy.audioSettings = { musicOn: false, soundOn: true };
         assert.equal(isValidMsPacManGameStateSnapshot(obsoleteAudioPolicy), false);
 
+        const stoppedMusic = clone(snapshot);
+        stoppedMusic.music = {
+            id: "stage:0",
+            playback: playback("stopped", true, 0, 1)
+        };
+        assert.equal(isValidMsPacManGameStateSnapshot(stoppedMusic), false);
+
         const duplicate = clone(snapshot);
         duplicate.soundEffects.push(clone(duplicate.soundEffects[0]));
         assert.equal(isValidMsPacManGameStateSnapshot(duplicate), false);
