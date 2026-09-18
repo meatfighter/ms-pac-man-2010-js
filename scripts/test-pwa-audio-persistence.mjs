@@ -197,6 +197,23 @@ try {
         assert.deepEqual(pauseTransitions, [true, false]);
     });
 
+    await runTest("PWA shell establishes application audio policy before activation and on Reset", () => {
+        const source = readFileSync(resolve(rootDir, "pwa/src/app/main.ts"), "utf8");
+        const start = functionSource(source, "async function startGame", "function renderBoot");
+        assert.ok(start.indexOf("applyApplicationAudioPreferences()") < start.indexOf("beginGameAudio()"));
+
+        const resume = functionSource(source, "async function resumeLiveGameFromMenu", "function removeMenuOverlay");
+        assert.ok(resume.indexOf("applyApplicationAudioPreferences()") < resume.indexOf("beginGameAudio()"));
+
+        const reset = functionSource(source, "function resetPwaState", "function hasLiveSuspendedGame");
+        assert.match(reset, /applyApplicationAudioPreferences\(\)/);
+
+        const helper = functionSource(source, "function applyApplicationAudioPreferences", "function applyVolumeToRuntime");
+        assert.match(helper, /setMusicOn\(true\)/);
+        assert.match(helper, /setSoundsOn\(true\)/);
+        assert.match(helper, /applyVolumeToRuntime\(\)/);
+    });
+
     await runTest("cutscene music sources use Main ownership wrappers", () => {
         const checks = [
             ["pwa/src/mspacman/IntroMode.ts", /\.introMusic\.play\s*\(/, /\.playMusic\(this\.main\.introMusic\)/],
@@ -213,6 +230,13 @@ try {
     });
 } finally {
     await server.close();
+}
+
+function functionSource(source, startMarker, endMarker) {
+    const start = source.indexOf(startMarker);
+    const end = source.indexOf(endMarker, start);
+    assert.ok(start >= 0 && end > start, `Unable to isolate ${startMarker}.`);
+    return source.slice(start, end);
 }
 
 async function runTest(name, fn) {
