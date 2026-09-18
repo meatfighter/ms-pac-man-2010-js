@@ -324,8 +324,8 @@ try {
         const savedText = storage.getItem(storageKey);
         assert.notEqual(savedText, null);
         const savedSnapshot = JSON.parse(savedText);
-        savedSnapshot.audioSettings = { musicOn: true, soundOn: false };
-        storage.setItem(storageKey, JSON.stringify(savedSnapshot));
+        assert.equal(savedSnapshot.version, 7);
+        assert.equal("audioSettings" in savedSnapshot, false);
 
         assert.equal(store.restore(target, gc), true);
         assert.deepEqual(pickFields(target, MAIN_FIELDS), pickFields(source, MAIN_FIELDS));
@@ -339,8 +339,6 @@ try {
         assert.equal(target.stopAllSoundsCalls, 1);
         assert.equal(target.stopAllSoundEffectsCalls >= 1, true);
         assert.equal(target.input.clearCalls > 0, true);
-        assert.deepEqual(gc.musicOnValues, [true]);
-        assert.deepEqual(gc.soundOnValues, [false]);
     });
 
     await runTest("store preserves saved snapshot when restore throws", () => {
@@ -384,7 +382,7 @@ try {
         source.currentMusic = sourceMusic;
 
         const snapshot = serializer.createSnapshot(source, APP_VERSION);
-        snapshot.audioSettings = { musicOn: false, soundOn: true };
+        assert.equal("audioSettings" in snapshot, false);
         assert.equal(isValidMsPacManGameStateSnapshot(snapshot), true);
         assert.equal(snapshot.mode.id, "playing");
         assert.equal(snapshot.music.id, "stage:1");
@@ -431,9 +429,36 @@ try {
         assert.equal(targetMusic.position, 23);
         assert.equal(targetMusic.volume, 0.625);
         assert.equal(targetMusic.stopCalls, 1);
-        assert.deepEqual(gc.musicOnValues, [false]);
-        assert.deepEqual(gc.soundOnValues, [true]);
         assert.equal(target.browserSuspended, true);
+    });
+
+    await runTest("paused playing snapshot restores paused logical Music without global audio policy", () => {
+        const serializer = new MsPacManGameStateSerializer();
+        const source = createFakeMain("playing", "paused-source");
+        const sourceMusic = source.stageMusic[0];
+        source.paused = true;
+        sourceMusic.looped = true;
+        sourceMusic.position = 19.5;
+        sourceMusic.paused = true;
+        sourceMusic.playingState = false;
+        source.currentMusic = sourceMusic;
+
+        const snapshot = serializer.createSnapshot(source, APP_VERSION);
+        assert.equal(snapshot.mainFields.paused, true);
+        assert.equal(snapshot.music.id, "stage:0");
+        assert.equal(snapshot.music.playback.transport, "paused");
+        assert.equal(snapshot.music.playback.positionSeconds, 19.5);
+        assert.equal("audioSettings" in snapshot, false);
+
+        const target = createFakeMain("playing", "paused-target");
+        const targetMusic = target.stageMusic[0];
+        serializer.restoreSnapshot(target, createGameContainer(), snapshot);
+
+        assert.equal(target.paused, true);
+        assert.equal(target.currentMusic, targetMusic);
+        assert.equal(targetMusic.paused, true);
+        assert.equal(targetMusic.playingState, false);
+        assert.equal(targetMusic.position, 19.5);
     });
 
     await runTest("restoring an already-recorded submitted score does not submit again", () => {
@@ -961,13 +986,11 @@ function createGhostSprites() {
 
 function createGameContainer() {
     return {
-        musicOnValues: [],
-        soundOnValues: [],
-        setMusicOn(value) {
-            this.musicOnValues.push(value);
+        setMusicOn() {
+            throw new Error("game-state restore must not mutate application Music policy");
         },
-        setSoundOn(value) {
-            this.soundOnValues.push(value);
+        setSoundOn() {
+            throw new Error("game-state restore must not mutate application Sound policy");
         }
     };
 }
