@@ -490,7 +490,7 @@ try {
         const pausedOutsideGameplay = clone(snapshot);
         pausedOutsideGameplay.mode = {
             id: "attract",
-            fields: createAttractMode()
+            fields: createMode("attract", "source")
         };
         assert.equal(isValidMsPacManGameStateSnapshot(pausedOutsideGameplay), false);
 
