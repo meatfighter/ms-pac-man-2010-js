@@ -11,6 +11,7 @@ const qualification = [
     ["verify:production-browser", "scripts/run-production-browser-qualification.mjs"],
     ["verify:activation-races", "scripts/run-activation-race-qualification.mjs"],
     ["verify:audio-interruption", "scripts/run-audio-interruption-qualification.mjs"],
+    ["verify:audio-policy", "scripts/run-audio-policy-qualification.mjs"],
     ["verify:lifecycle-events", "scripts/run-lifecycle-event-qualification.mjs"],
     ["verify:ownership-transfer", "scripts/run-ownership-transfer-qualification.mjs"],
     ["verify:persistence-failure", "scripts/run-persistence-failure-qualification.mjs"],
