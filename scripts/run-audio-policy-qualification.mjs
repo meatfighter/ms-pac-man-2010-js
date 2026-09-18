@@ -95,7 +95,7 @@ try {
     await page.keyboard.press("Enter");
     await page.waitForTimeout(1_300);
     await page.keyboard.press("Enter");
-    await page.waitForTimeout(6_000);
+    await page.waitForTimeout(9_000);
     await page.keyboard.press("p");
     await page.waitForTimeout(100);
 
