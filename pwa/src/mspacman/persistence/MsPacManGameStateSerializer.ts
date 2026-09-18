@@ -199,7 +199,13 @@ function isValidFruitTargetSnapshot(value: unknown): value is FruitTargetSnapsho
 
 function isValidMusicSnapshot(value: unknown): value is MusicSnapshot {
     const snapshot = asRecord(value);
-    return snapshot !== null && hasExactKeys(snapshot, MUSIC_SNAPSHOT_KEYS) && isMusicId(snapshot.id) && isMusicPlaybackSnapshot(snapshot.playback);
+    return (
+        snapshot !== null &&
+        hasExactKeys(snapshot, MUSIC_SNAPSHOT_KEYS) &&
+        isMusicId(snapshot.id) &&
+        isMusicPlaybackSnapshot(snapshot.playback) &&
+        snapshot.playback.transport !== "stopped"
+    );
 }
 
 function isValidSoundEffects(value: unknown): value is SoundSnapshot[] {
