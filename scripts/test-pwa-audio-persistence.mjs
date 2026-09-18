@@ -253,7 +253,7 @@ function collectAudioPolicySetterCalls(directory, relative = "") {
             continue;
         }
         const source = readFileSync(path, "utf8");
-        for (const method of ["setMusicOn", "setSoundsOn"]) {
+        for (const method of ["setMusicOn", "setSoundsOn", "setSoundOn"]) {
             const matches = source.match(new RegExp(`\\.${method}\\s*\\(`, "g")) ?? [];
             for (let i = 0; i < matches.length; i++) {
                 calls.push(`pwa/src/${childRelative}:${method}`);
