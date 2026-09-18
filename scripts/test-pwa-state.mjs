@@ -475,6 +475,17 @@ try {
         contradictoryUnpaused.mainFields.paused = false;
         assert.equal(isValidMsPacManGameStateSnapshot(contradictoryUnpaused), false);
 
+        const contradictoryPlayingTransport = clone(snapshot);
+        contradictoryPlayingTransport.music.playback.transport = "playing";
+        assert.equal(isValidMsPacManGameStateSnapshot(contradictoryPlayingTransport), false);
+
+        const pausedOutsideGameplay = clone(snapshot);
+        pausedOutsideGameplay.mode = {
+            id: "attract",
+            fields: createAttractMode()
+        };
+        assert.equal(isValidMsPacManGameStateSnapshot(pausedOutsideGameplay), false);
+
         const target = createFakeMain("playing", "paused-target");
         const targetMusic = target.stageMusic[0];
         serializer.restoreSnapshot(target, createGameContainer(), snapshot);
