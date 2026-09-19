@@ -1,6 +1,6 @@
 import { generateAboutImageAssets, titleImageHeight, titleImageSizes, titleImageWidth } from "./about-image-assets.mjs";
 import { finalizeAboutPageHtml, prepareAboutArticleHtml } from "./about-html.mjs";
-import { renderAboutMarkdown } from "./about-markdown.mjs";
+import { renderAboutFooterMarkdown, renderAboutMarkdown } from "./about-markdown.mjs";
 import {
     assertSafeReleaseMutationPath,
     cleanDirectory,
@@ -67,7 +67,7 @@ try {
     const contentMarkdown = renderCheckedTemplate(readFileSync(join(aboutDir, "content.md"), "utf8"), replacements, "about Markdown content");
     const renderedMarkdown = renderAboutMarkdown(contentMarkdown);
     const footerMarkdown = readFileSync(join(aboutDir, "footer.md"), "utf8");
-    const renderedFooter = renderAboutMarkdown(footerMarkdown);
+    const renderedFooter = renderAboutFooterMarkdown(footerMarkdown);
     if (renderedFooter.articleHtml.trim() === "") {
         throw new Error("about/footer.md must not be empty.");
     }

@@ -95,9 +95,12 @@ function renderInlineNoLinks(value) {
     return restoreStashedHtml(output, stashedHtml);
 }
 
-function renderLink(label, href) {
+function renderLink(label, href, { footer = false } = {}) {
     const sanitizedHref = sanitizeUrl(href);
     const attributes = [`href="${escapeAttribute(sanitizedHref)}"`];
+    if (footer && sanitizedHref === "https://creativecommons.org/licenses/by-sa/4.0/" && stripInlineMarkdown(label) === "CC BY-SA 4.0") {
+        attributes.push('class="site-footer__license-link"');
+    }
     const downloadName = downloadNameForUrl(sanitizedHref);
     if (downloadName !== null) {
         attributes.push(`download="${escapeAttribute(downloadName)}"`);
@@ -107,10 +110,15 @@ function renderLink(label, href) {
     return `<a ${attributes.join(" ")}>${renderInlineNoLinks(label)}</a>`;
 }
 
-function renderInline(value) {
+function renderInline(value, { footer = false } = {}) {
     const stashedHtml = [];
     let output = value.replace(/`([^`]+)`/g, (_, code) => stashHtml(`<code>${escapeHtml(code)}</code>`, stashedHtml));
-    output = output.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (_, label, href) => stashHtml(renderLink(label, href), stashedHtml));
+    output = output.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g, (_, label, href) => stashHtml(renderLink(label, href, { footer }), stashedHtml));
+    if (footer) {
+        output = output.replace(/© \d{4}, \d{4} meatfighter\.com/g, (copyrightNotice) =>
+            stashHtml(`<span class="site-footer__copyright">${escapeHtml(copyrightNotice)}</span>`, stashedHtml)
+        );
+    }
     output = escapeHtml(output);
     output = output.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
     output = output.replace(/__([^_]+)__/g, "<strong>$1</strong>");
@@ -215,7 +223,7 @@ function renderPlayButton(label, href) {
     return `<p class="play-row"><a class="play-button" href="${escapeAttribute(sanitizedHref)}"><span class="play-button__initial">${escapeHtml(initial)}</span>${escapeHtml(rest)}</a></p>`;
 }
 
-function renderParagraph(lines) {
+function renderParagraph(lines, { footer = false } = {}) {
     const paragraph = lines.map((line) => line.trim()).join(" ");
     const playMatch = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(paragraph);
     if (playMatch !== null && stripInlineMarkdown(playMatch[1]).toLowerCase() === "play") {
@@ -227,7 +235,7 @@ function renderParagraph(lines) {
         return renderImage(imageMatch[1], imageMatch[2]);
     }
 
-    return `<p>${renderInline(paragraph)}</p>`;
+    return `<p>${renderInline(paragraph, { footer })}</p>`;
 }
 
 function renderCodeBlock(info, lines) {
@@ -249,7 +257,7 @@ function renderTableOfContents(headings) {
     return `<nav class="toc" aria-labelledby="toc-heading"><h2 id="toc-heading">Contents</h2><ol>\n${items}\n</ol></nav>`;
 }
 
-export function renderAboutMarkdown(markdown) {
+function renderMarkdown(markdown, { footer = false } = {}) {
     const lines = markdown
         .replace(/^\uFEFF/, "")
         .replace(/\r\n?/g, "\n")
@@ -338,7 +346,7 @@ export function renderAboutMarkdown(markdown) {
             paragraphLines.push(lines[index]);
             index += 1;
         }
-        html.push(renderParagraph(paragraphLines));
+        html.push(renderParagraph(paragraphLines, { footer }));
     }
 
     return {
@@ -346,4 +354,12 @@ export function renderAboutMarkdown(markdown) {
         headings,
         tocHtml: renderTableOfContents(headings)
     };
+}
+
+export function renderAboutMarkdown(markdown) {
+    return renderMarkdown(markdown);
+}
+
+export function renderAboutFooterMarkdown(markdown) {
+    return renderMarkdown(markdown, { footer: true });
 }
