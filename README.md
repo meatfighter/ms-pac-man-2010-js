@@ -8,7 +8,8 @@ This README covers development and maintenance of the Java and TypeScript implem
 
 | Path                                | Purpose                                                            |
 | ----------------------------------- | ------------------------------------------------------------------ |
-| `about/content.md`                  | Project-page prose; edit this to update the public article         |
+| `about/content.md`                  | Project-page article prose                                         |
+| `about/footer.md`                   | Project-page copyright and licensing footer prose                  |
 | `about/index.html`, `about/assets/` | Page template, SEO metadata placeholders, and artwork              |
 | `desktop/src/`                      | Maintained Java gameplay reference and resources                   |
 | `desktop/`                          | Desktop build, runtime libraries, and platform-specific packaging  |
@@ -67,7 +68,7 @@ For the separate Chromium/Firefox/WebKit qualification, install the browser engi
 
 ## Project page and deployment
 
-Edit the article in [about/content.md](about/content.md); layout and SEO wiring live in [about/index.html](about/index.html) and [scripts/build-about.mjs](scripts/build-about.mjs).
+Edit the article in [about/content.md](about/content.md) and the copyright/licensing footer in [about/footer.md](about/footer.md); layout and SEO wiring live in [about/index.html](about/index.html) and [scripts/build-about.mjs](scripts/build-about.mjs).
 
 The canonical URL and Open Graph page URL identify `https://meatfighter.com/mspacman2010/`. Play, download, and page-asset links are relative so the assembled site can be tested beneath a staging directory. Keep production canonical URLs during staging and configure a staging-only `X-Robots-Tag: noindex` response header at the host. That header is a hosting requirement, not something the current build adds.
 
@@ -86,6 +87,6 @@ The embedded HMAC key deters casual tampering; it cannot authenticate legitimate
 - [RELEASING.md](RELEASING.md): exact-commit qualification, production signing, archive/checksum, and tagging procedure.
 - [desktop/README.md](desktop/README.md): Java build and runtime details.
 - [releases/README.md](releases/README.md): desktop ZIP packaging and uploadable artifacts.
-- [LICENSE](LICENSE): source-code license, GPL-3.0-or-later.
-- [COPYRIGHT.md](COPYRIGHT.md): copyright scope and the boundary between original project material and third-party/preexisting game content.
-- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md): third-party licenses and redistributed components.
+- [LICENSE](LICENSE): GPL-3.0-or-later license text for original project source code.
+- [COPYRIGHT.md](COPYRIGHT.md): copyright, licensing, trademark, and third-party-content scope.
+- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md): third-party software licenses and redistributed components.

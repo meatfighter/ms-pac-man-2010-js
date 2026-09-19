@@ -2,7 +2,7 @@
     "name": "ms-pac-man-2010-js",
     "version": "1.0.0",
     "private": true,
-    "license": "GPL-3.0-or-later",
+    "license": "SEE LICENSE IN COPYRIGHT.md",
     "type": "module",
     "engines": {
         "node": "^20.19.0 || ^22.13.0 || >=24"

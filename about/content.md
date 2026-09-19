@@ -80,6 +80,6 @@ _Ms. Pac-Man 2010_ draws from the large collection of unofficial _Pac-Man_ and _
 
 The music and sound effects in _Ms. Pac-Man 2010_ come from the arcade versions of _Ms. Pac-Man_ and _Pac-Mania_, the latter of which features music and sound by Junko Ozawa, Yuriko Keino, and Yoshito Tomuro. Some of the music and sound effects used in the cutscenes come from _Mike Tyson's Punch-Out!!_ for the NES, with music and sound by Kenji Yamamoto, Yukio Kaneoka, and Akito Nakatsuka.
 
-This project is an unofficial fan-made tribute to the original games. It is not affiliated with, sponsored by, or endorsed by Bandai Namco Entertainment, Midway, Nintendo, or Capcom. The original games, graphics, music, sound effects, characters, and other content remain the property of their respective rights holders.
+This project is an unofficial fan-made tribute to the original games. It is not affiliated with, sponsored by, or endorsed by the creators, publishers, trademark owners, or other rights holders of the games it references. Preexisting games, graphics, music, sound effects, characters, names, logos, trademarks, and other third-party content remain the property of their respective rights holders.
 
 I provide _Ms. Pac-Man 2010_ free of charge. It contains no advertising and generates no revenue.
