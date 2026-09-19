@@ -181,7 +181,12 @@ function verifyDesktopRelease() {
     verifyZipEntryMode(zipEntries, `${distributionName}/run-windows.ps1`, 0o644);
     verifyDesktopLauncherContents(desktopZip, zipEntries, distributionName);
     verifyZipEntryMode(zipEntries, `${distributionName}/README.md`, 0o644);
-    for (const requiredEntry of [`${distributionName}/LICENSE`, `${distributionName}/COPYRIGHT.md`, `${distributionName}/THIRD_PARTY_NOTICES.md`, `${distributionName}/RUNTIME_DEPENDENCIES.md`]) {
+    for (const requiredEntry of [
+        `${distributionName}/LICENSE`,
+        `${distributionName}/COPYRIGHT.md`,
+        `${distributionName}/THIRD_PARTY_NOTICES.md`,
+        `${distributionName}/RUNTIME_DEPENDENCIES.md`
+    ]) {
         assert.ok(zipEntryNames.includes(requiredEntry), `Desktop release ZIP must contain ${requiredEntry}.`);
     }
     for (const [runtimeEntry, expectedHash] of Object.entries({
