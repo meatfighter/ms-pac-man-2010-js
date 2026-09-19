@@ -3,7 +3,7 @@ import { existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from 
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type PluginOption } from "vite";
-import { RESOURCE_VERSIONS } from "./src/app/ResourceVersions";
+import { RESOURCE_VERSIONS } from "./src/app/ResourceVersions.ts";
 
 interface VersionInfo {
     readonly version: string;

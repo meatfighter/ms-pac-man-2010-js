@@ -1,4 +1,4 @@
-import { ResourceLoader, SoundStore } from "slick2d-ts";
+import * as SlickRuntimeModule from "slick2d-ts";
 import { RESOURCE_REFS } from "./resourceManifest.js";
 import { getResourceVersion } from "./ResourceVersions.js";
 import { waitForServiceWorkerReadiness } from "./ServiceWorkerRegistrar.js";
@@ -19,6 +19,7 @@ const RESOURCE_CACHE_RETRY_COUNT = 3;
 const RESOURCE_CACHE_RETRY_DELAY_MS = 300;
 const RESOURCE_PRELOAD_CONCURRENCY = 6;
 const AUDIO_PRELOAD_CONCURRENCY = 4;
+const { ResourceLoader, SoundStore } = SlickRuntimeModule;
 
 export class RuntimeLoader {
     public prepared: PreparedRuntime | null = null;
@@ -100,7 +101,6 @@ export class RuntimeLoader {
         const signal = controller.signal;
         const preloadPromise = this.preloadPreparedResources(Array.from(new Set(RESOURCE_REFS)), signal);
         const operations = [
-            import("slick2d-ts"),
             import("../mspacman/Main.js"),
             import("../mspacman/ScalableGame2.js"),
             import("../mspacman/persistence/MsPacManGameStateStore.js"),
@@ -115,10 +115,10 @@ export class RuntimeLoader {
         const results = await Promise.allSettled(guarded);
         const failure = results.find((result) => result.status === "rejected");
         if (failure?.status === "rejected") throw failure.reason;
-        const [slick, mainModule, scalableGameModule, gameStateStoreModule] = await Promise.all(operations);
+        const [mainModule, scalableGameModule, gameStateStoreModule] = await Promise.all(operations);
 
         return {
-            slick,
+            slick: SlickRuntimeModule,
             Main: mainModule.Main,
             ScalableGame2: scalableGameModule.ScalableGame2,
             MsPacManGameStateStore: gameStateStoreModule.MsPacManGameStateStore

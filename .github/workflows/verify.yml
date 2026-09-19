@@ -89,7 +89,7 @@ jobs:
               run: node scripts/archive-release.mjs .release-components/synthetic-full "$RUNNER_TEMP/qualified-artifacts"
 
             - name: Retain build and checksums
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: qualified-${{ github.sha }}
                   path: ${{ runner.temp }}/qualified-artifacts

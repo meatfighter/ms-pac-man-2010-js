@@ -6,6 +6,10 @@ import { spawn } from "node:child_process";
 import { acquireReleaseLock, getReleaseLockPath, readLockOwner } from "./release-lock.mjs";
 import { rootDir } from "./build-utils.mjs";
 
+const STRESS_CHILD_COUNT = 20;
+const STRESS_BATCH_SIZE = 5;
+const STRESS_READY_TIMEOUT_MS = 20_000;
+
 const originalEnv = snapshotEnv();
 const tempSecretsDir = mkdtempSync(join(tmpdir(), "mspacman-release-lock-"));
 
@@ -51,24 +55,32 @@ try {
         const release = acquireReleaseLock("test-stress-parent");
         const children = [];
         try {
-            const readyPaths = [];
-            for (let i = 0; i < 20; i++) {
-                const operation = `test-stress-child-${i}`;
-                const readyPath = join(tempSecretsDir, `${operation}.txt`);
-                readyPaths.push(readyPath);
-                children.push(spawnPersistentChildHolder(operation, readyPath));
-            }
+            for (let batchStart = 0; batchStart < STRESS_CHILD_COUNT; batchStart += STRESS_BATCH_SIZE) {
+                const batch = [];
+                const batchEnd = Math.min(batchStart + STRESS_BATCH_SIZE, STRESS_CHILD_COUNT);
+                for (let i = batchStart; i < batchEnd; i++) {
+                    const operation = `test-stress-child-${i}`;
+                    const readyPath = join(tempSecretsDir, `${operation}.txt`);
+                    const child = spawnPersistentChildHolder(operation, readyPath);
+                    children.push(child);
+                    batch.push({
+                        child,
+                        operation,
+                        readyPath
+                    });
+                }
 
-            await Promise.all(readyPaths.map((readyPath) => waitForFile(readyPath)));
+                await Promise.all(batch.map(({ child, operation, readyPath }) => waitForChildReady(child, operation, readyPath, STRESS_READY_TIMEOUT_MS)));
+            }
 
             const owner = readLockOwner();
             assert.equal(owner.valid, true);
             const liveHolders = owner.record.holders.filter((holder) => isProcessAlive(holder.pid));
-            assert.equal(liveHolders.length, 21, "The release lock must record parent plus all 20 live child holders.");
-            assert.equal(new Set(liveHolders.map((holder) => holder.pid)).size, 21, "Every live holder should be recorded once.");
+            assert.equal(liveHolders.length, STRESS_CHILD_COUNT + 1, "The release lock must record the parent plus all live child holders.");
+            assert.equal(new Set(liveHolders.map((holder) => holder.pid)).size, STRESS_CHILD_COUNT + 1, "Every live holder should be recorded once.");
             const operations = new Set(liveHolders.map((holder) => holder.operation));
             assert.equal(operations.has("test-stress-parent"), true);
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < STRESS_CHILD_COUNT; i++) {
                 assert.equal(operations.has(`test-stress-child-${i}`), true);
             }
         } finally {
@@ -233,6 +245,30 @@ function isProcessAlive(pid) {
 
 function waitForFile(path) {
     return waitUntil(() => existsSync(path));
+}
+
+function waitForChildReady(child, operation, readyPath, timeoutMs) {
+    return new Promise((resolve, reject) => {
+        const startedAt = Date.now();
+        const timer = setInterval(() => {
+            if (existsSync(readyPath)) {
+                clearInterval(timer);
+                resolve();
+                return;
+            }
+            if (child.exitCode !== null || child.signalCode !== null) {
+                clearInterval(timer);
+                const exitCode = child.exitCode ?? "none";
+                const signalCode = child.signalCode ?? "none";
+                reject(new Error(`Release-lock stress child exited before becoming ready: ${operation} (exitCode=${exitCode}, signal=${signalCode}).`));
+                return;
+            }
+            if (Date.now() - startedAt > timeoutMs) {
+                clearInterval(timer);
+                reject(new Error(`Timed out waiting for release-lock stress child to become ready: ${operation}.`));
+            }
+        }, 50);
+    });
 }
 
 function waitUntil(predicate) {
