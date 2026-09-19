@@ -41,7 +41,10 @@ await runTest("about footer Markdown is a heading-free scoped legal source", () 
     assert.doesNotMatch(footerMarkdown, /^#{1,6}\s/m);
     const rendered = renderAboutMarkdown(footerMarkdown);
     assert.match(rendered.articleHtml, /<p>Original code and original material created for this project © 2010, 2026 meatfighter\.com\./);
-    assert.match(rendered.articleHtml, /href="https:\/\/creativecommons\.org\/licenses\/by-sa\/4\.0\/" target="_blank" rel="noopener noreferrer">CC BY-SA 4\.0<\/a>/);
+    assert.match(
+        rendered.articleHtml,
+        /href="https:\/\/creativecommons\.org\/licenses\/by-sa\/4\.0\/" target="_blank" rel="noopener noreferrer">CC BY-SA 4\.0<\/a>/
+    );
     assert.equal(rendered.headings.length, 0);
     assert.equal(rendered.tocHtml, "");
 });
