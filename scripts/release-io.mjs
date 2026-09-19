@@ -15,6 +15,10 @@ import {
 } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 
+const ATOMIC_RENAME_RETRYABLE_CODES = new Set(["EACCES", "EBUSY", "EPERM"]);
+const ATOMIC_RENAME_MAX_RETRIES = 50;
+const ATOMIC_RENAME_RETRY_DELAY_MS = 10;
+
 export function fsyncDirectoryIfSupported(path) {
     if (process.platform === "win32") {
         return;
@@ -28,7 +32,7 @@ export function fsyncDirectoryIfSupported(path) {
     }
 }
 
-export function writeTextFileAtomically(path, text, { failPhase = "", mode = 0o600 } = {}) {
+export function writeTextFileAtomically(path, text, { failPhase = "", mode = 0o600, renameFile = renameSync } = {}) {
     const dir = dirname(path);
     mkdirSync(dir, { recursive: true, mode: 0o700 });
     const temp = join(dir, `.${basename(path)}.tmp-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -46,7 +50,7 @@ export function writeTextFileAtomically(path, text, { failPhase = "", mode = 0o6
         closeSync(fd);
         fd = undefined;
         maybeFailAtomicWrite(failPhase, "before-rename");
-        renameSync(temp, path);
+        renameFileWithRetry(temp, path, renameFile);
         renamed = true;
         maybeFailAtomicWrite(failPhase, "after-rename");
         fsyncDirectoryIfSupported(dir);
@@ -77,12 +81,30 @@ export function copyFileAtomically(source, destination) {
         } finally {
             closeSync(fd);
         }
-        renameSync(temp, destination);
+        renameFileWithRetry(temp, destination);
         fsyncDirectoryIfSupported(dir);
     } catch (error) {
         rmSync(temp, { force: true });
         throw error;
     }
+}
+
+function renameFileWithRetry(source, destination, renameFile = renameSync) {
+    for (let retries = 0; ; retries++) {
+        try {
+            renameFile(source, destination);
+            return;
+        } catch (error) {
+            if (!ATOMIC_RENAME_RETRYABLE_CODES.has(error?.code) || retries >= ATOMIC_RENAME_MAX_RETRIES) {
+                throw error;
+            }
+            sleepSync(ATOMIC_RENAME_RETRY_DELAY_MS);
+        }
+    }
+}
+
+function sleepSync(ms) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
 export function listFilesStrict(root, description = "Release output") {

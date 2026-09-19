@@ -182,7 +182,7 @@ function spawnPersistentChildHolder(operation, readyPath) {
         {
             cwd: rootDir,
             env: process.env,
-            stdio: "ignore",
+            stdio: ["ignore", "ignore", "inherit"],
             windowsHide: true
         }
     );

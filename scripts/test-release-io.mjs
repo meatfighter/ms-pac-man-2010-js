@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { assertSafeGeneratedFileMutationPath, assertSafeReleaseMutationPath, releasesDir } from "./build-utils.mjs";
@@ -92,6 +92,35 @@ try {
                 readdirSync(dir).filter((entry) => entry.includes(".tmp-")),
                 [],
                 "atomic copy must not leave a temporary file behind."
+            );
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    await runTest("atomic text writes retry transient rename failures", () => {
+        const dir = mkdtempSync(join(tmpdir(), "mspacman-atomic-write-retry-"));
+        const path = join(dir, "state.json");
+        let attempts = 0;
+        try {
+            writeFileSync(path, "OLD\n");
+            writeTextFileAtomically(path, "NEW\n", {
+                renameFile: (source, destination) => {
+                    attempts++;
+                    if (attempts === 1) {
+                        const error = new Error("Injected transient rename failure.");
+                        error.code = "EPERM";
+                        throw error;
+                    }
+                    renameSync(source, destination);
+                }
+            });
+            assert.equal(attempts, 2);
+            assert.equal(readFileSync(path, "utf8"), "NEW\n");
+            assert.deepEqual(
+                readdirSync(dir).filter((entry) => entry.includes(".tmp-")),
+                [],
+                "successful retry must not leave a temporary file behind."
             );
         } finally {
             rmSync(dir, { recursive: true, force: true });
