@@ -45,7 +45,7 @@ function walk(directory) {
 try {
     walk(build); // Validate before recursively copying.
     cpSync(build, join(staging, "dist"), { recursive: true });
-    for (const name of ["package.json", "package-lock.json", "LICENSE", "NOTICE.md", "README.md", "OPERATIONS.md", "RELEASING.md", "deploy"]) {
+    for (const name of ["package.json", "package-lock.json", "LICENSE", "COPYRIGHT.md", "THIRD_PARTY_NOTICES.md", "NOTICE.md", "README.md", "OPERATIONS.md", "RELEASING.md", "deploy"]) {
         const source = join(root, name);
         if (existsSync(source)) cpSync(source, join(staging, name), { recursive: true });
     }

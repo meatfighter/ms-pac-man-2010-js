@@ -10,6 +10,7 @@ sharp.cache(false);
 
 const aboutDir = join(rootDir, "about");
 const contentMarkdown = readFileSync(join(aboutDir, "content.md"), "utf8");
+const footerMarkdown = readFileSync(join(aboutDir, "footer.md"), "utf8");
 const indexTemplate = readFileSync(join(aboutDir, "index.html"), "utf8");
 const styles = readFileSync(join(aboutDir, "styles.css"), "utf8");
 const themeScript = readFileSync(join(aboutDir, "theme.js"), "utf8");
@@ -30,6 +31,19 @@ await runTest("about Markdown content is the user-facing source of truth", () =>
     assert.doesNotMatch(contentMarkdown, /\bTODO\b/i);
     assert.doesNotMatch(contentMarkdown, /executable JAR/i);
     assert.doesNotMatch(contentMarkdown, /â/);
+});
+
+await runTest("about footer Markdown is a heading-free scoped legal source", () => {
+    assert.match(footerMarkdown, /© 2010, 2026 meatfighter\.com/);
+    assert.match(footerMarkdown, /Third-party and preexisting game content is excluded/);
+    assert.match(footerMarkdown, /\[CC BY-SA 4\.0\]\(https:\/\/creativecommons\.org\/licenses\/by-sa\/4\.0\/\)/);
+    assert.match(footerMarkdown, /does not apply to third-party or preexisting game content/);
+    assert.doesNotMatch(footerMarkdown, /^#{1,6}\s/m);
+    const rendered = renderAboutMarkdown(footerMarkdown);
+    assert.match(rendered.articleHtml, /<p>Original code and original material created for this project © 2010, 2026 meatfighter\.com\./);
+    assert.match(rendered.articleHtml, /href="https:\/\/creativecommons\.org\/licenses\/by-sa\/4\.0\/" target="_blank" rel="noopener noreferrer">CC BY-SA 4\.0<\/a>/);
+    assert.equal(rendered.headings.length, 0);
+    assert.equal(rendered.tocHtml, "");
 });
 
 await runTest("about Markdown renderer creates expected article features", () => {
@@ -77,7 +91,10 @@ await runTest("about page shell carries SEO, theme, footer, and generated-conten
     assert.match(indexTemplate, /ms-pac-man-2010-about-theme/);
     assert.match(indexTemplate, /href="__REPOSITORY_URL__" target="_blank" rel="noopener noreferrer">Source<\/a>/);
     assert.match(indexTemplate, /<a href="https:\/\/meatfighter\.com\/">Home<\/a>/);
-    assert.match(indexTemplate, /https:\/\/creativecommons\.org\/licenses\/by-sa\/4\.0\/\?ref=chooser-v1/);
+    assert.match(indexTemplate, /__FOOTER_HTML__/);
+    assert.doesNotMatch(indexTemplate, /&copy; 2010, 2026 meatfighter\.com/);
+    assert.doesNotMatch(indexTemplate, /This content is licensed under/);
+    assert.doesNotMatch(indexTemplate, /license-wrap|license-icons|mirrors\.creativecommons\.org/);
     assert.match(indexTemplate, /<script src=".\/theme\.js\?v=__BUILD_STAMP_ENCODED__"><\/script>/);
     assert.match(styles, /SourceSans3VF-Upright\.ttf\.woff2\?v=__BUILD_STAMP_ENCODED__/);
     assert.match(styles, /SourceSans3VF-Italic\.ttf\.woff2\?v=__BUILD_STAMP_ENCODED__/);
@@ -94,14 +111,22 @@ await runTest("about page shell carries SEO, theme, footer, and generated-conten
     assert.match(styles, /\.toc \{\s+margin: 0 0 2rem;/);
     assert.match(styles, /\.toc li:not\(:last-child\)::after \{\s+color: var\(--muted\);\s+content: " \| ";/);
     assert.doesNotMatch(styles, /\.toc \.toc-level-2 a\s*\{/);
-    assert.match(styles, /\.site-footer__links \{[\s\S]*font-weight: 600;\s+line-height: 1\.6;\s+text-align: right;/);
+    assert.match(styles, /\.site-footer__inner \{[\s\S]*gap: 1\.5rem;[\s\S]*align-items: flex-start;/);
+    assert.match(styles, /\.site-footer__left \{\s+min-width: 0;\s+flex: 1 1 auto;\s+font-size: 0\.95rem;\s+\}/);
+    assert.match(styles, /\.site-footer__links \{[\s\S]*flex: 0 0 auto;[\s\S]*font-weight: 600;\s+line-height: 1\.6;\s+text-align: right;/);
+    assert.doesNotMatch(styles, /\.license-wrap|\.license-icons/);
+    assert.match(styles, /@media \(max-width: 720px\) \{[\s\S]*\.site-footer__links \{\s+margin-top: 0\.65rem;\s+text-align: center;\s+\}/);
     assert.match(styles, /\.play-button/);
     assert.match(themeScript, /ms-pac-man-2010-about-theme/);
 });
 
 await runTest("about build uses constrained Markdown and generated responsive images", () => {
     assert.match(buildAboutSource, /content\.md/);
+    assert.match(buildAboutSource, /footer\.md/);
     assert.match(buildAboutSource, /renderAboutMarkdown/);
+    assert.match(buildAboutSource, /__FOOTER_HTML__/);
+    assert.match(buildAboutSource, /about\/footer\.md must not be empty/);
+    assert.match(buildAboutSource, /about\/footer\.md must not contain headings/);
     assert.match(buildAboutSource, /__TOC_HTML__/);
     assert.match(buildAboutSource, /generateAboutImageAssets/);
     assert.match(buildAboutSource, /__TITLE_WEBP_SRCSET__/);
@@ -111,6 +136,7 @@ await runTest("about build uses constrained Markdown and generated responsive im
 });
 
 await runTest("about title, screenshot, and font assets live with the about page source", () => {
+    assert.equal(existsSync(join(aboutDir, "footer.md")), true);
     assert.equal(existsSync(join(aboutDir, "assets", "title.png")), true);
     assert.equal(existsSync(join(aboutDir, "assets", "ms-pac-man-2010-screenshot.png")), true);
     assert.equal(existsSync(join(aboutDir, "assets", "fonts", "source-sans-3", "SourceSans3VF-Upright.ttf.woff2")), true);

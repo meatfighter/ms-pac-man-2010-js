@@ -16,6 +16,8 @@ export class AttractMode implements IMode {
     public static readonly STATE_BARS = 2;
     public static readonly STATE_STARING = 3;
 
+    public static readonly ATTRIBUTION_TEXT = "2010, 2026 MEATFIGHTER.COM";
+
     private main: Main;
     private whiteEnergizer: Image;
     private dotsOffset = 0;
@@ -177,7 +179,7 @@ export class AttractMode implements IMode {
             this.main.drawString("PRESS START", 456, Main.WHITE);
         }
         this.main.drawString("STARRING", 246, Main.WHITE);
-        this.main.drawString("@ 2010, 2026 MEATFIGHTER.COM", 536, Main.WHITE);
+        this.main.drawString(AttractMode.ATTRIBUTION_TEXT, 536, Main.WHITE);
 
         for (let i = 0; i < this.ghostsVisible; i++) {
             const y = 300 + (i << 5);

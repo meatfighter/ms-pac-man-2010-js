@@ -1,6 +1,6 @@
 /*
  * Ms. Pac-Man 2010
- * Copyright (C) 2010 meatfighter.com
+ * Copyright (C) 2010, 2026 meatfighter.com
  *
  * This file is part of Ms. Pac-Man 2010
  *

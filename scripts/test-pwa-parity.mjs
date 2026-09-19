@@ -43,6 +43,14 @@ const tsAttractMode = readFileSync(join(rootDir, "pwa", "src", "mspacman", "Attr
 const desktopFullscreenInstruction = "SPACE BAR - TOGGLE FULL-SCREEN MODE";
 assert.ok(javaAttractMode.includes(desktopFullscreenInstruction), "Java desktop title screen must retain its Space-bar fullscreen instruction.");
 assert.ok(!tsAttractMode.includes(desktopFullscreenInstruction), "Browser title screen must not advertise the Java desktop Space-bar fullscreen control.");
+assert.match(tsAttractMode, /ATTRIBUTION_TEXT = "2010, 2026 MEATFIGHTER\.COM"/);
+assert.match(tsAttractMode, /drawString\(AttractMode\.ATTRIBUTION_TEXT, 536, Main\.WHITE\)/);
+assert.doesNotMatch(tsAttractMode, /@ 2010, 2026 MEATFIGHTER\.COM/);
+assert.match(javaAttractMode, /ATTRIBUTION_TEXT\s*= "2010, 2026 MEATFIGHTER\.COM"/);
+assert.match(javaAttractMode, /drawString\(ATTRIBUTION_TEXT, 536, Main\.WHITE\)/);
+assert.doesNotMatch(javaAttractMode, /@ 2010, 2026 MEATFIGHTER\.COM/);
+assert.match(tsMain, /this\.drawStringAt\(string, 400 - \(string\.length << 3\), a, b\)/);
+assert.match(javaMain, /drawString\(s, 400 - \(s\.length\(\) << 3\), y, color\)/);
 
 const hotFloatSources = {
     Thing: readFileSync(join(rootDir, "pwa", "src", "mspacman", "Thing.ts"), "utf8"),

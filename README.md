@@ -87,4 +87,5 @@ The embedded HMAC key deters casual tampering; it cannot authenticate legitimate
 - [desktop/README.md](desktop/README.md): Java build and runtime details.
 - [releases/README.md](releases/README.md): desktop ZIP packaging and uploadable artifacts.
 - [LICENSE](LICENSE): source-code license, GPL-3.0-or-later.
+- [COPYRIGHT.md](COPYRIGHT.md): copyright scope and the boundary between original project material and third-party/preexisting game content.
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md): third-party licenses and redistributed components.

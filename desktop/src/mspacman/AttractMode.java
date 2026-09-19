@@ -15,6 +15,9 @@ public class AttractMode implements IMode {
   public static final int STATE_BARS = 2;
   public static final int STATE_STARING = 3;
 
+  public static final String ATTRIBUTION_TEXT
+      = "2010, 2026 MEATFIGHTER.COM";
+
   private Main main;
   private Image whiteEnergizer;
   private float dotsOffset;
@@ -179,7 +182,7 @@ public class AttractMode implements IMode {
       main.drawString("PRESS START", 456, Main.WHITE);
     }
     main.drawString("STARRING", 246, Main.WHITE);
-    main.drawString("@ 2010, 2026 MEATFIGHTER.COM", 536, Main.WHITE);
+    main.drawString(ATTRIBUTION_TEXT, 536, Main.WHITE);
     main.drawString("SPACE BAR - TOGGLE FULL-SCREEN MODE", 488, Main.WHITE);
     
     for(int i = 0; i < ghostsVisible; i++) {

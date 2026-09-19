@@ -66,9 +66,18 @@ try {
 
     const contentMarkdown = renderCheckedTemplate(readFileSync(join(aboutDir, "content.md"), "utf8"), replacements, "about Markdown content");
     const renderedMarkdown = renderAboutMarkdown(contentMarkdown);
+    const footerMarkdown = readFileSync(join(aboutDir, "footer.md"), "utf8");
+    const renderedFooter = renderAboutMarkdown(footerMarkdown);
+    if (renderedFooter.articleHtml.trim() === "") {
+        throw new Error("about/footer.md must not be empty.");
+    }
+    if (renderedFooter.headings.length !== 0) {
+        throw new Error("about/footer.md must not contain headings.");
+    }
     const pageReplacements = {
         ...replacements,
         __ARTICLE_HTML__: prepareAboutArticleHtml(renderedMarkdown),
+        __FOOTER_HTML__: renderedFooter.articleHtml,
         __TOC_HTML__: renderedMarkdown.tocHtml
     };
     const indexHtml = finalizeAboutPageHtml(renderCheckedTemplate(readFileSync(join(aboutDir, "index.html"), "utf8"), pageReplacements, "about index page"));
