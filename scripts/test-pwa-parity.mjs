@@ -20,9 +20,12 @@ for (const info of metadata.classes) {
 
 const javaMain = readFileSync(join(rootDir, "desktop", "src", "mspacman", "Main.java"), "utf8");
 const tsMain = readFileSync(join(rootDir, "pwa", "src", "mspacman", "Main.ts"), "utf8");
+const tsDemoMetadata = readFileSync(join(rootDir, "pwa", "src", "mspacman", "DemoMetadata.ts"), "utf8");
 assert.match(javaMain, /nextFrameTime \+= Sys\.getTimerResolution\(\) \/ 91;/);
 assert.match(tsMain, /nextFrameTime \+= intDiv\(Sys\.getTimerResolution\(\), 91\);/);
 assert.equal(Math.trunc(1000 / 91), 10, "The historical /91 loop must remain the Java 10 ms fixed-step cadence.");
+assert.match(javaMain, /final int\[\] lengths = \{ 4390, 4381, 7539, 3676 \};/);
+assert.match(tsDemoMetadata, /DEMO_LENGTHS = \[4390, 4381, 7539, 3676\] as const/);
 
 // Browser gameplay Pause deliberately uses logical Music transport ownership.
 assert.match(javaMain, /gc\.setMusicOn\(false\)/, "Java desktop retains its legacy global Music-off Pause implementation.");
