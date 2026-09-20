@@ -105,14 +105,16 @@ public class PlayingMode implements IMode {
 
     regionMap = stage.regionMap;
     int energizerLocationsIndex = 0;
-    for(int i = 0; i < 31; i++) {
-      System.arraycopy(stage.tileMap[i], 0, tileMap[i], 0, 28);
-      for(int j = 0; j < 28; j++) {
+    for(int i = 0; i < stage.tileMap.length; i++) {
+      System.arraycopy(stage.tileMap[i], 0, tileMap[i], 0,
+          stage.tileMap[i].length);
+      for(int j = 0; j < stage.tileMap[i].length; j++) {
         int tile = tileMap[i][j];
         switch(tile) {
           case 47:
             typeMap[i][j] = TYPE_EMPTY;
-            if ((i == 0 || i == 31 || j == 0 || j == 27)
+            if ((i == 0 || i == stage.tileMap.length - 1
+                || j == 0 || j == stage.tileMap[i].length - 1)
                 && regionMap[i][j] > 0) {
               fruitTargetEntriesList.add(new int[] { j, i } );
             }
@@ -604,9 +606,9 @@ public class PlayingMode implements IMode {
     } else if (entry[1] == 0) {
       fruitTarget.x = entry[0] << 4;
       fruitTarget.y = -32;
-    } else if (entry[1] == 31) {
+    } else if (entry[1] == tileMap.length - 1) {
       fruitTarget.x = entry[0] << 4;
-      fruitTarget.y = 496;
+      fruitTarget.y = tileMap.length << 4;
     }    
   }
 
