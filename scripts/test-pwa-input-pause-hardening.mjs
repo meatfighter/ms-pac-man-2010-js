@@ -15,6 +15,7 @@ const server = await createServer({
 
 try {
     const { HumanInput } = await server.ssrLoadModule("/src/mspacman/HumanInput.ts");
+    const { RobotInput } = await server.ssrLoadModule("/src/mspacman/RobotInput.ts");
     const { Main } = await server.ssrLoadModule("/src/mspacman/Main.ts");
     const { Input } = await import("slick2d-ts");
 
@@ -45,6 +46,25 @@ try {
             assert.equal(harness.human[method](), true, method);
             assert.equal(harness.keyEdges.size, 0, `${method} must consume the keyboard edge`);
             assert.equal(harness.controlEdges.size, 0, `${method} must consume the controller edge`);
+        }
+    });
+
+    await runTest("RobotInput drains simultaneous Enter and Numpad Enter edges", () => {
+        for (const method of ["isMenuStartPressed", "isConfirmPressed"]) {
+            const keyEdges = new Set([Input.KEY_ENTER, Input.KEY_NUMPADENTER]);
+            const fakeInput = {
+                isKeyPressed(key) {
+                    const pressed = keyEdges.has(key);
+                    keyEdges.delete(key);
+                    return pressed;
+                },
+                clearKeyPressedRecord() {},
+                clearControlPressedRecord() {}
+            };
+            const robot = new RobotInput(new Uint8Array([0]), { getInput: () => fakeInput });
+
+            assert.equal(robot[method](), true, method);
+            assert.equal(keyEdges.size, 0, method + " must consume both confirm-key edges");
         }
     });
 
