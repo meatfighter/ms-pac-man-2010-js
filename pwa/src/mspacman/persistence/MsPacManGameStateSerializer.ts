@@ -1,5 +1,6 @@
 import { Music, isMusicPlaybackSnapshot, isSoundPlaybackSnapshot, type GameContainer, type SoundPlaybackSnapshot } from "slick2d-ts";
 import { isMusicId, isSoundId, musicForId, registeredMusic, registeredSounds } from "../AudioRegistry";
+import { DEMO_LENGTHS } from "../DemoMetadata";
 import type { Main } from "../Main";
 import { EnterInitialsMode } from "../EnterInitialsMode";
 import type { PlayingMode } from "../PlayingMode";
@@ -256,12 +257,16 @@ function isValidRandomSnapshot(value: unknown): value is RandomSnapshot {
 }
 
 function isValidRobotInputs(value: unknown): value is RobotInputSnapshot[] {
-    if (!Array.isArray(value) || value.length !== 4) {
+    if (!Array.isArray(value) || value.length !== DEMO_LENGTHS.length) {
         return false;
     }
-    return value.every((entry) => {
+    return value.every((entry, index) => {
         const snapshot = asRecord(entry);
-        return snapshot !== null && hasExactKeys(snapshot, ROBOT_INPUT_SNAPSHOT_KEYS) && isIntegerInRange(snapshot.index, 0, 100000);
+        return (
+            snapshot !== null &&
+            hasExactKeys(snapshot, ROBOT_INPUT_SNAPSHOT_KEYS) &&
+            isIntegerInRange(snapshot.index, 0, DEMO_LENGTHS[index])
+        );
     });
 }
 
