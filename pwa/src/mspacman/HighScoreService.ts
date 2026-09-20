@@ -41,13 +41,13 @@ export class HighScoreService {
                 return null;
             }
 
-            const key = await getHmacKey();
+            const key = await awaitWithAbort(getHmacKey(), scope.signal);
             if (key === null || !scope.isCurrent()) {
                 return null;
             }
 
             const candidate = { world, score, initials };
-            const checksum = await calculateChecksum(key, candidate);
+            const checksum = await awaitWithAbort(calculateChecksum(key, candidate), scope.signal);
             if (!scope.isCurrent()) {
                 return null;
             }
@@ -161,9 +161,16 @@ async function readBoundedText(response: Response, maxBytes: number, scope: Acti
     const chunks: Uint8Array[] = [];
     let byteCount = 0;
     while (scope.isCurrent()) {
-        const { done, value } = await reader.read();
+        let result: ReadableStreamReadResult<Uint8Array>;
+        try {
+            result = await awaitWithAbort(reader.read(), scope.signal);
+        } catch (error) {
+            void reader.cancel().catch(() => undefined);
+            throw error;
+        }
+        const { done, value } = result;
         if (!scope.isCurrent()) {
-            await reader.cancel().catch(() => undefined);
+            void reader.cancel().catch(() => undefined);
             throw new DOMException("High-score request retired.", "AbortError");
         }
         if (done) {
@@ -172,14 +179,14 @@ async function readBoundedText(response: Response, maxBytes: number, scope: Acti
         if (value !== undefined) {
             byteCount += value.byteLength;
             if (byteCount > maxBytes) {
-                await reader.cancel().catch(() => undefined);
+                void reader.cancel().catch(() => undefined);
                 throw new Error("High-score response was too large.");
             }
             chunks.push(value);
         }
     }
     if (!scope.isCurrent()) {
-        await reader.cancel().catch(() => undefined);
+        void reader.cancel().catch(() => undefined);
         throw new DOMException("High-score request retired.", "AbortError");
     }
 
@@ -190,6 +197,32 @@ async function readBoundedText(response: Response, maxBytes: number, scope: Acti
         offset += chunk.byteLength;
     }
     return new TextDecoder().decode(bytes);
+}
+
+async function awaitWithAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+    if (signal.aborted) {
+        throw signal.reason ?? new DOMException("High-score request aborted.", "AbortError");
+    }
+    return await new Promise<T>((resolve, reject) => {
+        const onAbort = (): void => {
+            cleanup();
+            reject(signal.reason ?? new DOMException("High-score request aborted.", "AbortError"));
+        };
+        const cleanup = (): void => {
+            signal.removeEventListener("abort", onAbort);
+        };
+        signal.addEventListener("abort", onAbort, { once: true });
+        promise.then(
+            (value) => {
+                cleanup();
+                resolve(value);
+            },
+            (error: unknown) => {
+                cleanup();
+                reject(error);
+            }
+        );
+    });
 }
 
 async function getHmacKey(): Promise<CryptoKey | null> {
