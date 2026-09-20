@@ -11,7 +11,6 @@ export const STATE_FIELD_POLICY = {
             "musicVolume",
             "musicVolumeFadeStep",
             "fadeMusicFlag",
-            "uploadComplete",
             "demoIndex",
             "demoMode"
         ],
@@ -31,6 +30,7 @@ export const STATE_FIELD_POLICY = {
             "currentMusic",
             "highScores",
             "scoresDownloadComplete",
+            "uploadComplete",
             "submittedScore",
             "robotInputs",
             "browserSuspended",
