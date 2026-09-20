@@ -120,7 +120,7 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
     }
     const mainFields = snapshot.mainFields;
     const mode = snapshot.mode;
-    if (!isValidFieldBag(mainFields, MAIN_FIELDS) || !isValidModeSnapshot(mode)) {
+    if (!isValidFieldBag(mainFields, MAIN_FIELDS) || !isValidMainFieldState(mainFields) || !isValidModeSnapshot(mode)) {
         return false;
     }
     if (!isValidStageIndexForMode(mainFields.stageIndex, mode.id)) {
@@ -165,18 +165,20 @@ function isValidModeSnapshot(value: unknown): value is CurrentModeSnapshot {
         return (
             hasExactKeys(snapshot, PLAYING_MODE_SNAPSHOT_KEYS) &&
             isValidFieldBag(snapshot.fields, PLAYING_MODE_FIELDS) &&
+            isValidPlayingModeFieldState(snapshot.fields) &&
             isNullableIntegerInRange(snapshot.eatenGhostIndex, 0, 3) &&
             isNullableIntegerInRange(snapshot.inputRobotIndex, 0, 3) &&
-            isValidThingSnapshot(snapshot.mspacman, MSPACMAN_FIELDS) &&
+            isValidThingSnapshot(snapshot.mspacman, MSPACMAN_FIELDS, "mspacman") &&
             isValidGhostSnapshots(snapshot.ghosts) &&
-            isValidFruitTargetSnapshot(snapshot.fruitTarget)
+            isValidFruitTargetSnapshot(snapshot.fruitTarget) &&
+            isValidPlayingObjectRelationships(snapshot as unknown as PlayingModeSnapshot)
         );
     }
     const fields = MODE_FIELDS[snapshot.id];
     if (fields === undefined || !hasExactKeys(snapshot, MODE_SNAPSHOT_KEYS) || !isValidFieldBag(snapshot.fields, fields)) {
         return false;
     }
-    return snapshot.id !== "enterInitials" || isValidEnterInitialsState(snapshot.fields);
+    return isValidStandaloneModeFieldState(snapshot.id, snapshot.fields);
 }
 
 function isValidEnterInitialsState(fields: Record<string, unknown>): boolean {
@@ -195,23 +197,242 @@ function isValidEnterInitialsState(fields: Record<string, unknown>): boolean {
     );
 }
 
-function isValidThingSnapshot(value: unknown, fields: readonly string[]): boolean {
+function isValidThingSnapshot(value: unknown, fields: readonly string[], kind: "mspacman" | "ghost" | "fruit"): boolean {
     const snapshot = asRecord(value);
-    return snapshot !== null && hasExactKeys(snapshot, THING_SNAPSHOT_KEYS) && isValidFieldBag(snapshot.fields, fields);
+    return (
+        snapshot !== null &&
+        hasExactKeys(snapshot, THING_SNAPSHOT_KEYS) &&
+        isValidFieldBag(snapshot.fields, fields) &&
+        isValidThingFieldState(snapshot.fields, kind)
+    );
 }
 
 function isValidGhostSnapshots(value: unknown): boolean {
-    return Array.isArray(value) && value.length === 4 && value.every((entry) => isValidThingSnapshot(entry, GHOST_FIELDS));
+    return (
+        Array.isArray(value) &&
+        value.length === 4 &&
+        value.every((entry, index) => {
+            const snapshot = asRecord(entry);
+            return (
+                isValidThingSnapshot(entry, GHOST_FIELDS, "ghost") &&
+                snapshot !== null &&
+                asRecord(snapshot.fields)?.ghostIndex === index
+            );
+        })
+    );
 }
 
 function isValidFruitTargetSnapshot(value: unknown): value is FruitTargetSnapshot {
     const snapshot = asRecord(value);
+    if (
+        snapshot === null ||
+        !hasExactKeys(snapshot, FRUIT_TARGET_SNAPSHOT_KEYS) ||
+        !isValidFieldBag(snapshot.fields, FRUIT_TARGET_FIELDS) ||
+        !isValidThingFieldState(snapshot.fields, "fruit") ||
+        !(snapshot.exitPath === null || isValidNumberMatrix(snapshot.exitPath, 31, 28, (entry) => isIntegerInRange(entry, 0, 4)))
+    ) {
+        return false;
+    }
+    return snapshot.fields.exiting !== true || snapshot.exitPath !== null;
+}
+
+function isValidMainFieldState(fields: Record<string, unknown>): boolean {
     return (
-        snapshot !== null &&
-        hasExactKeys(snapshot, FRUIT_TARGET_SNAPSHOT_KEYS) &&
-        isValidFieldBag(snapshot.fields, FRUIT_TARGET_FIELDS) &&
-        (snapshot.exitPath === null || isValidNumberMatrix(snapshot.exitPath, 31, 28, (entry) => isIntegerInRange(entry, 0, 4)))
+        isIntegerInRange(fields.worldIndex, 0, 3) &&
+        isIntegerInRange(fields.stageIndex, 0, 8) &&
+        isIntegerInRange(fields.score, 0, 2_147_483_647) &&
+        isIntegerInRange(fields.lives, 0, 6) &&
+        typeof fields.paused === "boolean" &&
+        isFiniteNumberInRange(fields.musicVolume, 0, 1) &&
+        isFiniteNumberInRange(fields.musicVolumeFadeStep, 0, 1) &&
+        typeof fields.fadeMusicFlag === "boolean" &&
+        isIntegerInRange(fields.demoIndex, 0, 3) &&
+        typeof fields.demoMode === "boolean"
     );
+}
+
+function isValidPlayingModeFieldState(fields: Record<string, unknown>): boolean {
+    const pelletCount = fields.pelletCount;
+    const pelletsRemaining = fields.pelletsRemaining;
+    const regionCounts = fields.regionCounts;
+    const spawnFlags = [fields.fruitTargetPresent, fields.redEnergizerPresent, fields.greenEnergizerPresent].filter((value) => value === true).length;
+    return (
+        isFiniteNumberInRange(fields.pelletCountFraction, 0, 1, false) &&
+        isIntegerInRange(pelletCount, 1, 31 * 28) &&
+        isIntegerInRange(pelletsRemaining, 0, pelletCount) &&
+        Array.isArray(regionCounts) &&
+        regionCounts.length > 0 &&
+        regionCounts.length <= 31 * 28 &&
+        regionCounts.every((value) => isIntegerInRange(value, 0, 4)) &&
+        isIntegerInRange(fields.exitIndex, 1, 4) &&
+        isIntegerInRange(fields.exitDelay, 0, 10_000) &&
+        typeof fields.chaseMode === "boolean" &&
+        isIntegerInRange(fields.chaseModeToggleDelay, 0, 20 * 91) &&
+        typeof fields.ghostsBlue === "boolean" &&
+        (fields.ghostsBlueOffset === 0 || fields.ghostsBlueOffset === 2) &&
+        isIntegerInRange(fields.ghostsBlueTimer, 0, 100_000) &&
+        typeof fields.showGhostPoints === "boolean" &&
+        isIntegerInRange(fields.showGhostPointsTimer, 0, 91) &&
+        isIntegerInRange(fields.ghostPointsIndex, -1, 3) &&
+        typeof fields.energizersVisible === "boolean" &&
+        isIntegerInRange(fields.energizersVisibleTimer, 0, 22) &&
+        typeof fields.finished === "boolean" &&
+        isIntegerInRange(fields.finishedTimer, 0, 600) &&
+        typeof fields.finishedWhite === "boolean" &&
+        isIntegerInRange(fields.finishedBlinkTimer, 0, 22) &&
+        typeof fields.fruitTargetPresent === "boolean" &&
+        isIntegerInRange(fields.fruitTargetTimer, 0, 10 * 91) &&
+        typeof fields.redEnergizerPresent === "boolean" &&
+        typeof fields.greenEnergizerPresent === "boolean" &&
+        spawnFlags <= 1 &&
+        isIntegerInRange(fields.energizerTimer, 0, 7 * 91) &&
+        typeof fields.playerKilledFlag === "boolean" &&
+        isIntegerInRange(fields.musicFadeOutTimer, 0, 91) &&
+        typeof fields.playerSpiraling === "boolean" &&
+        isIntegerInRange(fields.spiralTimer, 0, 2 * 91) &&
+        isIntegerInRange(fields.readyTimer, 0, 91) &&
+        typeof fields.stageMessage === "string" &&
+        /^STAGE [1-8] OF 8$/.test(fields.stageMessage) &&
+        isFiniteNumberInRange(fields.fruitOdds, 0, 1) &&
+        isFiniteNumberInRange(fields.redPelletOdds, 0, 1) &&
+        fields.redPelletOdds <= fields.fruitOdds &&
+        isIntegerInRange(fields.exitDelayTarget, 1, 3 * 91) &&
+        isIntegerInRange(fields.fadeIndex, 0, 22) &&
+        isIntegerInRange(fields.fadeState, 0, 2) &&
+        isIntegerInRange(fields.fadeReason, 0, 2) &&
+        typeof fields.gameOver === "boolean" &&
+        isIntegerInRange(fields.gameOverTimer, 0, 5 * 91)
+    );
+}
+
+function isValidPlayingObjectRelationships(snapshot: PlayingModeSnapshot): boolean {
+    const showGhostPoints = snapshot.fields.showGhostPoints === true;
+    if ((snapshot.eatenGhostIndex !== null) !== showGhostPoints) {
+        return false;
+    }
+    if (snapshot.eatenGhostIndex !== null) {
+        const eaten = snapshot.ghosts[snapshot.eatenGhostIndex];
+        if (eaten === undefined || eaten.fields.eyeBalls !== true) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function isValidThingFieldState(fields: unknown, kind: "mspacman" | "ghost" | "fruit"): boolean {
+    const record = asRecord(fields);
+    if (
+        record === null ||
+        !isIntegerInRange(record.x, -64, 512) ||
+        !isIntegerInRange(record.y, -64, 544) ||
+        !isFiniteNumberInRange(record.speed, 0, 10) ||
+        !isFiniteNumberInRange(record.speedRemainder, 0, 1, true) ||
+        !isIntegerInRange(record.direction, 0, 3)
+    ) {
+        return false;
+    }
+    if (kind === "mspacman") {
+        return (
+            isIntegerInRange(record.spriteIndex, 0, 3) &&
+            isIntegerInRange(record.spriteIndexIncrementor, 0, 5) &&
+            typeof record.pellotDampensSpeed === "boolean" &&
+            isIntegerInRange(record.pellotDampensSpeedCount, 0, 10) &&
+            typeof record.corneringEnhancesSpeed === "boolean" &&
+            isIntegerInRange(record.corneringEnhancesSpeedCount, 0, 10) &&
+            typeof record.speedBoost === "boolean" &&
+            isIntegerInRange(record.speedBoostTimer, 0, 7 * 91)
+        );
+    }
+    if (kind === "ghost") {
+        return (
+            typeof record.blue === "boolean" &&
+            typeof record.eyeBalls === "boolean" &&
+            isIntegerInRange(record.ghostIndex, 0, 3) &&
+            isIntegerInRange(record.spriteIndex, 0, 1) &&
+            isIntegerInRange(record.spriteIndexIncrementor, 0, 14) &&
+            isIntegerInRange(record.targetX, -4096, 4096) &&
+            isIntegerInRange(record.targetY, -4096, 4096) &&
+            typeof record.inHome === "boolean" &&
+            typeof record.exitingHome === "boolean" &&
+            typeof record.enteringHome === "boolean"
+        );
+    }
+    return (
+        isIntegerInRange(record.fruitIndex, 0, 6) &&
+        isIntegerInRange(record.yOffset, -16, 16) &&
+        isFiniteNumber(record.yOffsetAngle) &&
+        typeof record.goingAroundHome === "boolean" &&
+        typeof record.clockwise === "boolean" &&
+        isIntegerInRange(record.aroundHomeIndex, 0, 4) &&
+        typeof record.exiting === "boolean" &&
+        isIntegerInRange(record.eatenTimer, 0, 90) &&
+        typeof record.eaten === "boolean"
+    );
+}
+
+function isValidStandaloneModeFieldState(id: Exclude<ModeId, "playing">, fields: Record<string, unknown>): boolean {
+    if (Object.hasOwn(fields, "fadeIndex") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;
+    if (Object.hasOwn(fields, "fadeState") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;
+    if (Object.hasOwn(fields, "fadeIndex2") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;
+    if (Object.hasOwn(fields, "fadeState2") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;
+    if (Object.hasOwn(fields, "topClapperIndex") && !isIntegerInRange(fields.topClapperIndex, 0, 2)) return false;
+    if (Object.hasOwn(fields, "substate") && !isIntegerInRange(fields.substate, 0, 4)) return false;
+    if (Object.hasOwn(fields, "timer") && !isIntegerInRange(fields.timer, 0, 1_000_000)) return false;
+    if (Object.hasOwn(fields, "ghostSpriteIndex") && !isIntegerInRange(fields.ghostSpriteIndex, 0, 1)) return false;
+    if (Object.hasOwn(fields, "ghostSpriteIndexIncrementor") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;
+    if (Object.hasOwn(fields, "chompSpriteIndex") && !isIntegerInRange(fields.chompSpriteIndex, 0, 3)) return false;
+    if (Object.hasOwn(fields, "chompSpriteIndexIncrementor") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;
+    if (Object.hasOwn(fields, "stringIndex") && !isIntegerInRange(fields.stringIndex, 0, 4096)) return false;
+    if (Object.hasOwn(fields, "stringTimer") && !isIntegerInRange(fields.stringTimer, 0, 2 * 91)) return false;
+    if (Object.hasOwn(fields, "tone") && !isIntegerInRange(fields.tone, 0, 1)) return false;
+    if (Object.hasOwn(fields, "mspacmanIndex") && !isIntegerInRange(fields.mspacmanIndex, 0, 2)) return false;
+    if (Object.hasOwn(fields, "pacmanIndex") && !isIntegerInRange(fields.pacmanIndex, 0, 2)) return false;
+
+    switch (id) {
+        case "act1":
+            return isIntegerInRange(fields.state, 0, 2);
+        case "act2":
+            return isIntegerInRange(fields.state, 0, 5);
+        case "act3":
+            return isIntegerInRange(fields.state, 0, 3);
+        case "act4":
+        case "act5":
+        case "act7":
+            return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, "dialogIndex") || isIntegerInRange(fields.dialogIndex, 0, 2));
+        case "act6":
+            return isIntegerInRange(fields.state, 0, 2);
+        case "attract":
+            return (
+                isIntegerInRange(fields.state, 0, 3) &&
+                isIntegerInRange(fields.pressEnterDelay, 0, 35) &&
+                isIntegerInRange(fields.ghostsVisible, 0, 4) &&
+                isIntegerInRange(fields.ticks, 0, 3387) &&
+                isIntegerInRange(fields.countDown, 0, 60)
+            );
+        case "ending":
+            return (
+                isIntegerInRange(fields.state, 0, 3) &&
+                isIntegerInRange(fields.dialogIndex, 0, 14) &&
+                isIntegerInRange(fields.delay, 0, 2 * 91) &&
+                isIntegerInRange(fields.creditsY, -4096, 4096)
+            );
+        case "enterInitials":
+            return isValidEnterInitialsState(fields);
+        case "hallOfFame":
+            return (
+                isIntegerInRange(fields.pressEnterDelay, 0, 35) &&
+                isIntegerInRange(fields.ticks, 0, 911) &&
+                isIntegerInRange(fields.countDown, 0, 60)
+            );
+        case "intro":
+            return true;
+        case "selectWorld":
+            return (
+                isIntegerInRange(fields.selection, 0, 3) &&
+                isIntegerInRange(fields.selectIndex, 0, 22) &&
+                isIntegerInRange(fields.countDown, 0, 60)
+            );
+    }
 }
 
 function isValidMusicSnapshot(value: unknown): value is MusicSnapshot {
@@ -364,12 +585,98 @@ function isFiniteNumber(value: unknown): value is number {
     return typeof value === "number" && Number.isFinite(value);
 }
 
+function isFiniteNumberInRange(value: unknown, min: number, max: number, exclusiveMax: boolean = false): value is number {
+    return isFiniteNumber(value) && value >= min && (exclusiveMax ? value < max : value <= max);
+}
+
 function isIntegerInRange(value: unknown, min: number, max: number): boolean {
     return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
 }
 
 function isNullableIntegerInRange(value: unknown, min: number, max: number): boolean {
     return value === null || isIntegerInRange(value, min, max);
+}
+
+export function isValidSnapshotForLoadedResources(main: Main, snapshot: MsPacManGameStateSnapshot): boolean {
+    if (snapshot.mode.id !== "playing") {
+        return true;
+    }
+    const worldIndex = snapshot.mainFields.worldIndex;
+    const stageIndex = snapshot.mainFields.stageIndex;
+    if (!isIntegerInRange(worldIndex, 0, 3) || !isIntegerInRange(stageIndex, 0, 7)) {
+        return false;
+    }
+    const stage = main.stages?.[worldIndex]?.[stageIndex];
+    if (stage === undefined) {
+        return false;
+    }
+    const fields = snapshot.mode.fields;
+    if (
+        !Number.isInteger(stage.regionCount) ||
+        stage.regionCount <= 0 ||
+        !Number.isInteger(stage.pelletCount) ||
+        stage.pelletCount <= 0 ||
+        !Array.isArray(fields.regionCounts) ||
+        fields.regionCounts.length !== stage.regionCount ||
+        fields.pelletCount !== stage.pelletCount ||
+        fields.stageMessage !== `STAGE ${stageIndex + 1} OF 8`
+    ) {
+        return false;
+    }
+    if (!isValidStageEnergizerLocations(stage.tileMap, fields.energizerLocations)) {
+        return false;
+    }
+    for (let i = 0; i < snapshot.mode.ghosts.length; i++) {
+        if (snapshot.mode.ghosts[i]?.fields.ghostIndex !== i) {
+            return false;
+        }
+    }
+    const fruit = snapshot.mode.fruitTarget;
+    if (fruit.exitPath !== null) {
+        const candidates = fruit.fields.clockwise === true ? stage.rightExitMaps : stage.leftExitMaps;
+        if (!Array.isArray(candidates) || !candidates.some((candidate) => numberMatricesEqual(candidate, fruit.exitPath))) {
+            return false;
+        }
+    }
+    return fruit.fields.exiting !== true || fruit.exitPath !== null;
+}
+
+function isValidStageEnergizerLocations(tileMap: unknown, saved: unknown): boolean {
+    if (!Array.isArray(tileMap) || !Array.isArray(saved)) {
+        return false;
+    }
+    const expected: number[][] = [];
+    for (let y = 0; y < tileMap.length; y++) {
+        const row = tileMap[y];
+        if (!Array.isArray(row)) {
+            return false;
+        }
+        for (let x = 0; x < row.length; x++) {
+            if (row[x] === 49) {
+                expected.push([x, y]);
+            }
+        }
+    }
+    return numberMatricesEqual(expected, saved);
+}
+
+function numberMatricesEqual(a: unknown, b: unknown): boolean {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) {
+        return false;
+    }
+    for (let y = 0; y < a.length; y++) {
+        const rowA = a[y];
+        const rowB = b[y];
+        if (!Array.isArray(rowA) || !Array.isArray(rowB) || rowA.length !== rowB.length) {
+            return false;
+        }
+        for (let x = 0; x < rowA.length; x++) {
+            if (rowA[x] !== rowB[x]) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 export class MsPacManGameStateSerializer {
@@ -392,7 +699,7 @@ export class MsPacManGameStateSerializer {
 
     /** Restore completes synchronously; logical audio is installed before the shell commits its prepared playback generation. */
     public restoreSnapshot(main: Main, gc: GameContainer, snapshot: MsPacManGameStateSnapshot): void {
-        if (!this.isSupportedSnapshot(snapshot)) {
+        if (!this.isSupportedSnapshot(snapshot) || !isValidSnapshotForLoadedResources(main, snapshot)) {
             throw new Error("Unsupported saved game state.");
         }
         const mode = main.getModeForStateRestore(snapshot.mode.id);
