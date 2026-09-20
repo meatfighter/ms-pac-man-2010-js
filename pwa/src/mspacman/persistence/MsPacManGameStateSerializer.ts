@@ -136,6 +136,15 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
         if (mode.id !== "playing" || gameplayPaused || mode.inputRobotIndex === null) {
             return false;
         }
+        const activeDemoIndex = (mainFields.demoIndex + DEMO_LENGTHS.length - 1) % DEMO_LENGTHS.length;
+        if (
+            mode.inputRobotIndex !== activeDemoIndex ||
+            mainFields.stageIndex !== activeDemoIndex ||
+            mainFields.worldIndex !== activeDemoIndex ||
+            mainFields.lives !== 5
+        ) {
+            return false;
+        }
     } else if (mode.id === "playing" && mode.inputRobotIndex !== null) {
         return false;
     }
