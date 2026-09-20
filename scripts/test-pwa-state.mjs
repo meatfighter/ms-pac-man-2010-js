@@ -186,7 +186,37 @@ try {
     const { MsPacManGameStateStore } = await server.ssrLoadModule("/src/mspacman/persistence/MsPacManGameStateStore.ts");
     ({ EnterInitialsMode: EnterInitialsModeClass } = await server.ssrLoadModule("/src/mspacman/EnterInitialsMode.ts"));
     const { createBrowserStorageKeys } = await server.ssrLoadModule("/src/app/BrowserStorageKeys.ts");
+    const { BrowserPreferences } = await server.ssrLoadModule("/src/app/BrowserPreferences.ts");
     const { SoundStore } = await import("slick2d-ts");
+
+    await runTest("browser preferences recheck ownership at every durable write and reset removal", () => {
+        const storage = installMemoryLocalStorage();
+        setTestLocation(STAGE_URL);
+        const keys = createBrowserStorageKeys();
+        storage.setItem(keys.volume, "25");
+        storage.setItem(keys.scaling, "crisp");
+        storage.setItem(keys.fullscreen, "true");
+        storage.setItem(keys.gameState, "protected-save");
+
+        const preferences = new BrowserPreferences();
+
+        assert.equal(preferences.setVolume(0.8, true, () => false), false);
+        assert.equal(storage.getItem(keys.volume), "25");
+        assert.equal(preferences.setScaling("smooth", () => false), false);
+        assert.equal(storage.getItem(keys.scaling), "crisp");
+        assert.equal(preferences.setFullscreen(false, () => false), false);
+        assert.equal(storage.getItem(keys.fullscreen), "true");
+        assert.equal(preferences.clearGameState(() => false), false);
+        assert.equal(storage.getItem(keys.gameState), "protected-save");
+
+        let checks = 0;
+        const resetAuthorized = () => ++checks <= 2;
+        assert.equal(preferences.reset(resetAuthorized), false);
+        assert.equal(storage.getItem(keys.gameState), null, "first reset removal may commit while ownership is valid");
+        assert.equal(storage.getItem(keys.volume), "25", "reset must stop before later keys after ownership revocation");
+        assert.equal(storage.getItem(keys.scaling), "crisp");
+        assert.equal(storage.getItem(keys.fullscreen), "true");
+    });
 
     await runTest("save inspection rejects malformed and invalid snapshots without deleting them", () => {
         const storage = installMemoryLocalStorage();
