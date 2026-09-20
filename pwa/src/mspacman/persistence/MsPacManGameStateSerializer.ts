@@ -1,6 +1,7 @@
 import { Music, isMusicPlaybackSnapshot, isSoundPlaybackSnapshot, type GameContainer, type SoundPlaybackSnapshot } from "slick2d-ts";
 import { isMusicId, isSoundId, musicForId, registeredMusic, registeredSounds } from "../AudioRegistry";
 import type { Main } from "../Main";
+import { EnterInitialsMode } from "../EnterInitialsMode";
 import type { PlayingMode } from "../PlayingMode";
 import {
     GAME_STATE_VERSION,
@@ -363,8 +364,13 @@ export class MsPacManGameStateSerializer {
         if (fields === undefined) {
             throw new Error(`Unsupported mode for restore: ${snapshot.id}`);
         }
-        this.restoreFields(main.getModeForStateRestore(snapshot.id), snapshot.fields, fields);
+        const mode = main.getModeForStateRestore(snapshot.id);
+        this.restoreFields(mode, snapshot.fields, fields);
         if (snapshot.id === "enterInitials") {
+            if (!(mode instanceof EnterInitialsMode)) {
+                throw new Error("Enter Initials save state did not restore into EnterInitialsMode.");
+            }
+            mode.reconcileStateAfterRestore();
             this.restoreSubmittedInitials(main, snapshot);
         }
     }
