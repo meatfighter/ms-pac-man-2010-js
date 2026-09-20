@@ -77,7 +77,7 @@
         "run:desktop": "node scripts/run-desktop.mjs",
         "generate:resource-versions": "node scripts/generate-resource-versions.mjs",
         "check:resource-versions": "node scripts/generate-resource-versions.mjs --check",
-        "test:pwa-tech-debt": "node scripts/test-pwa-tech-debt.mjs",
+        "test:pwa-tech-debt": "node scripts/test-pwa-tech-debt.mjs && node scripts/test-fruit-entry-boundaries.mjs",
         "test:pwa-machinery-hardening": "node scripts/test-pwa-machinery-hardening.mjs && node scripts/test-pwa-input-pause-hardening.mjs",
         "test:fullscreen-settings-hardening": "node --test scripts/test-fullscreen-settings-hardening.mjs",
         "verify:browser": "node scripts/run-browser-verification.mjs",
