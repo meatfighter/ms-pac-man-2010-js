@@ -123,6 +123,11 @@ export class EnterInitialsMode implements IMode {
         }
     }
 
+    public reconcileStateAfterRestore(): void {
+        this.updateStrings();
+        this.newScoreOf = `YOU ACHIEVED A SCORE OF ${this.main.score}.`;
+    }
+
     public render(gc: GameContainer, g: Graphics): void {
         if (this.enterPressed) {
             this.main.drawString("UPLOADING HIGH SCORE...", 292, Main.YELLOW);
