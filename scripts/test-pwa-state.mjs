@@ -381,8 +381,36 @@ try {
 
         const validDemo = clone(playingSnapshot);
         validDemo.mainFields.demoMode = true;
+        validDemo.mainFields.demoIndex = 1;
+        validDemo.mainFields.worldIndex = 0;
+        validDemo.mainFields.stageIndex = 0;
+        validDemo.mainFields.lives = 5;
         validDemo.mode.inputRobotIndex = 0;
         assert.equal(serializer.isSupportedSnapshot(validDemo), true);
+
+        const wrongDemoInput = clone(validDemo);
+        wrongDemoInput.mode.inputRobotIndex = 1;
+        assert.equal(serializer.isSupportedSnapshot(wrongDemoInput), false);
+
+        const wrongDemoStage = clone(validDemo);
+        wrongDemoStage.mainFields.stageIndex = 1;
+        assert.equal(serializer.isSupportedSnapshot(wrongDemoStage), false);
+
+        const wrongDemoWorld = clone(validDemo);
+        wrongDemoWorld.mainFields.worldIndex = 1;
+        assert.equal(serializer.isSupportedSnapshot(wrongDemoWorld), false);
+
+        const wrongDemoLives = clone(validDemo);
+        wrongDemoLives.mainFields.lives = 4;
+        assert.equal(serializer.isSupportedSnapshot(wrongDemoLives), false);
+
+        const wrappedDemo = clone(validDemo);
+        wrappedDemo.mainFields.demoIndex = 0;
+        wrappedDemo.mainFields.worldIndex = 3;
+        wrappedDemo.mainFields.stageIndex = 3;
+        wrappedDemo.mainFields.lives = 5;
+        wrappedDemo.mode.inputRobotIndex = 3;
+        assert.equal(serializer.isSupportedSnapshot(wrappedDemo), true);
 
         const terminalDemoCursor = clone(playingSnapshot);
         terminalDemoCursor.robotInputs[0].index = 4390;
