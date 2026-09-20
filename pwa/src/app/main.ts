@@ -85,6 +85,10 @@ function canActivateFromMenu(): boolean {
     );
 }
 
+function currentPreferenceWriteAuthorized(): boolean {
+    return ownership.owned;
+}
+
 function isCurrentGameSession(generation: number): boolean {
     return sessionCleanup.safe && sessionGeneration.isCurrent(generation) && ownership.isCurrent(gameOwnershipEpoch);
 }
@@ -196,7 +200,7 @@ function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: stri
         if (fullscreenSwitch.disabled) {
             return;
         }
-        preferences.setFullscreen(!preferences.fullscreen);
+        preferences.setFullscreen(!preferences.fullscreen, currentPreferenceWriteAuthorized);
         updateFullscreenUi(fullscreenSwitch);
     });
     if (fullscreenSwitch) {
@@ -274,12 +278,12 @@ function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: stri
 
     volumeInput?.addEventListener("input", () => {
         volume = Number(volumeInput.value) / 100;
-        preferences.setVolume(volume, false);
+        preferences.setVolume(volume, false, currentPreferenceWriteAuthorized);
         updateVolumeUi(volumeInput, volumeValue);
         applyVolume();
     });
     volumeInput?.addEventListener("change", () => {
-        preferences.setVolume(volume, true);
+        preferences.setVolume(volume, true, currentPreferenceWriteAuthorized);
     });
     if (volumeInput) {
         updateVolumeUi(volumeInput, volumeValue);
@@ -570,7 +574,7 @@ function refreshVisibleBootProgress(): void {
 
 function setScalingPreference(value: ScalingPreference): void {
     scalingPreference = value;
-    preferences.setScaling(value);
+    preferences.setScaling(value, currentPreferenceWriteAuthorized);
     activeScalableGame?.setScalingPreference(value);
     viewport.scheduleResize();
 }
@@ -866,14 +870,14 @@ function hasPotentialSavedGameState(): boolean {
 }
 
 function clearStoredGameState(): void {
-    if (!ownership.owned) {
+    if (!currentPreferenceWriteAuthorized()) {
         return;
     }
     const store = getLoadedGameStateStore();
     if (store !== null) {
-        store.clear();
+        store.clear(currentPreferenceWriteAuthorized);
     } else {
-        preferences.clearGameState();
+        preferences.clearGameState(currentPreferenceWriteAuthorized);
     }
 }
 
@@ -885,7 +889,7 @@ function resetPwaState(): void {
         return;
     }
     pwaSessionState = "menu";
-    preferences.reset();
+    preferences.reset(currentPreferenceWriteAuthorized);
     gameStateStore = null;
     volume = DEFAULT_VOLUME;
     scalingPreference = DEFAULT_SCALING_PREFERENCE;
