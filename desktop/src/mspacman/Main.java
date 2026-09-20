@@ -171,6 +171,25 @@ public class Main extends BasicGame {
     ((HumanInput)input).beginFrame();
     applyPendingRemoteScores();
     updateMouseCursorAutoHide();
+
+    if (paused) {
+      if (isGameplayPauseTogglePressed()) {
+        paused = false;
+        markMouseInput(System.currentTimeMillis());
+        gc.setMusicOn(true);
+      }
+      resetNextFrameTime();
+      return;
+    }
+    if (isGameplayPauseTogglePressed()) {
+      paused = true;
+      markMouseInput(System.currentTimeMillis());
+      stopAllSoundEffects();
+      gc.setMusicOn(false);
+      resetNextFrameTime();
+      return;
+    }
+
     if (fadeMusic) {
       musicVolume -= musicVolumeFadeStep;
       if (musicVolume <= 0) {
@@ -181,24 +200,16 @@ public class Main extends BasicGame {
         currentMusic.setVolume(musicVolume);
       }
     }
-    if (paused) {
-      if (isGameplayPauseTogglePressed()) {
-        paused = false;
-        markMouseInput(System.currentTimeMillis());
-        gc.setMusicOn(true);
-      }
-      resetNextFrameTime();
-      return;
-    } else if (isGameplayPauseTogglePressed()) {
-      paused = true;
-      markMouseInput(System.currentTimeMillis());
-      stopAllSoundEffects();
-      gc.setMusicOn(false);
-    }
+
     int count = 0;
     while(nextFrameTime < Sys.getTime()) {
       fullScreenToggleCheck(gc);
-      mode.update(gc);
+      IMode updatingMode = mode;
+      updatingMode.update(gc);
+      if (paused || mode != updatingMode) {
+        resetNextFrameTime();
+        break;
+      }
       nextFrameTime += Sys.getTimerResolution() / 91;
       if (++count == 8) {
         resetNextFrameTime();
@@ -229,7 +240,9 @@ public class Main extends BasicGame {
     if (mode != Main.playingMode || demoMode) {
       return false;
     }
-    return input.isPausePressed() || input.isGameplayStartPressed();
+    boolean explicitPause = input.isPausePressed();
+    boolean startPause = input.isGameplayStartPressed();
+    return explicitPause || startPause;
   }
 
   private boolean isFullscreenDisplayActive(GameContainer gc) {
