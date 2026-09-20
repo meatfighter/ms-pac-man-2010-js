@@ -161,7 +161,26 @@ function isValidModeSnapshot(value: unknown): value is CurrentModeSnapshot {
         );
     }
     const fields = MODE_FIELDS[snapshot.id];
-    return fields !== undefined && hasExactKeys(snapshot, MODE_SNAPSHOT_KEYS) && isValidFieldBag(snapshot.fields, fields);
+    if (fields === undefined || !hasExactKeys(snapshot, MODE_SNAPSHOT_KEYS) || !isValidFieldBag(snapshot.fields, fields)) {
+        return false;
+    }
+    return snapshot.id !== "enterInitials" || isValidEnterInitialsState(snapshot.fields);
+}
+
+function isValidEnterInitialsState(fields: Record<string, unknown>): boolean {
+    const initials = fields.initials;
+    const editingIndex = fields.editingIndex;
+    const blinkTimer = fields.blinkTimer;
+    const enterPressed = fields.enterPressed;
+    return (
+        typeof initials === "string" &&
+        initials.length === 3 &&
+        /^[A-Z ]{3}$/.test(initials) &&
+        isIntegerInRange(editingIndex, 0, 2) &&
+        isIntegerInRange(blinkTimer, 0, 44) &&
+        typeof enterPressed === "boolean" &&
+        (!enterPressed || editingIndex === 2)
+    );
 }
 
 function isValidThingSnapshot(value: unknown, fields: readonly string[]): boolean {
