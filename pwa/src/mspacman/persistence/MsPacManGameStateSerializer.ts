@@ -94,7 +94,7 @@ const NUMBER_ARRAY_FIELD_NAMES = new Set<string>(["regionCounts"]);
 const INTEGER_FIELD_RANGES = new Map<string, readonly [number, number]>([
     ["ghostsVisible", [0, 4]],
     ["worldIndex", [0, 3]],
-    ["stageIndex", [0, 7]],
+    ["stageIndex", [0, 8]],
     ["demoIndex", [0, 3]],
     ["direction", [0, 3]],
     ["ghostIndex", [0, 3]],
@@ -121,6 +121,9 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
     const mainFields = snapshot.mainFields;
     const mode = snapshot.mode;
     if (!isValidFieldBag(mainFields, MAIN_FIELDS) || !isValidModeSnapshot(mode)) {
+        return false;
+    }
+    if (!isValidStageIndexForMode(mainFields.stageIndex, mode.id)) {
         return false;
     }
     const music = snapshot.music;
@@ -322,6 +325,39 @@ function hasExactKeys(record: Record<string, unknown>, keys: readonly string[]):
 
 function isModeId(value: unknown): value is ModeId {
     return typeof value === "string" && (MODE_IDS as readonly string[]).includes(value);
+}
+
+export function isValidStageIndexForMode(stageIndex: unknown, modeId: ModeId): boolean {
+    if (!isIntegerInRange(stageIndex, 0, 8)) {
+        return false;
+    }
+    switch (modeId) {
+        case "playing":
+            return stageIndex <= 7;
+        case "act1":
+            return stageIndex === 1;
+        case "act2":
+            return stageIndex === 2;
+        case "act3":
+            return stageIndex === 3;
+        case "act4":
+            return stageIndex === 4;
+        case "act5":
+            return stageIndex === 5;
+        case "act6":
+            return stageIndex === 6;
+        case "act7":
+            return stageIndex === 7;
+        case "ending":
+            return stageIndex === 8;
+        case "attract":
+        case "intro":
+            return stageIndex === 0;
+        case "enterInitials":
+        case "hallOfFame":
+        case "selectWorld":
+            return true;
+    }
 }
 
 function isFiniteNumber(value: unknown): value is number {
