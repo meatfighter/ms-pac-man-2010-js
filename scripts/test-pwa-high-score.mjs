@@ -178,6 +178,37 @@ try {
         resetHighScoreServiceForTesting();
     });
 
+    await runTest("caller cancellation returns even when HMAC import never settles", async () => {
+        resetHighScoreServiceForTesting();
+        const calls = installFetch(() => jsonResponse([], PROTOCOL_VERSION));
+        Object.defineProperty(globalThis, "crypto", {
+            configurable: true,
+            value: {
+                subtle: {
+                    importKey() {
+                        return new Promise(() => undefined);
+                    },
+                    sign() {
+                        throw new Error("sign must not run after retirement");
+                    }
+                }
+            }
+        });
+        const controller = new AbortController();
+        const operation = HighScoreService.submitScore(0, 123450, "MJB", { signal: controller.signal });
+        await Promise.resolve();
+        controller.abort();
+
+        const result = await Promise.race([
+            operation,
+            new Promise((_, reject) => setTimeout(() => reject(new Error("retired HMAC import did not return")), 250))
+        ]);
+        assert.equal(result, null);
+        assert.equal(calls.length, 0);
+        restoreCrypto();
+        resetHighScoreServiceForTesting();
+    });
+
     await runTest("caller cancellation during signing prevents a late POST", async () => {
         resetHighScoreServiceForTesting();
         const calls = installFetch(() => jsonResponse([], PROTOCOL_VERSION));
