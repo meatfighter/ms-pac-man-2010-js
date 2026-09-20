@@ -181,9 +181,8 @@ const server = await createServer({
 });
 
 try {
-    const { MsPacManGameStateSerializer, isValidMsPacManGameStateSnapshot, isValidStageIndexForMode } = await server.ssrLoadModule(
-        "/src/mspacman/persistence/MsPacManGameStateSerializer.ts"
-    );
+    const { MsPacManGameStateSerializer, isValidMsPacManGameStateSnapshot, isValidSnapshotForLoadedResources, isValidStageIndexForMode } =
+        await server.ssrLoadModule("/src/mspacman/persistence/MsPacManGameStateSerializer.ts");
     const { MsPacManGameStateStore } = await server.ssrLoadModule("/src/mspacman/persistence/MsPacManGameStateStore.ts");
     ({ EnterInitialsMode: EnterInitialsModeClass } = await server.ssrLoadModule("/src/mspacman/EnterInitialsMode.ts"));
     const { createBrowserStorageKeys } = await server.ssrLoadModule("/src/app/BrowserStorageKeys.ts");
@@ -400,6 +399,125 @@ try {
             APP_VERSION
         );
         assert.equal(serializer.isSupportedSnapshot(postEndingInitials), true);
+    });
+
+    await runTest("playing snapshot validator rejects impossible numeric and relationship states", () => {
+        const serializer = new MsPacManGameStateSerializer();
+        const valid = serializer.createSnapshot(createFakeMain("playing", "source"), APP_VERSION);
+        assert.equal(serializer.isSupportedSnapshot(valid), true);
+
+        const fractionalScore = clone(valid);
+        fractionalScore.mainFields.score = 10.5;
+        assert.equal(serializer.isSupportedSnapshot(fractionalScore), false);
+
+        const excessiveLives = clone(valid);
+        excessiveLives.mainFields.lives = 7;
+        assert.equal(serializer.isSupportedSnapshot(excessiveLives), false);
+
+        const invalidVolume = clone(valid);
+        invalidVolume.mainFields.musicVolume = 1.01;
+        assert.equal(serializer.isSupportedSnapshot(invalidVolume), false);
+
+        const excessiveRemaining = clone(valid);
+        excessiveRemaining.mode.fields.pelletsRemaining = excessiveRemaining.mode.fields.pelletCount + 1;
+        assert.equal(serializer.isSupportedSnapshot(excessiveRemaining), false);
+
+        const invalidRegionCount = clone(valid);
+        invalidRegionCount.mode.fields.regionCounts[0] = 5;
+        assert.equal(serializer.isSupportedSnapshot(invalidRegionCount), false);
+
+        const invalidFadeState = clone(valid);
+        invalidFadeState.mode.fields.fadeState = 3;
+        assert.equal(serializer.isSupportedSnapshot(invalidFadeState), false);
+
+        const invalidStageMessage = clone(valid);
+        invalidStageMessage.mode.fields.stageMessage = "READY!";
+        assert.equal(serializer.isSupportedSnapshot(invalidStageMessage), false);
+
+        const conflictingSpawn = clone(valid);
+        conflictingSpawn.mode.fields.redEnergizerPresent = true;
+        assert.equal(serializer.isSupportedSnapshot(conflictingSpawn), false);
+
+        const invalidRemainder = clone(valid);
+        invalidRemainder.mode.mspacman.fields.speedRemainder = 1;
+        assert.equal(serializer.isSupportedSnapshot(invalidRemainder), false);
+
+        const invalidSprite = clone(valid);
+        invalidSprite.mode.mspacman.fields.spriteIndex = 4;
+        assert.equal(serializer.isSupportedSnapshot(invalidSprite), false);
+
+        const swappedGhostIdentity = clone(valid);
+        swappedGhostIdentity.mode.ghosts[0].fields.ghostIndex = 1;
+        assert.equal(serializer.isSupportedSnapshot(swappedGhostIdentity), false);
+
+        const missingEatenGhost = clone(valid);
+        missingEatenGhost.mode.eatenGhostIndex = null;
+        assert.equal(serializer.isSupportedSnapshot(missingEatenGhost), false);
+
+        const eatenGhostWithoutEyes = clone(valid);
+        eatenGhostWithoutEyes.mode.ghosts[eatenGhostWithoutEyes.mode.eatenGhostIndex].fields.eyeBalls = false;
+        assert.equal(serializer.isSupportedSnapshot(eatenGhostWithoutEyes), false);
+
+        const invalidAroundHome = clone(valid);
+        invalidAroundHome.mode.fruitTarget.fields.aroundHomeIndex = 5;
+        assert.equal(serializer.isSupportedSnapshot(invalidAroundHome), false);
+
+        const invalidEatenTimer = clone(valid);
+        invalidEatenTimer.mode.fruitTarget.fields.eatenTimer = 91;
+        assert.equal(serializer.isSupportedSnapshot(invalidEatenTimer), false);
+
+        const exitingWithoutPath = clone(valid);
+        exitingWithoutPath.mode.fruitTarget.exitPath = null;
+        assert.equal(serializer.isSupportedSnapshot(exitingWithoutPath), false);
+    });
+
+    await runTest("loaded stage resources constrain playing snapshots before restore", () => {
+        const serializer = new MsPacManGameStateSerializer();
+        const main = createFakeMain("playing", "source");
+        const valid = serializer.createSnapshot(main, APP_VERSION);
+        assert.equal(isValidSnapshotForLoadedResources(main, valid), true);
+
+        const wrongRegionShape = clone(valid);
+        wrongRegionShape.mode.fields.regionCounts = [1, 2];
+        assert.equal(isValidSnapshotForLoadedResources(main, wrongRegionShape), false);
+
+        const wrongPelletTotal = clone(valid);
+        wrongPelletTotal.mode.fields.pelletCount = 9;
+        wrongPelletTotal.mode.fields.pelletsRemaining = 8;
+        assert.equal(serializer.isSupportedSnapshot(wrongPelletTotal), true, "pure shape does not own resource pellet totals");
+        assert.equal(isValidSnapshotForLoadedResources(main, wrongPelletTotal), false);
+
+        const wrongStageLabel = clone(valid);
+        wrongStageLabel.mode.fields.stageMessage = "STAGE 4 OF 8";
+        assert.equal(serializer.isSupportedSnapshot(wrongStageLabel), true, "label is structurally valid but belongs to another stage");
+        assert.equal(isValidSnapshotForLoadedResources(main, wrongStageLabel), false);
+
+        const wrongEnergizerLocation = clone(valid);
+        wrongEnergizerLocation.mode.fields.energizerLocations[0] = [2, 1];
+        assert.equal(serializer.isSupportedSnapshot(wrongEnergizerLocation), true);
+        assert.equal(isValidSnapshotForLoadedResources(main, wrongEnergizerLocation), false);
+
+        const foreignExitPath = clone(valid);
+        foreignExitPath.mode.fruitTarget.exitPath = createMatrix(31, 28, 4);
+        assert.equal(serializer.isSupportedSnapshot(foreignExitPath), true);
+        assert.equal(isValidSnapshotForLoadedResources(main, foreignExitPath), false);
+    });
+
+    await runTest("resource-invalid restore is rejected before destructive or partial mutation", () => {
+        const serializer = new MsPacManGameStateSerializer();
+        const source = createFakeMain("playing", "source");
+        const target = createFakeMain("playing", "target");
+        const snapshot = serializer.createSnapshot(source, APP_VERSION);
+        snapshot.mode.fields.pelletCount = 9;
+        snapshot.mode.fields.pelletsRemaining = 8;
+        assert.equal(serializer.isSupportedSnapshot(snapshot), true);
+        assert.equal(isValidSnapshotForLoadedResources(target, snapshot), false);
+
+        const before = pickFields(target, MAIN_FIELDS);
+        assert.throws(() => serializer.restoreSnapshot(target, createGameContainer(), snapshot), /Unsupported saved game state/);
+        assert.deepEqual(pickFields(target, MAIN_FIELDS), before);
+        assert.equal(target.stopAllSoundsCalls, 0, "validation must complete before audio or state teardown");
+        assert.equal(target.input.clearCalls, 0, "validation failure must not consume live input state");
     });
 
     await runTest("shipped fruit exit maps use only the persisted 0..4 direction domain", () => {
