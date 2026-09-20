@@ -37,13 +37,13 @@ import type { IInput } from "./IInput";
 import type { IMode } from "./IMode";
 import { IntroMode } from "./IntroMode";
 import type { ModeId } from "./persistence/GameStateSnapshot";
+import { DEMO_LENGTHS } from "./DemoMetadata";
 import { RobotInput } from "./RobotInput";
 import { SelectWorldMode } from "./SelectWorldMode";
 import { Stage } from "./Stage";
 import { charCode, intDiv, make3D } from "./JavaMath";
 import { PlayingMode } from "./PlayingMode";
 
-const DEMO_LENGTHS = [4390, 4381, 7539, 3676];
 const GHOST_SPRITE_NAMES = ["red", "pink", "cyan", "orange"];
 
 function imageGrid<T>(rows: number, columns: number): T[][] {
