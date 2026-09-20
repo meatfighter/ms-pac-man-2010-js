@@ -36,7 +36,7 @@ import { HumanInput } from "./HumanInput";
 import type { IInput } from "./IInput";
 import type { IMode } from "./IMode";
 import { IntroMode } from "./IntroMode";
-import type { ModeId, SubmittedScoreSnapshot } from "./persistence/GameStateSnapshot";
+import type { ModeId } from "./persistence/GameStateSnapshot";
 import { RobotInput } from "./RobotInput";
 import { SelectWorldMode } from "./SelectWorldMode";
 import { Stage } from "./Stage";
@@ -115,7 +115,7 @@ export class Main extends BasicGame {
     public fadeMusicFlag = false;
     public uploadComplete = false;
     public scoresDownloadComplete = true;
-    public submittedScore: SubmittedScoreSnapshot | null = null;
+    public submittedScore: RemoteHighScore | null = null;
     public robotInputs: RobotInput[] = new Array<RobotInput>(4);
     public demoIndex = 0;
     public demoMode = false;
@@ -545,7 +545,7 @@ export class Main extends BasicGame {
             });
     }
 
-    public accessScoresDatabase(update: boolean, world: number, score: number, initials: string): SubmittedScoreSnapshot | null {
+    public accessScoresDatabase(update: boolean, world: number, score: number, initials: string): RemoteHighScore | null {
         const normalizedInitials = this.normalizeHighScoreInitials(initials);
         if (!update || !isWorld(world) || !isPlausibleScore(score) || !isAllowedInitials(normalizedInitials)) {
             return null;
