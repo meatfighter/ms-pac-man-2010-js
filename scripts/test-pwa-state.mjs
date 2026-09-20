@@ -834,8 +834,8 @@ function createMode(id, variant, options = {}) {
         dotsOffset: alternate ? 9 : 1,
         redOffset: alternate ? 8 : 2,
         fadeIndex: alternate ? 7 : 3,
-        fadeState: alternate ? 6 : 4,
-        state: alternate ? 5 : 1,
+        fadeState: alternate ? 1 : 0,
+        state: alternate ? 3 : 1,
         titleZ: alternate ? 4 : 5,
         titleY: alternate ? 3 : 6,
         titleVy: alternate ? 2 : 7,
@@ -843,7 +843,7 @@ function createMode(id, variant, options = {}) {
         barsY: alternate ? 10 : 9,
         pressEnterDelay: alternate ? 11 : 10,
         pressEnterVisible: !alternate,
-        ghostSpriteIndex: alternate ? 12 : 11,
+        ghostSpriteIndex: alternate ? 1 : 0,
         ghostSpriteIndexIncrementor: alternate ? 13 : 12,
         ghostsVisible: alternate ? 4 : 0,
         ghostX: alternate ? 14 : 13,
@@ -855,7 +855,7 @@ function createMode(id, variant, options = {}) {
 
 function createPlayingMode(main, variant) {
     const mode = {
-        ...createPlayingFields(variant),
+        ...createPlayingFields(variant, main.stageIndex),
         main,
         input: main.input,
         mspacman: createMsPacMan(variant),
@@ -868,28 +868,28 @@ function createPlayingMode(main, variant) {
         leftExitMaps: null,
         rightExitMaps: null
     };
-    mode.eatenGhost = mode.ghosts[2];
+    mode.eatenGhost = mode.showGhostPoints ? mode.ghosts[2] : null;
     return mode;
 }
 
-function createPlayingFields(variant) {
+function createPlayingFields(variant, stageIndex) {
     const alternate = variant === "target";
     return {
-        pelletCountFraction: alternate ? 0.125 : 0.25,
+        pelletCountFraction: alternate ? 1 / 3 : 0.1,
         pelletCount: alternate ? 3 : 10,
-        pelletsRemaining: alternate ? 90 : 180,
+        pelletsRemaining: alternate ? 2 : 8,
         tileMap: createMatrix(31, 28, alternate ? 2 : 1),
         typeMap: createMatrix(31, 28, alternate ? 3 : 0),
-        regionCounts: alternate ? [4, 5, 6] : [1, 2, 3],
+        regionCounts: alternate ? [0, 1, 2] : [1, 2, 1],
         exitIndex: alternate ? 2 : 1,
         exitDelay: alternate ? 6 : 5,
         chaseMode: !alternate,
         chaseModeToggleDelay: alternate ? 8 : 7,
         ghostsBlue: alternate,
-        ghostsBlueOffset: alternate ? 10 : 9,
+        ghostsBlueOffset: alternate ? 2 : 0,
         ghostsBlueTimer: alternate ? 12 : 11,
         showGhostPoints: !alternate,
-        showGhostPointsTimer: alternate ? 14 : 13,
+        showGhostPointsTimer: alternate ? 0 : 13,
         ghostPointsIndex: alternate ? 1 : 2,
         energizerLocations: alternate
             ? [
@@ -907,28 +907,28 @@ function createPlayingFields(variant) {
         energizersVisible: !alternate,
         energizersVisibleTimer: alternate ? 16 : 15,
         finished: alternate,
-        finishedTimer: alternate ? 18 : 17,
-        finishedWhite: !alternate,
-        finishedBlinkTimer: alternate ? 20 : 19,
+        finishedTimer: alternate ? 18 : 0,
+        finishedWhite: alternate,
+        finishedBlinkTimer: alternate ? 20 : 0,
         fruitTargetPresent: !alternate,
         fruitTargetTimer: alternate ? 22 : 21,
         redEnergizerPresent: alternate,
-        greenEnergizerPresent: !alternate,
+        greenEnergizerPresent: false,
         energizerTimer: alternate ? 24 : 23,
         playerKilledFlag: alternate,
-        musicFadeOutTimer: alternate ? 26 : 25,
-        playerSpiraling: !alternate,
-        spiralTimer: alternate ? 28 : 27,
+        musicFadeOutTimer: alternate ? 26 : 0,
+        playerSpiraling: alternate,
+        spiralTimer: alternate ? 28 : 0,
         readyTimer: alternate ? 30 : 29,
-        stageMessage: alternate ? "WAIT" : "READY!",
+        stageMessage: `STAGE ${stageIndex + 1} OF 8`,
         fruitOdds: alternate ? 0.1 : 0.5,
-        redPelletOdds: alternate ? 0.2 : 0.6,
+        redPelletOdds: alternate ? 0.05 : 0.25,
         exitDelayTarget: alternate ? 32 : 31,
-        fadeIndex: alternate ? 34 : 33,
-        fadeState: alternate ? 36 : 35,
-        fadeReason: alternate ? 38 : 37,
+        fadeIndex: alternate ? 22 : 0,
+        fadeState: alternate ? 1 : 0,
+        fadeReason: alternate ? 2 : 1,
         gameOver: alternate,
-        gameOverTimer: alternate ? 40 : 39
+        gameOverTimer: alternate ? 40 : 0
     };
 }
 
@@ -938,14 +938,14 @@ function createMsPacMan(variant) {
         x: alternate ? 10 : 20,
         y: alternate ? 11 : 21,
         speed: alternate ? 1 : 2,
-        speedRemainder: alternate ? 3 : 4,
+        speedRemainder: alternate ? 0.3 : 0.4,
         direction: alternate ? 1 : 3,
-        spriteIndex: alternate ? 5 : 6,
-        spriteIndexIncrementor: alternate ? 7 : 8,
+        spriteIndex: alternate ? 1 : 2,
+        spriteIndexIncrementor: alternate ? 3 : 4,
         pellotDampensSpeed: !alternate,
         pellotDampensSpeedCount: alternate ? 9 : 10,
         corneringEnhancesSpeed: alternate,
-        corneringEnhancesSpeedCount: alternate ? 11 : 12,
+        corneringEnhancesSpeedCount: alternate ? 9 : 8,
         speedBoost: !alternate,
         speedBoostTimer: alternate ? 13 : 14
     };
@@ -957,12 +957,12 @@ function createGhost(index, variant) {
         x: 40 + index + (alternate ? 10 : 0),
         y: 50 + index + (alternate ? 10 : 0),
         speed: alternate ? 1 : 2,
-        speedRemainder: alternate ? 3 : 4,
+        speedRemainder: alternate ? 0.3 : 0.4,
         direction: index % 4,
         blue: alternate,
         eyeBalls: !alternate,
         ghostIndex: index,
-        spriteIndex: alternate ? 5 : 6,
+        spriteIndex: alternate ? 0 : 1,
         spriteIndexIncrementor: alternate ? 7 : 8,
         targetX: alternate ? 9 : 10,
         targetY: alternate ? 11 : 12,
@@ -978,14 +978,14 @@ function createFruitTarget(variant) {
         x: alternate ? 60 : 70,
         y: alternate ? 61 : 71,
         speed: alternate ? 1 : 2,
-        speedRemainder: alternate ? 3 : 4,
+        speedRemainder: alternate ? 0.3 : 0.4,
         direction: alternate ? 2 : 3,
         fruitIndex: alternate ? 4 : 5,
         yOffset: alternate ? 6 : 7,
         yOffsetAngle: alternate ? 8 : 9,
         goingAroundHome: !alternate,
         clockwise: alternate,
-        aroundHomeIndex: alternate ? 10 : 11,
+        aroundHomeIndex: alternate ? 2 : 3,
         exiting: !alternate,
         eatenTimer: alternate ? 12 : 13,
         eaten: alternate,
@@ -1151,12 +1151,26 @@ function createMusic() {
 
 function createStages() {
     return Array.from({ length: 4 }, (_worldValue, world) =>
-        Array.from({ length: 8 }, (_stageValue, stage) => ({
-            regionMap: { world, stage, kind: "region" },
-            homeTree: { world, stage, kind: "home" },
-            leftExitMaps: { world, stage, kind: "left" },
-            rightExitMaps: { world, stage, kind: "right" }
-        }))
+        Array.from({ length: 8 }, (_stageValue, stage) => {
+            const tileMap = createMatrix(31, 28, 47);
+            for (const [x, y] of [
+                [1, 1],
+                [26, 1],
+                [1, 29],
+                [26, 29]
+            ]) {
+                tileMap[y][x] = 49;
+            }
+            return {
+                pelletCount: 10,
+                regionCount: 3,
+                tileMap,
+                regionMap: createMatrix(31, 28, 1),
+                homeTree: { world, stage, kind: "home" },
+                leftExitMaps: [createMatrix(31, 28, 1)],
+                rightExitMaps: [createMatrix(31, 28, 2)]
+            };
+        })
     );
 }
 
