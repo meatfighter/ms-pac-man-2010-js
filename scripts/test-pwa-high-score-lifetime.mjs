@@ -66,6 +66,130 @@ try {
             HighScoreService.submitScore = originalSubmit;
         }
     });
+
+    await runTest("older same-lifetime score download cannot complete or replace a newer download", async () => {
+        const first = deferred();
+        const second = deferred();
+        const contexts = [];
+        let call = 0;
+        const originalDownload = HighScoreService.downloadScores;
+        HighScoreService.downloadScores = (context) => {
+            contexts.push(context);
+            return (call++ === 0 ? first : second).promise;
+        };
+        try {
+            const main = createMain(Main, HighScore);
+            main.downloadScores();
+            main.downloadScores();
+            assert.equal(contexts.length, 2);
+            assert.equal(contexts[0].signal.aborted, true, "superseding a download must abort its predecessor");
+            assert.equal(main.scoresDownloadComplete, false);
+
+            first.resolve([{ world: 0, score: 11110, initials: "OLD" }]);
+            await flush();
+            assert.deepEqual(readWorld(main, 0), emptyWorld());
+            assert.equal(main.scoresDownloadComplete, false, "older completion must not settle the newer operation");
+
+            second.resolve([{ world: 0, score: 22220, initials: "NEW" }]);
+            await flush();
+            assert.deepEqual(readWorld(main, 0)[0], { score: 22220, initials: "NEW" });
+            assert.equal(main.scoresDownloadComplete, true);
+        } finally {
+            HighScoreService.downloadScores = originalDownload;
+        }
+    });
+
+    await runTest("older same-lifetime score submission cannot settle or overwrite a newer submission", async () => {
+        const first = deferred();
+        const second = deferred();
+        const contexts = [];
+        let call = 0;
+        const originalSubmit = HighScoreService.submitScore;
+        HighScoreService.submitScore = (_world, _score, _initials, context) => {
+            contexts.push(context);
+            return (call++ === 0 ? first : second).promise;
+        };
+        try {
+            const main = createMain(Main, HighScore);
+            main.accessScoresDatabaseAsync(true, 0, 123450, "AAA");
+            main.accessScoresDatabaseAsync(true, 0, 223450, "BBB");
+            assert.equal(contexts.length, 2);
+            assert.equal(contexts[0].signal.aborted, true, "superseding a submission must abort its predecessor");
+            assert.equal(main.uploadComplete, false);
+
+            first.resolve([{ world: 0, score: 99990, initials: "OLD" }]);
+            await flush();
+            assert.equal(main.uploadComplete, false);
+            assert.equal(readWorld(main, 0)[0].score, 223450);
+
+            second.resolve([{ world: 0, score: 223450, initials: "BBB" }]);
+            await flush();
+            assert.equal(main.uploadComplete, true);
+            assert.deepEqual(readWorld(main, 0)[0], { score: 223450, initials: "BBB" });
+        } finally {
+            HighScoreService.submitScore = originalSubmit;
+        }
+    });
+
+    await runTest("browser lifetime retirement aborts current score request contexts", async () => {
+        const pendingDownload = deferred();
+        const pendingSubmit = deferred();
+        let downloadContext;
+        let submitContext;
+        const originalDownload = HighScoreService.downloadScores;
+        const originalSubmit = HighScoreService.submitScore;
+        HighScoreService.downloadScores = (context) => {
+            downloadContext = context;
+            return pendingDownload.promise;
+        };
+        HighScoreService.submitScore = (_world, _score, _initials, context) => {
+            submitContext = context;
+            return pendingSubmit.promise;
+        };
+        try {
+            const main = createMain(Main, HighScore);
+            main.downloadScores();
+            main.accessScoresDatabaseAsync(true, 0, 123450, "AAA");
+            assert.equal(downloadContext.signal.aborted, false);
+            assert.equal(submitContext.signal.aborted, false);
+
+            main.invalidateBrowserLifetime();
+
+            assert.equal(downloadContext.signal.aborted, true);
+            assert.equal(submitContext.signal.aborted, true);
+            pendingDownload.resolve([]);
+            pendingSubmit.resolve([]);
+            await flush();
+            assert.equal(main.scoresDownloadComplete, false);
+            assert.equal(main.uploadComplete, false);
+        } finally {
+            HighScoreService.downloadScores = originalDownload;
+            HighScoreService.submitScore = originalSubmit;
+        }
+    });
+
+    await runTest("current remote table is canonical over a restored local-only submitted score", async () => {
+        const pending = deferred();
+        const originalDownload = HighScoreService.downloadScores;
+        HighScoreService.downloadScores = () => pending.promise;
+        try {
+            const main = createMain(Main, HighScore);
+            main.accessScoresDatabase(true, 0, 123450, "LOC");
+            assert.deepEqual(readWorld(main, 0)[0], { score: 123450, initials: "LOC" });
+            assert.deepEqual(main.submittedScore, { world: 0, score: 123450, initials: "LOC" });
+
+            main.downloadScores();
+            pending.resolve([{ world: 0, score: 200000, initials: "SRV" }]);
+            await flush();
+
+            assert.deepEqual(readWorld(main, 0)[0], { score: 200000, initials: "SRV" });
+            assert.equal(main.submittedScore, null);
+            assert.equal(main.scoresDownloadComplete, true);
+        } finally {
+            HighScoreService.downloadScores = originalDownload;
+        }
+    });
+
 } finally {
     restoreEnv("MSPACMAN_SCORE_API_URL", originalApiUrl);
     restoreEnv("MSPACMAN_HMAC_KEY_HEX", originalHmacKey);
