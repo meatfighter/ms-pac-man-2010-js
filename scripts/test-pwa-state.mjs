@@ -28,7 +28,6 @@ const MAIN_FIELDS = [
     "musicVolume",
     "musicVolumeFadeStep",
     "fadeMusicFlag",
-    "uploadComplete",
     "demoIndex",
     "demoMode"
 ];
@@ -297,17 +296,13 @@ try {
         extraModeField.mode.fields.extra = 1;
         assert.equal(serializer.isSupportedSnapshot(extraModeField), false);
 
-        const zeroSubmittedScore = clone(snapshot);
-        zeroSubmittedScore.submittedScore = { world: 0, score: 0, initials: "AAA" };
-        assert.equal(serializer.isSupportedSnapshot(zeroSubmittedScore), false);
+        const obsoleteSubmittedScoreField = clone(snapshot);
+        obsoleteSubmittedScoreField.submittedScore = { world: 0, score: 12340, initials: "AAA" };
+        assert.equal(serializer.isSupportedSnapshot(obsoleteSubmittedScoreField), false);
 
-        const nonMultipleSubmittedScore = clone(snapshot);
-        nonMultipleSubmittedScore.submittedScore = { world: 0, score: 12341, initials: "AAA" };
-        assert.equal(serializer.isSupportedSnapshot(nonMultipleSubmittedScore), false);
-
-        const invalidInitialsSubmittedScore = clone(snapshot);
-        invalidInitialsSubmittedScore.submittedScore = { world: 0, score: 12340, initials: "cat" };
-        assert.equal(serializer.isSupportedSnapshot(invalidInitialsSubmittedScore), false);
+        const obsoleteUploadCompleteField = clone(snapshot);
+        obsoleteUploadCompleteField.mainFields.uploadComplete = true;
+        assert.equal(serializer.isSupportedSnapshot(obsoleteUploadCompleteField), false);
     });
 
     await runTest("shipped fruit exit maps use only the persisted 0..4 direction domain", () => {
@@ -346,8 +341,10 @@ try {
         const savedText = storage.getItem(storageKey);
         assert.notEqual(savedText, null);
         const savedSnapshot = JSON.parse(savedText);
-        assert.equal(savedSnapshot.version, 7);
+        assert.equal(savedSnapshot.version, 8);
         assert.equal("audioSettings" in savedSnapshot, false);
+        assert.equal("submittedScore" in savedSnapshot, false);
+        assert.equal("uploadComplete" in savedSnapshot.mainFields, false);
 
         assert.equal(store.restore(target, gc), true);
         assert.deepEqual(pickFields(target, MAIN_FIELDS), pickFields(source, MAIN_FIELDS));
@@ -505,45 +502,45 @@ try {
         assert.equal(targetMusic.position, 19.5);
     });
 
-    await runTest("restoring an already-recorded submitted score does not submit again", () => {
+    await runTest("submitted-score browser lifetime is absent from durable snapshots", () => {
         const serializer = new MsPacManGameStateSerializer();
         const source = createFakeMain("attract", "source", {
-            score: 12340,
-            worldIndex: 1,
-            highScore: { world: 1, score: 12340, initials: "CAT" },
             submittedScore: { world: 1, score: 12340, initials: "CAT" }
         });
-        const snapshot = serializer.createSnapshot(source, APP_VERSION);
-        assert.deepEqual(snapshot.submittedScore, { world: 1, score: 12340, initials: "CAT" });
+        source.uploadComplete = false;
 
-        const target = createFakeMain("attract", "target", {
-            highScore: { world: 1, score: 12340, initials: "CAT" }
-        });
-        serializer.restoreSnapshot(target, createGameContainer(), snapshot);
-        assert.deepEqual(target.scoreAccessCalls, []);
-        assert.deepEqual(target.submittedScore, { world: 1, score: 12340, initials: "CAT" });
+        const snapshot = serializer.createSnapshot(source, APP_VERSION);
+        assert.equal("submittedScore" in snapshot, false);
+        assert.equal("uploadComplete" in snapshot.mainFields, false);
     });
 
-    await runTest("serializer captures the explicit submitted score when equal-score rows exist", () => {
+    await runTest("restoring a submitted initials screen rebuilds local score progress without replaying browser request state", () => {
         const serializer = new MsPacManGameStateSerializer();
-        const source = createFakeMain("attract", "source", {
+        const source = createFakeMain("enterInitials", "source", {
             score: 12340,
             worldIndex: 1,
-            highScores: [
-                { world: 1, score: 12340, initials: "DOG" },
-                { world: 1, score: 12340, initials: "CAT" }
-            ],
-            submittedScore: { world: 1, score: 12340, initials: "CAT" }
+            initials: "CAT",
+            enterPressed: true
         });
-
         const snapshot = serializer.createSnapshot(source, APP_VERSION);
-        assert.deepEqual(snapshot.submittedScore, { world: 1, score: 12340, initials: "CAT" });
+        assert.equal(snapshot.mode.id, "enterInitials");
+        assert.equal(snapshot.mode.fields.enterPressed, true);
+        assert.equal(snapshot.mode.fields.initials, "CAT");
+        assert.equal("submittedScore" in snapshot, false);
+        assert.equal("uploadComplete" in snapshot.mainFields, false);
 
-        const target = createFakeMain("attract", "target", {
-            highScore: { world: 1, score: 12340, initials: "DOG" }
+        const target = createFakeMain("enterInitials", "target", {
+            score: 12340,
+            worldIndex: 1,
+            initials: "DOG",
+            enterPressed: false
         });
+        target.uploadComplete = false;
         serializer.restoreSnapshot(target, createGameContainer(), snapshot);
+
         assert.deepEqual(target.scoreAccessCalls, [{ upload: true, world: 1, score: 12340, initials: "CAT" }]);
+        assert.deepEqual(target.submittedScore, { world: 1, score: 12340, initials: "CAT" });
+        assert.equal(target.uploadComplete, true, "dead browser submission lifetime must be completed after restore");
     });
 } finally {
     restoreEnv("MSPACMAN_SCORE_API_URL", originalApiUrl);
@@ -628,7 +625,7 @@ function createFakeMain(modeId, variant, options = {}) {
                 return this.playingMode;
             }
             if (!this.restoreModes[id]) {
-                this.restoreModes[id] = createMode(id, variant);
+                this.restoreModes[id] = createMode(id, variant, options);
             }
             return this.restoreModes[id];
         },
@@ -685,11 +682,27 @@ function createMainFields(variant, options) {
     };
 }
 
-function createMode(id, variant) {
+function createMode(id, variant, options = {}) {
+    const alternate = variant === "target";
+    if (id === "enterInitials") {
+        const initials = options.initials ?? (alternate ? "DOG" : "CAT");
+        return {
+            fadeIndex: alternate ? 2 : 1,
+            fadeState: 0,
+            dotsOffset: alternate ? 4 : 3,
+            redOffset: alternate ? 6 : 5,
+            editingIndex: alternate ? 1 : 2,
+            initials,
+            blinkingInitials: " " + initials.substring(1),
+            editVisible: !alternate,
+            blinkTimer: alternate ? 8 : 7,
+            enterPressed: options.enterPressed ?? !alternate,
+            newScoreOf: "YOU ACHIEVED A SCORE OF 12340."
+        };
+    }
     if (id !== "attract") {
         return {};
     }
-    const alternate = variant === "target";
     return {
         dotsOffset: alternate ? 9 : 1,
         redOffset: alternate ? 8 : 2,
