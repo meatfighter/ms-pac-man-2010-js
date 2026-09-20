@@ -119,18 +119,18 @@ export class PlayingMode implements IMode {
 
         this.regionMap = stage.regionMap;
         let energizerLocationsIndex = 0;
-        for (let i = 0; i < 31; i++) {
+        for (let i = 0; i < stage.tileMap.length; i++) {
             const stageTileMapRow = stage.tileMap[i];
             const tileMapRow = this.tileMap[i];
             const typeMapRow = this.typeMap[i];
             const regionMapRow = this.regionMap[i];
-            for (let j = 0; j < 28; j++) {
+            for (let j = 0; j < stageTileMapRow.length; j++) {
                 const tile = stageTileMapRow[j];
                 tileMapRow[j] = tile;
                 switch (tile) {
                     case 47:
                         typeMapRow[j] = PlayingMode.TYPE_EMPTY;
-                        if ((i === 0 || i === 31 || j === 0 || j === 27) && regionMapRow[j] > 0) {
+                        if ((i === 0 || i === stage.tileMap.length - 1 || j === 0 || j === stageTileMapRow.length - 1) && regionMapRow[j] > 0) {
                             fruitTargetEntriesList.push([j, i]);
                         }
                         break;
@@ -667,9 +667,9 @@ export class PlayingMode implements IMode {
         } else if (entry[1] === 0) {
             this.fruitTarget.x = entry[0] << 4;
             this.fruitTarget.y = -32;
-        } else if (entry[1] === 31) {
+        } else if (entry[1] === this.tileMap.length - 1) {
             this.fruitTarget.x = entry[0] << 4;
-            this.fruitTarget.y = 496;
+            this.fruitTarget.y = this.tileMap.length << 4;
         }
     }
 
