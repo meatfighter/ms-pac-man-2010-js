@@ -105,27 +105,39 @@ export class HumanInput implements IInput {
     }
 
     public isUpPressed(): boolean {
-        return this.isAnyKeyPressed(HumanInput.UP_KEYS) || this.isControllerDirectionPressed(2);
+        const keyboardPressed = this.isAnyKeyPressed(HumanInput.UP_KEYS);
+        const controllerPressed = this.isControllerDirectionPressed(2);
+        return keyboardPressed || controllerPressed;
     }
 
     public isDownPressed(): boolean {
-        return this.isAnyKeyPressed(HumanInput.DOWN_KEYS) || this.isControllerDirectionPressed(3);
+        const keyboardPressed = this.isAnyKeyPressed(HumanInput.DOWN_KEYS);
+        const controllerPressed = this.isControllerDirectionPressed(3);
+        return keyboardPressed || controllerPressed;
     }
 
     public isLeftPressed(): boolean {
-        return this.isAnyKeyPressed(HumanInput.LEFT_KEYS) || this.isControllerDirectionPressed(0);
+        const keyboardPressed = this.isAnyKeyPressed(HumanInput.LEFT_KEYS);
+        const controllerPressed = this.isControllerDirectionPressed(0);
+        return keyboardPressed || controllerPressed;
     }
 
     public isRightPressed(): boolean {
-        return this.isAnyKeyPressed(HumanInput.RIGHT_KEYS) || this.isControllerDirectionPressed(1);
+        const keyboardPressed = this.isAnyKeyPressed(HumanInput.RIGHT_KEYS);
+        const controllerPressed = this.isControllerDirectionPressed(1);
+        return keyboardPressed || controllerPressed;
     }
 
     public isMenuStartPressed(): boolean {
-        return this.isAnyKeyPressed(HumanInput.MENU_START_KEYS) || this.isGamepadButtonStartPressed();
+        const keyboardPressed = this.isAnyKeyPressed(HumanInput.MENU_START_KEYS);
+        const controllerPressed = this.isGamepadButtonStartPressed();
+        return keyboardPressed || controllerPressed;
     }
 
     public isConfirmPressed(): boolean {
-        return this.isAnyKeyPressed(HumanInput.CONFIRM_START_KEYS) || this.isGamepadButtonStartPressed();
+        const keyboardPressed = this.isAnyKeyPressed(HumanInput.CONFIRM_START_KEYS);
+        const controllerPressed = this.isGamepadButtonStartPressed();
+        return keyboardPressed || controllerPressed;
     }
 
     public isGameplayStartPressed(): boolean {
