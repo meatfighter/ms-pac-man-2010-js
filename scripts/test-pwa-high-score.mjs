@@ -126,7 +126,7 @@ try {
         assert.equal(canceled, true);
     });
 
-    await runTest("timeout aborts the single score request without retry", async () => {
+    await runTest("request timeout covers the whole operation and can prevent fetch from starting", async () => {
         const calls = [];
         globalThis.window = {
             setTimeout(callback) {
@@ -134,6 +134,85 @@ try {
                 return 1;
             },
             clearTimeout() {}
+        };
+        globalThis.fetch = (_url, init) => {
+            calls.push({ init });
+            return Promise.reject(new Error("fetch should not start after synchronous retirement"));
+        };
+
+        assert.equal(await HighScoreService.downloadScores(), null);
+        assert.equal(calls.length, 0);
+        globalThis.window = originalWindow ?? {
+            setTimeout: globalThis.setTimeout.bind(globalThis),
+            clearTimeout: globalThis.clearTimeout.bind(globalThis)
+        };
+    });
+
+    await runTest("caller cancellation during HMAC import prevents signing and POST", async () => {
+        resetHighScoreServiceForTesting();
+        const calls = installFetch(() => jsonResponse([], PROTOCOL_VERSION));
+        const imported = deferred();
+        let signCalls = 0;
+        Object.defineProperty(globalThis, "crypto", {
+            configurable: true,
+            value: {
+                subtle: {
+                    importKey() {
+                        return imported.promise;
+                    },
+                    sign() {
+                        signCalls++;
+                        return Promise.resolve(new Uint8Array(32).buffer);
+                    }
+                }
+            }
+        });
+        const controller = new AbortController();
+        const operation = HighScoreService.submitScore(0, 123450, "MJB", { signal: controller.signal });
+        controller.abort();
+        imported.resolve({});
+        assert.equal(await operation, null);
+        assert.equal(signCalls, 0);
+        assert.equal(calls.length, 0);
+        restoreCrypto();
+        resetHighScoreServiceForTesting();
+    });
+
+    await runTest("caller cancellation during signing prevents a late POST", async () => {
+        resetHighScoreServiceForTesting();
+        const calls = installFetch(() => jsonResponse([], PROTOCOL_VERSION));
+        const signing = deferred();
+        const signingStarted = deferred();
+        Object.defineProperty(globalThis, "crypto", {
+            configurable: true,
+            value: {
+                subtle: {
+                    importKey() {
+                        return Promise.resolve({});
+                    },
+                    sign() {
+                        signingStarted.resolve();
+                        return signing.promise;
+                    }
+                }
+            }
+        });
+        const controller = new AbortController();
+        const operation = HighScoreService.submitScore(0, 123450, "MJB", { signal: controller.signal });
+        await signingStarted.promise;
+        controller.abort();
+        signing.resolve(new Uint8Array(32).buffer);
+        assert.equal(await operation, null);
+        assert.equal(calls.length, 0);
+        restoreCrypto();
+        resetHighScoreServiceForTesting();
+    });
+
+    await runTest("caller cancellation aborts a fetch already in flight", async () => {
+        const calls = [];
+        globalThis.window = {
+            setTimeout: globalThis.setTimeout.bind(globalThis),
+            clearTimeout: globalThis.clearTimeout.bind(globalThis)
         };
         globalThis.fetch = (_url, init) => {
             calls.push({ init });
@@ -145,13 +224,12 @@ try {
                 init.signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
             });
         };
-
-        assert.equal(await HighScoreService.downloadScores(), null);
+        const controller = new AbortController();
+        const operation = HighScoreService.downloadScores({ signal: controller.signal });
         assert.equal(calls.length, 1);
-        globalThis.window = originalWindow ?? {
-            setTimeout: globalThis.setTimeout.bind(globalThis),
-            clearTimeout: globalThis.clearTimeout.bind(globalThis)
-        };
+        controller.abort();
+        assert.equal(await operation, null);
+        assert.equal(calls[0].init.signal.aborted, true);
     });
 
     await runTest("unavailable WebCrypto returns ordinary submission failure without network retry", async () => {
