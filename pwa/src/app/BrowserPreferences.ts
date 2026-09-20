@@ -11,26 +11,26 @@ export class BrowserPreferences {
     public scaling = this.readScaling();
     public fullscreen = this.readFullscreen();
 
-    public setVolume(value: number, persist = true): boolean {
+    public setVolume(value: number, persist: boolean, isAuthorized: () => boolean): boolean {
         this.volume = BrowserPreferences.clampVolume(value);
-        return !persist || this.write(createBrowserStorageKeys().volume, String(Math.round(this.volume * 100)), "volume");
+        return !persist || this.write(createBrowserStorageKeys().volume, String(Math.round(this.volume * 100)), "volume", isAuthorized);
     }
 
-    public setScaling(value: ScalingPreference): boolean {
+    public setScaling(value: ScalingPreference, isAuthorized: () => boolean): boolean {
         this.scaling = value;
-        return this.write(createBrowserStorageKeys().scaling, value, "scaling preference");
+        return this.write(createBrowserStorageKeys().scaling, value, "scaling preference", isAuthorized);
     }
 
-    public setFullscreen(value: boolean): boolean {
+    public setFullscreen(value: boolean, isAuthorized: () => boolean): boolean {
         this.fullscreen = value;
-        return this.write(createBrowserStorageKeys().fullscreen, String(value), "fullscreen preference");
+        return this.write(createBrowserStorageKeys().fullscreen, String(value), "fullscreen preference", isAuthorized);
     }
 
-    public clearGameState(): boolean {
-        return this.remove(createBrowserStorageKeys().gameState, "saved game");
+    public clearGameState(isAuthorized: () => boolean): boolean {
+        return this.remove(createBrowserStorageKeys().gameState, "saved game", isAuthorized);
     }
 
-    public reset(): boolean {
+    public reset(isAuthorized: () => boolean): boolean {
         const keys = createBrowserStorageKeys();
         let success = true;
         for (const [key, label] of [
@@ -39,7 +39,10 @@ export class BrowserPreferences {
             [keys.scaling, "scaling preference"],
             [keys.fullscreen, "fullscreen preference"]
         ] as const) {
-            success = this.remove(key, label) && success;
+            if (!isAuthorized()) {
+                return false;
+            }
+            success = this.remove(key, label, isAuthorized) && success;
         }
         this.volume = DEFAULT_VOLUME;
         this.scaling = DEFAULT_SCALING_PREFERENCE;
@@ -89,7 +92,10 @@ export class BrowserPreferences {
         return DEFAULT_FULLSCREEN_PREFERENCE;
     }
 
-    private write(key: string, value: string, label: string): boolean {
+    private write(key: string, value: string, label: string, isAuthorized: () => boolean): boolean {
+        if (!isAuthorized()) {
+            return false;
+        }
         try {
             localStorage.setItem(key, value);
             return true;
@@ -99,7 +105,10 @@ export class BrowserPreferences {
         }
     }
 
-    private remove(key: string, label: string): boolean {
+    private remove(key: string, label: string, isAuthorized: () => boolean): boolean {
+        if (!isAuthorized()) {
+            return false;
+        }
         try {
             localStorage.removeItem(key);
             return true;
