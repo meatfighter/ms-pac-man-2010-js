@@ -11,10 +11,8 @@ import {
 import "./styles.css";
 import { GameSessionOwnership } from "./GameSessionOwnership.js";
 import { GameViewportController } from "./GameViewportController.js";
-import { MAX_SNAPSHOT_TEXT_LENGTH } from "./SnapshotLimits.js";
 import { SoundStore, type AppGameContainer, type GameContainer } from "slick2d-ts";
 import { BrowserPreferences, DEFAULT_SCALING_PREFERENCE, DEFAULT_VOLUME, type ScalingPreference } from "./BrowserPreferences";
-import { createBrowserStorageKeys } from "./BrowserStorageKeys";
 import { RuntimeLoader, type PreparedRuntime } from "./RuntimeLoader";
 import { ScreenWakeLockManager } from "./ScreenWakeLockManager.js";
 import { registerServiceWorker } from "./ServiceWorkerRegistrar";
@@ -23,7 +21,6 @@ import { APP_VERSION, CACHE_BUST } from "./version";
 import type { Main as MsPacManMain } from "../mspacman/Main";
 import type { ScalableGame2 } from "../mspacman/ScalableGame2";
 import type { MsPacManGameStateStore } from "../mspacman/persistence/MsPacManGameStateStore";
-import { isValidMsPacManGameStateSnapshot } from "../mspacman/persistence/MsPacManGameStateSerializer";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 const HIGH_DPI_ENABLED = true;
@@ -835,17 +832,16 @@ function destroyGame(): boolean {
 }
 
 function saveCurrentGameState(): boolean {
-    if (!ownership.owned) {
-        return false;
-    }
-    if (!game || !game.isStateSaveReady()) {
+    const mainGame = game;
+    if (!ownership.owned || mainGame === null || !mainGame.isStateSaveReady()) {
         return false;
     }
     const store = getLoadedGameStateStore();
     if (store === null) {
         return false;
     }
-    return store.save(game);
+    const result = store.save(mainGame, () => ownership.owned && game === mainGame);
+    return result.saved;
 }
 
 function getGameStateStore(runtime: PreparedRuntime): MsPacManGameStateStore {
@@ -866,20 +862,19 @@ function getLoadedGameStateStore(): MsPacManGameStateStore | null {
 }
 
 function hasPotentialSavedGameState(): boolean {
-    try {
-        const text = localStorage.getItem(createBrowserStorageKeys().gameState);
-        return text !== null && text.length <= MAX_SNAPSHOT_TEXT_LENGTH && isValidMsPacManGameStateSnapshot(JSON.parse(text) as unknown);
-    } catch {
-        return false;
-    }
+    return getLoadedGameStateStore()?.hasValidSave() ?? false;
 }
 
 function clearStoredGameState(): void {
     if (!ownership.owned) {
         return;
     }
-    preferences.clearGameState();
-    gameStateStore?.clear();
+    const store = getLoadedGameStateStore();
+    if (store !== null) {
+        store.clear();
+    } else {
+        preferences.clearGameState();
+    }
 }
 
 function resetPwaState(): void {
@@ -891,7 +886,7 @@ function resetPwaState(): void {
     }
     pwaSessionState = "menu";
     preferences.reset();
-    gameStateStore?.clear();
+    gameStateStore = null;
     volume = DEFAULT_VOLUME;
     scalingPreference = DEFAULT_SCALING_PREFERENCE;
     applyApplicationAudioPreferences();
