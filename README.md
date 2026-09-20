@@ -62,7 +62,7 @@ For the separate Chromium/Firefox/WebKit qualification, install the browser engi
 - Compare gameplay changes with the corresponding Java source. Preserve useful structural correspondence, fixed-step timing, Java numeric behavior, and random-state behavior.
 - Keep browser storage, networking, presentation, and lifecycle concerns in the browser-support layer where practical.
 - Avoid unnecessary temporary objects and repeated computation in update and render loops. Use the focused tests listed in [package.json](package.json).
-- Before the first public release, development save schemas may be deliberately bumped or reset. Once a public compatibility baseline is declared, preserve unfamiliar public saves and update schema validation/restoration together rather than silently discarding them.
+- The `v1.0.0` release establishes the public save-state compatibility baseline. Future schema changes require an explicit compatibility decision; unfamiliar public saves must not be silently discarded, and schema validation/restoration must be updated together.
 - Regenerate affected resource or parity metadata through the repository scripts and check it before committing.
 - The [slick2d-ts](https://github.com/meatfighter/slick2d-ts) dependency is pinned to an immutable HTTPS commit archive. Update `package.json` and `package-lock.json` together, then verify gameplay and browser behavior against that engine revision.
 
