@@ -303,6 +303,28 @@ try {
         const obsoleteUploadCompleteField = clone(snapshot);
         obsoleteUploadCompleteField.mainFields.uploadComplete = true;
         assert.equal(serializer.isSupportedSnapshot(obsoleteUploadCompleteField), false);
+
+        const validInitials = serializer.createSnapshot(
+            createFakeMain("enterInitials", "source", { initials: "CAT", enterPressed: true }),
+            APP_VERSION
+        );
+        assert.equal(serializer.isSupportedSnapshot(validInitials), true);
+
+        const malformedInitials = clone(validInitials);
+        malformedInitials.mode.fields.initials = "cat";
+        assert.equal(serializer.isSupportedSnapshot(malformedInitials), false);
+
+        const shortInitials = clone(validInitials);
+        shortInitials.mode.fields.initials = "AA";
+        assert.equal(serializer.isSupportedSnapshot(shortInitials), false);
+
+        const impossibleSubmittedCursor = clone(validInitials);
+        impossibleSubmittedCursor.mode.fields.editingIndex = 1;
+        assert.equal(serializer.isSupportedSnapshot(impossibleSubmittedCursor), false);
+
+        const impossibleBlinkTimer = clone(validInitials);
+        impossibleBlinkTimer.mode.fields.blinkTimer = 45;
+        assert.equal(serializer.isSupportedSnapshot(impossibleBlinkTimer), false);
     });
 
     await runTest("shipped fruit exit maps use only the persisted 0..4 direction domain", () => {
