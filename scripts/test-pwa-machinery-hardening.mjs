@@ -89,7 +89,9 @@ test("ownership relinquishment performs the final save before destructive cleanu
     const release = mainSource.slice(mainSource.indexOf("function releaseOwnedSession"), mainSource.indexOf("function showCleanupFailure"));
     const save = mainSource.slice(mainSource.indexOf("function saveCurrentGameState"), mainSource.indexOf("function getGameStateStore"));
     assert.ok(release.indexOf("sessionCleanup.trySave(saveCurrentGameState);") < release.indexOf("destroyGame();"));
-    assert.match(save, /if \(!ownership\.owned\) \{\s*return false;\s*\}/);
+    assert.match(save, /const mainGame = game;/);
+    assert.match(save, /if \(!ownership\.owned \|\| mainGame === null \|\| !mainGame\.isStateSaveReady\(\)\)/);
+    assert.match(save, /store\.save\(mainGame, \(\) => ownership\.owned && game === mainGame\)/);
 });
 
 test("high-score network callbacks are fenced by the Main browser lifetime", () => {
