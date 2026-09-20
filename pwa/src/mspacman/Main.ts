@@ -46,6 +46,77 @@ import { PlayingMode } from "./PlayingMode";
 
 const GHOST_SPRITE_NAMES = ["red", "pink", "cyan", "orange"];
 
+type ScoreRequestKind = "download" | "upload";
+
+interface ScoreRequestState {
+    downloadGeneration: number;
+    uploadGeneration: number;
+    downloadController: AbortController | null;
+    uploadController: AbortController | null;
+}
+
+interface ScoreOperation {
+    readonly controller: AbortController;
+    isCurrent(): boolean;
+    finish(): void;
+}
+
+const scoreRequestStates = new WeakMap<Main, ScoreRequestState>();
+
+function getScoreRequestState(main: Main): ScoreRequestState {
+    let state = scoreRequestStates.get(main);
+    if (state === undefined) {
+        state = {
+            downloadGeneration: 0,
+            uploadGeneration: 0,
+            downloadController: null,
+            uploadController: null
+        };
+        scoreRequestStates.set(main, state);
+    }
+    return state;
+}
+
+function beginScoreOperation(main: Main, kind: ScoreRequestKind, lifetime: number): ScoreOperation {
+    const state = getScoreRequestState(main);
+    const generationKey = kind === "download" ? "downloadGeneration" : "uploadGeneration";
+    const controllerKey = kind === "download" ? "downloadController" : "uploadController";
+    state[controllerKey]?.abort(new DOMException("Superseded high-score operation.", "AbortError"));
+    state[generationKey] = (state[generationKey] + 1) >>> 0;
+    const generation = state[generationKey];
+    const controller = new AbortController();
+    state[controllerKey] = controller;
+
+    const isCurrent = (): boolean =>
+        main.isBrowserLifetimeGenerationCurrent(lifetime) &&
+        state[generationKey] === generation &&
+        state[controllerKey] === controller &&
+        !controller.signal.aborted;
+
+    return {
+        controller,
+        isCurrent,
+        finish(): void {
+            if (isCurrent()) {
+                state[controllerKey] = null;
+            }
+        }
+    };
+}
+
+function retireScoreOperations(main: Main): void {
+    const state = scoreRequestStates.get(main);
+    if (state === undefined) {
+        return;
+    }
+    state.downloadGeneration = (state.downloadGeneration + 1) >>> 0;
+    state.uploadGeneration = (state.uploadGeneration + 1) >>> 0;
+    state.downloadController?.abort(new DOMException("High-score owner retired.", "AbortError"));
+    state.uploadController?.abort(new DOMException("High-score owner retired.", "AbortError"));
+    state.downloadController = null;
+    state.uploadController = null;
+}
+
 function imageGrid<T>(rows: number, columns: number): T[][] {
     const result = new Array<T[]>(rows);
     for (let i = 0; i < rows; i++) {
@@ -393,6 +464,7 @@ export class Main extends BasicGame {
 
     public invalidateBrowserLifetime(): void {
         this.browserLifetimeGeneration++;
+        retireScoreOperations(this);
     }
 
     public captureBrowserLifetimeGeneration(): number {
@@ -512,47 +584,64 @@ export class Main extends BasicGame {
         this.scoresDownloadComplete = false;
         const revision = this.leaderboardRevision;
         const lifetime = this.captureBrowserLifetimeGeneration();
-        void HighScoreService.downloadScores()
-            .then((scores) => {
-                if (!this.isBrowserLifetimeGenerationCurrent(lifetime)) {
-                    return;
-                }
-                if (scores !== null) {
-                    this.applyRemoteScoresIfCurrent(scores, revision);
-                }
-            })
-            .finally(() => {
-                if (this.isBrowserLifetimeGenerationCurrent(lifetime)) {
-                    this.scoresDownloadComplete = true;
-                }
-            });
+        const operation = beginScoreOperation(this, "download", lifetime);
+        void this.runScoreDownload(revision, operation);
     }
 
     public accessScoresDatabaseAsync(update: boolean, world: number, score: number, initials: string): void {
         this.uploadComplete = false;
+        const lifetime = this.captureBrowserLifetimeGeneration();
+        const operation = beginScoreOperation(this, "upload", lifetime);
         const normalizedInitials = this.normalizeHighScoreInitials(initials);
         const submittedScore = this.accessScoresDatabase(update, world, score, normalizedInitials);
         if (submittedScore === null) {
-            this.uploadComplete = true;
+            if (operation.isCurrent()) {
+                this.uploadComplete = true;
+                operation.finish();
+            }
             return;
         }
 
         const revision = this.leaderboardRevision;
-        const lifetime = this.captureBrowserLifetimeGeneration();
-        void HighScoreService.submitScore(submittedScore.world, submittedScore.score, submittedScore.initials)
-            .then((scores) => {
-                if (!this.isBrowserLifetimeGenerationCurrent(lifetime)) {
-                    return;
-                }
-                if (scores !== null) {
-                    this.applyRemoteScoresIfCurrent(scores, revision);
-                }
-            })
-            .finally(() => {
-                if (this.isBrowserLifetimeGenerationCurrent(lifetime)) {
-                    this.uploadComplete = true;
-                }
+        void this.runScoreSubmission(submittedScore, revision, operation);
+    }
+
+    private async runScoreDownload(revision: number, operation: ScoreOperation): Promise<void> {
+        try {
+            const scores = await HighScoreService.downloadScores({
+                signal: operation.controller.signal,
+                isCurrent: operation.isCurrent
             });
+            if (operation.isCurrent() && scores !== null) {
+                this.applyRemoteScoresIfCurrent(scores, revision);
+            }
+        } catch {
+            // High-score networking is best-effort; liveness and completion are handled below.
+        } finally {
+            if (operation.isCurrent()) {
+                this.scoresDownloadComplete = true;
+                operation.finish();
+            }
+        }
+    }
+
+    private async runScoreSubmission(submittedScore: RemoteHighScore, revision: number, operation: ScoreOperation): Promise<void> {
+        try {
+            const scores = await HighScoreService.submitScore(submittedScore.world, submittedScore.score, submittedScore.initials, {
+                signal: operation.controller.signal,
+                isCurrent: operation.isCurrent
+            });
+            if (operation.isCurrent() && scores !== null) {
+                this.applyRemoteScoresIfCurrent(scores, revision);
+            }
+        } catch {
+            // High-score networking is best-effort; liveness and completion are handled below.
+        } finally {
+            if (operation.isCurrent()) {
+                this.uploadComplete = true;
+                operation.finish();
+            }
+        }
     }
 
     public accessScoresDatabase(update: boolean, world: number, score: number, initials: string): RemoteHighScore | null {
@@ -653,6 +742,9 @@ export class Main extends BasicGame {
         if (revision !== this.leaderboardRevision) {
             return;
         }
+        // A current server response is canonical. This intentionally replaces any
+        // best-effort local score reconstructed from a restored submitted-initials
+        // screen; restoration never retries the POST.
         this.applyRemoteScores(scores);
         this.submittedScore = null;
         this.leaderboardRevision++;
