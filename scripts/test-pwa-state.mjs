@@ -204,7 +204,7 @@ try {
         assert.equal(storage.getItem(storageKey), invalidCurrent);
     });
 
-    await runTest("future saves remain untouched by inspection while explicit writes stay explicit", () => {
+    await runTest("future saves are protected until an explicit owned clear", () => {
         const storage = installMemoryLocalStorage();
         const store = new MsPacManGameStateStore(APP_VERSION);
         setTestLocation(STAGE_URL);
@@ -213,12 +213,38 @@ try {
         const futureSnapshot = JSON.stringify({ version: 999, futureShape: true });
         storage.setItem(storageKey, futureSnapshot);
         assert.equal(store.hasValidSave(), false);
+        assert.deepEqual(store.inspectStoredGameState(), { status: "unsupported-future", version: 999 });
         assert.equal(storage.getItem(storageKey), futureSnapshot);
 
-        assert.equal(store.save(createFakeMain("attract", "source")), true);
-        assert.notEqual(storage.getItem(storageKey), futureSnapshot);
-        store.clear();
+        assert.deepEqual(store.save(createFakeMain("attract", "source"), () => true), {
+            saved: false,
+            reason: "unsupported-future"
+        });
+        assert.equal(storage.getItem(storageKey), futureSnapshot);
+
+        assert.equal(store.clear(), true);
         assert.equal(storage.getItem(storageKey), null);
+        assert.deepEqual(store.save(createFakeMain("attract", "source"), () => true), { saved: true });
+        assert.notEqual(storage.getItem(storageKey), null);
+    });
+
+    await runTest("save authority is checked at the Pac storage write boundary", () => {
+        const storage = installMemoryLocalStorage();
+        const store = new MsPacManGameStateStore(APP_VERSION);
+        setTestLocation(STAGE_URL);
+        const storageKey = createBrowserStorageKeys().gameState;
+        const source = createFakeMain("attract", "source");
+
+        assert.deepEqual(store.save(source, () => false), { saved: false, reason: "not-authorized" });
+        assert.equal(storage.getItem(storageKey), null);
+
+        assert.deepEqual(store.save(source, () => true), { saved: true });
+        const previous = storage.getItem(storageKey);
+        assert.notEqual(previous, null);
+
+        const replacement = createFakeMain("attract", "source", { score: 33330 });
+        assert.deepEqual(store.save(replacement, () => false), { saved: false, reason: "not-authorized" });
+        assert.equal(storage.getItem(storageKey), previous);
     });
 
     await runTest("browser storage keys isolate save state by deployment path", () => {
@@ -229,7 +255,7 @@ try {
 
         setTestLocation(STAGE_URL);
         const stageKeys = createBrowserStorageKeys();
-        assert.equal(store.save(stageSource), true);
+        assert.deepEqual(store.save(stageSource, () => true), { saved: true });
         assert.equal(store.hasValidSave(), true);
         const stageSnapshot = storage.getItem(stageKeys.gameState);
         assert.notEqual(stageSnapshot, null);
@@ -238,7 +264,7 @@ try {
         const productionKeys = createBrowserStorageKeys();
         assert.notEqual(stageKeys.gameState, productionKeys.gameState);
         assert.equal(store.hasValidSave(), false);
-        assert.equal(store.save(productionSource), true);
+        assert.deepEqual(store.save(productionSource, () => true), { saved: true });
         const productionSnapshot = storage.getItem(productionKeys.gameState);
         assert.notEqual(productionSnapshot, null);
         assert.notEqual(stageSnapshot, productionSnapshot);
@@ -250,7 +276,7 @@ try {
         assert.equal(storage.getItem(stageKeys.gameState), "{");
         assert.equal(storage.getItem(productionKeys.gameState), productionSnapshot);
 
-        assert.equal(store.save(stageSource), true);
+        assert.deepEqual(store.save(stageSource, () => true), { saved: true });
         assert.notEqual(storage.getItem(stageKeys.gameState), productionSnapshot);
         assert.equal(storage.getItem(productionKeys.gameState), productionSnapshot);
     });
@@ -549,7 +575,7 @@ try {
         const target = createFakeMain("attract", "target");
         const gc = createGameContainer();
 
-        assert.equal(store.save(source), true);
+        assert.deepEqual(store.save(source, () => true), { saved: true });
         assert.equal(store.hasValidSave(), true);
         assert.notEqual(storage.getItem(storageKey), null);
 
@@ -583,7 +609,7 @@ try {
         const source = createFakeMain("attract", "source");
         const target = createFakeMain("attract", "target");
 
-        assert.equal(store.save(source), true);
+        assert.deepEqual(store.save(source, () => true), { saved: true });
         const savedSnapshot = storage.getItem(storageKey);
         assert.notEqual(savedSnapshot, null);
         target.getModeForStateRestore = () => {
