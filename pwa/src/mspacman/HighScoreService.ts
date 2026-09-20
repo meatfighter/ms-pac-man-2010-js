@@ -15,32 +15,52 @@ const REQUEST_TIMEOUT_MS = 5000;
 
 let hmacKeyPromise: Promise<CryptoKey | null> | null = null;
 
+export interface HighScoreRequestContext {
+    readonly signal?: AbortSignal;
+    readonly isCurrent?: () => boolean;
+}
+
+interface ActiveRequestScope {
+    readonly signal: AbortSignal;
+    isCurrent(): boolean;
+}
+
 export class HighScoreService {
-    public static async downloadScores(): Promise<RemoteHighScore[] | null> {
-        return requestScores("GET");
+    public static async downloadScores(context: HighScoreRequestContext = {}): Promise<RemoteHighScore[] | null> {
+        return runScoreOperation(context, (scope) => requestScores("GET", undefined, scope));
     }
 
-    public static async submitScore(world: number, score: number, initials: string): Promise<RemoteHighScore[] | null> {
-        try {
-            if (!isWorld(world) || !isPlausibleScore(score) || !isAllowedInitials(initials)) {
+    public static async submitScore(
+        world: number,
+        score: number,
+        initials: string,
+        context: HighScoreRequestContext = {}
+    ): Promise<RemoteHighScore[] | null> {
+        return runScoreOperation(context, async (scope) => {
+            if (!isWorld(world) || !isPlausibleScore(score) || !isAllowedInitials(initials) || !scope.isCurrent()) {
                 return null;
             }
 
             const key = await getHmacKey();
-            if (key === null) {
+            if (key === null || !scope.isCurrent()) {
                 return null;
             }
 
             const candidate = { world, score, initials };
             const checksum = await calculateChecksum(key, candidate);
-            return requestScores("POST", {
-                protocolVersion: PROTOCOL_VERSION,
-                ...candidate,
-                checksum
-            });
-        } catch {
-            return null;
-        }
+            if (!scope.isCurrent()) {
+                return null;
+            }
+            return requestScores(
+                "POST",
+                {
+                    protocolVersion: PROTOCOL_VERSION,
+                    ...candidate,
+                    checksum
+                },
+                scope
+            );
+        });
     }
 }
 
@@ -57,46 +77,82 @@ export function resetHighScoreServiceForTesting(): void {
     hmacKeyPromise = null;
 }
 
-async function requestScores(method: "GET" | "POST", body?: unknown): Promise<RemoteHighScore[] | null> {
-    try {
-        const controller = new AbortController();
-        const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-        const headers: Record<string, string> = {
-            "MsPacMan-Protocol-Version": String(PROTOCOL_VERSION)
-        };
-        if (method === "POST") {
-            headers["Content-Type"] = "application/json";
-        }
-        try {
-            const request: RequestInit = {
-                method,
-                cache: "no-store",
-                credentials: "omit",
-                headers,
-                signal: controller.signal
-            };
-            if (method === "POST") {
-                request.body = JSON.stringify(body);
-            }
-            const response = await fetch(HIGH_SCORE_URL, request);
+async function runScoreOperation(
+    context: HighScoreRequestContext,
+    operation: (scope: ActiveRequestScope) => Promise<RemoteHighScore[] | null>
+): Promise<RemoteHighScore[] | null> {
+    const controller = new AbortController();
+    const externalSignal = context.signal;
+    const abortFromCaller = (): void => controller.abort(externalSignal?.reason);
+    if (externalSignal?.aborted) {
+        controller.abort(externalSignal.reason);
+    } else {
+        externalSignal?.addEventListener("abort", abortFromCaller, { once: true });
+    }
+    const timeout = window.setTimeout(() => controller.abort(new DOMException("High-score request timed out.", "TimeoutError")), REQUEST_TIMEOUT_MS);
+    const scope: ActiveRequestScope = {
+        signal: controller.signal,
+        isCurrent: () => !controller.signal.aborted && (context.isCurrent?.() ?? true)
+    };
 
-            if (response.status !== 200 || response.headers.get("MsPacMan-Protocol-Version") !== String(PROTOCOL_VERSION)) {
-                return null;
-            }
-            if (!isJsonContentType(response.headers.get("Content-Type"))) {
-                return null;
-            }
-            const text = await readBoundedText(response, MAX_RESPONSE_BYTES);
-            return validateScoresResponse(JSON.parse(text) as unknown);
-        } finally {
-            window.clearTimeout(timeout);
+    try {
+        if (!scope.isCurrent()) {
+            return null;
         }
+        const result = await operation(scope);
+        return scope.isCurrent() ? result : null;
     } catch {
         return null;
+    } finally {
+        window.clearTimeout(timeout);
+        externalSignal?.removeEventListener("abort", abortFromCaller);
     }
 }
 
-async function readBoundedText(response: Response, maxBytes: number): Promise<string> {
+async function requestScores(method: "GET" | "POST", body: unknown, scope: ActiveRequestScope): Promise<RemoteHighScore[] | null> {
+    if (!scope.isCurrent()) {
+        return null;
+    }
+
+    const headers: Record<string, string> = {
+        "MsPacMan-Protocol-Version": String(PROTOCOL_VERSION)
+    };
+    if (method === "POST") {
+        headers["Content-Type"] = "application/json";
+    }
+    const request: RequestInit = {
+        method,
+        cache: "no-store",
+        credentials: "omit",
+        headers,
+        signal: scope.signal
+    };
+    if (method === "POST") {
+        request.body = JSON.stringify(body);
+    }
+    if (!scope.isCurrent()) {
+        return null;
+    }
+
+    const response = await fetch(HIGH_SCORE_URL, request);
+    if (!scope.isCurrent()) {
+        await response.body?.cancel().catch(() => undefined);
+        return null;
+    }
+    if (response.status !== 200 || response.headers.get("MsPacMan-Protocol-Version") !== String(PROTOCOL_VERSION)) {
+        return null;
+    }
+    if (!isJsonContentType(response.headers.get("Content-Type"))) {
+        return null;
+    }
+    const text = await readBoundedText(response, MAX_RESPONSE_BYTES, scope);
+    if (!scope.isCurrent()) {
+        return null;
+    }
+    return validateScoresResponse(JSON.parse(text) as unknown);
+}
+
+async function readBoundedText(response: Response, maxBytes: number, scope: ActiveRequestScope): Promise<string> {
     if (!response.body) {
         throw new Error("Missing response body.");
     }
@@ -104,8 +160,12 @@ async function readBoundedText(response: Response, maxBytes: number): Promise<st
     const reader = response.body.getReader();
     const chunks: Uint8Array[] = [];
     let byteCount = 0;
-    while (true) {
+    while (scope.isCurrent()) {
         const { done, value } = await reader.read();
+        if (!scope.isCurrent()) {
+            await reader.cancel().catch(() => undefined);
+            throw new DOMException("High-score request retired.", "AbortError");
+        }
         if (done) {
             break;
         }
@@ -117,6 +177,10 @@ async function readBoundedText(response: Response, maxBytes: number): Promise<st
             }
             chunks.push(value);
         }
+    }
+    if (!scope.isCurrent()) {
+        await reader.cancel().catch(() => undefined);
+        throw new DOMException("High-score request retired.", "AbortError");
     }
 
     const bytes = new Uint8Array(byteCount);
