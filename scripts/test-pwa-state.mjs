@@ -14,6 +14,7 @@ const originalApiUrl = process.env.MSPACMAN_SCORE_API_URL;
 const originalCacheVersion = process.env.MSPACMAN_CACHE_VERSION;
 const originalHmacKey = process.env.MSPACMAN_HMAC_KEY_HEX;
 const originalLocation = globalThis.location;
+let EnterInitialsModeClass = null;
 
 delete process.env.MSPACMAN_SCORE_API_URL;
 delete process.env.MSPACMAN_CACHE_VERSION;
@@ -184,6 +185,7 @@ try {
         "/src/mspacman/persistence/MsPacManGameStateSerializer.ts"
     );
     const { MsPacManGameStateStore } = await server.ssrLoadModule("/src/mspacman/persistence/MsPacManGameStateStore.ts");
+    ({ EnterInitialsMode: EnterInitialsModeClass } = await server.ssrLoadModule("/src/mspacman/EnterInitialsMode.ts"));
     const { createBrowserStorageKeys } = await server.ssrLoadModule("/src/app/BrowserStorageKeys.ts");
     const { SoundStore } = await import("slick2d-ts");
 
@@ -656,6 +658,8 @@ function createFakeMain(modeId, variant, options = {}) {
         },
         initModeForRestore(mode) {
             this.mode = mode;
+            mode.main = this;
+            mode.input = this.input;
             mode.initCalls = (mode.initCalls ?? 0) + 1;
             this.input.clearKeyPressedRecord();
             this.resetNextFrameTime();
@@ -708,7 +712,8 @@ function createMode(id, variant, options = {}) {
     const alternate = variant === "target";
     if (id === "enterInitials") {
         const initials = options.initials ?? (alternate ? "DOG" : "CAT");
-        return {
+        const mode = EnterInitialsModeClass === null ? {} : Object.create(EnterInitialsModeClass.prototype);
+        Object.assign(mode, {
             fadeIndex: alternate ? 2 : 1,
             fadeState: 0,
             dotsOffset: alternate ? 4 : 3,
@@ -720,7 +725,8 @@ function createMode(id, variant, options = {}) {
             blinkTimer: alternate ? 8 : 7,
             enterPressed: options.enterPressed ?? !alternate,
             newScoreOf: "YOU ACHIEVED A SCORE OF 12340."
-        };
+        });
+        return mode;
     }
     if (id !== "attract") {
         return {};
