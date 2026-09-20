@@ -114,10 +114,22 @@ test("live Continue is scoped to its playback attempt and retained session", () 
 
 test("synchronous post-commit viewport hooks are rechecked before RUNNING", () => {
     const mount = mainSource.slice(mainSource.indexOf("async function mountGame"), mainSource.indexOf("function applyVolume"));
+    const mountPause = mount.indexOf("appContainer.getInput().pause();");
+    const mountStart = mount.indexOf("await appContainer.start();");
     const mountFocus = mount.indexOf("viewport.focusCanvas();");
     const mountGuard = mount.indexOf("if (!isStartingGameSession(generation, audio) || game !== mainGame || container !== appContainer)", mountFocus);
-    const mountRunning = mount.indexOf('pwaSessionState = "running";', mountFocus);
-    assert.ok(mountFocus >= 0 && mountGuard > mountFocus && mountRunning > mountGuard);
+    const mountResume = mount.indexOf("appContainer.getInput().resume();", mountGuard);
+    const mountRunning = mount.indexOf('pwaSessionState = "running";', mountResume);
+    const mountUnsuspend = mount.indexOf("mainGame.setBrowserSuspended(false);", mountRunning);
+    assert.ok(
+        mountPause >= 0 &&
+            mountStart > mountPause &&
+            mountFocus > mountStart &&
+            mountGuard > mountFocus &&
+            mountResume > mountGuard &&
+            mountRunning > mountResume &&
+            mountUnsuspend > mountRunning
+    );
 
     const resume = mainSource.slice(mainSource.indexOf("async function resumeLiveGameFromMenu"), mainSource.indexOf("function removeMenuOverlay"));
     const resumeFocus = resume.indexOf("viewport.focusCanvas();");
