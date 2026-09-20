@@ -181,7 +181,7 @@ const server = await createServer({
 });
 
 try {
-    const { MsPacManGameStateSerializer, isValidMsPacManGameStateSnapshot } = await server.ssrLoadModule(
+    const { MsPacManGameStateSerializer, isValidMsPacManGameStateSnapshot, isValidStageIndexForMode } = await server.ssrLoadModule(
         "/src/mspacman/persistence/MsPacManGameStateSerializer.ts"
     );
     const { MsPacManGameStateStore } = await server.ssrLoadModule("/src/mspacman/persistence/MsPacManGameStateStore.ts");
@@ -362,6 +362,44 @@ try {
         const impossibleBlinkTimer = clone(validInitials);
         impossibleBlinkTimer.mode.fields.blinkTimer = 45;
         assert.equal(serializer.isSupportedSnapshot(impossibleBlinkTimer), false);
+    });
+
+    await runTest("stage index validation follows reachable mode context including completed-world sentinel 8", () => {
+        const serializer = new MsPacManGameStateSerializer();
+
+        assert.equal(isValidStageIndexForMode(7, "playing"), true);
+        assert.equal(isValidStageIndexForMode(8, "playing"), false);
+        assert.equal(isValidStageIndexForMode(1, "act1"), true);
+        assert.equal(isValidStageIndexForMode(2, "act1"), false);
+        assert.equal(isValidStageIndexForMode(7, "act7"), true);
+        assert.equal(isValidStageIndexForMode(8, "ending"), true);
+        assert.equal(isValidStageIndexForMode(7, "ending"), false);
+        assert.equal(isValidStageIndexForMode(0, "attract"), true);
+        assert.equal(isValidStageIndexForMode(8, "attract"), false);
+        assert.equal(isValidStageIndexForMode(0, "intro"), true);
+        assert.equal(isValidStageIndexForMode(8, "intro"), false);
+        assert.equal(isValidStageIndexForMode(8, "enterInitials"), true);
+        assert.equal(isValidStageIndexForMode(8, "hallOfFame"), true);
+        assert.equal(isValidStageIndexForMode(8, "selectWorld"), true);
+
+        const endingSnapshot = serializer.createSnapshot(createFakeMain("ending", "source", { stageIndex: 8 }), APP_VERSION);
+        assert.equal(serializer.isSupportedSnapshot(endingSnapshot), true, "genuine ending sentinel must be saveable");
+
+        const wrongEndingIndex = clone(endingSnapshot);
+        wrongEndingIndex.mainFields.stageIndex = 7;
+        assert.equal(serializer.isSupportedSnapshot(wrongEndingIndex), false);
+
+        const playingSnapshot = serializer.createSnapshot(createFakeMain("playing", "source", { stageIndex: 7 }), APP_VERSION);
+        assert.equal(serializer.isSupportedSnapshot(playingSnapshot), true);
+        const impossiblePlayingIndex = clone(playingSnapshot);
+        impossiblePlayingIndex.mainFields.stageIndex = 8;
+        assert.equal(serializer.isSupportedSnapshot(impossiblePlayingIndex), false);
+
+        const postEndingInitials = serializer.createSnapshot(
+            createFakeMain("enterInitials", "source", { stageIndex: 8, initials: "CAT", enterPressed: false }),
+            APP_VERSION
+        );
+        assert.equal(serializer.isSupportedSnapshot(postEndingInitials), true);
     });
 
     await runTest("shipped fruit exit maps use only the persisted 0..4 direction domain", () => {
@@ -745,6 +783,32 @@ function createMainFields(variant, options) {
 
 function createMode(id, variant, options = {}) {
     const alternate = variant === "target";
+    if (id === "ending") {
+        return {
+            state: 0,
+            fadeIndex: 22,
+            fadeState: 1,
+            dialogIndex: 0,
+            stringIndex: 0,
+            stringDone: false,
+            stringTimer: 0,
+            dotsOffset: 0,
+            redOffset: 0,
+            fadeIndex2: 0,
+            fadeState2: 0,
+            ghostSpriteIndex: 0,
+            ghostSpriteIndexIncrementor: 0,
+            chompSpriteIndex: 0,
+            chompSpriteIndexIncrementor: 0,
+            delay: 0,
+            creditsY: 600,
+            mspacmanX: -64,
+            juniorReturning: false,
+            juniorX: 0,
+            juniorFruits: false,
+            fruitData: createMatrix(7, 2, 0)
+        };
+    }
     if (id === "enterInitials") {
         const initials = options.initials ?? (alternate ? "DOG" : "CAT");
         const mode = EnterInitialsModeClass === null ? {} : Object.create(EnterInitialsModeClass.prototype);
