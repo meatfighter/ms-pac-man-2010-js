@@ -86,7 +86,6 @@ export const STATE_FIELD_REGISTRY = {
             "musicVolume",
             "musicVolumeFadeStep",
             "fadeMusicFlag",
-            "uploadComplete",
             "demoIndex",
             "demoMode"
         ],
@@ -106,6 +105,7 @@ export const STATE_FIELD_REGISTRY = {
             "currentMusic",
             "highScores",
             "scoresDownloadComplete",
+            "uploadComplete",
             "submittedScore",
             "robotInputs",
             "browserSuspended",
