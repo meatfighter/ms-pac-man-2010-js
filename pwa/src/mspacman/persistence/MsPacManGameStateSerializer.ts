@@ -1,6 +1,5 @@
 import { Music, isMusicPlaybackSnapshot, isSoundPlaybackSnapshot, type GameContainer, type SoundPlaybackSnapshot } from "slick2d-ts";
 import { isMusicId, isSoundId, musicForId, registeredMusic, registeredSounds } from "../AudioRegistry";
-import { isValidSubmittedScoreTuple, normalizeHighScoreInitials } from "../HighScoreProtocol";
 import type { Main } from "../Main";
 import type { PlayingMode } from "../PlayingMode";
 import {
@@ -16,8 +15,7 @@ import {
     type PlayingModeSnapshot,
     type RandomSnapshot,
     type RobotInputSnapshot,
-    type SoundSnapshot,
-    type SubmittedScoreSnapshot
+    type SoundSnapshot
 } from "./GameStateSnapshot";
 import { FRUIT_TARGET_FIELDS, GHOST_FIELDS, MAIN_FIELDS, MODE_FIELDS, MSPACMAN_FIELDS, PLAYING_MODE_FIELDS } from "./StateFieldPolicy";
 
@@ -39,7 +37,7 @@ const MODE_IDS: ModeId[] = [
     "playing",
     "selectWorld"
 ];
-const SNAPSHOT_KEYS = ["version", "appVersion", "savedAt", "mainFields", "mode", "music", "soundEffects", "random", "robotInputs", "submittedScore"] as const;
+const SNAPSHOT_KEYS = ["version", "appVersion", "savedAt", "mainFields", "mode", "music", "soundEffects", "random", "robotInputs"] as const;
 const MODE_SNAPSHOT_KEYS = ["id", "fields"] as const;
 const PLAYING_MODE_SNAPSHOT_KEYS = ["id", "fields", "eatenGhostIndex", "fruitTarget", "ghosts", "inputRobotIndex", "mspacman"] as const;
 const THING_SNAPSHOT_KEYS = ["fields"] as const;
@@ -54,7 +52,6 @@ const EMPTY_SOUND_PLAYBACK: SoundPlaybackSnapshot = Object.freeze({ voices: Obje
 const BOOLEAN_FIELD_NAMES = new Set<string>([
     "paused",
     "fadeMusicFlag",
-    "uploadComplete",
     "demoMode",
     "pellotDampensSpeed",
     "corneringEnhancesSpeed",
@@ -143,10 +140,7 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
     if (!isValidSoundEffects(snapshot.soundEffects)) {
         return false;
     }
-    if (!isValidRandomSnapshot(snapshot.random) || !isValidRobotInputs(snapshot.robotInputs)) {
-        return false;
-    }
-    return snapshot.submittedScore === null || isValidSubmittedScoreSnapshot(snapshot.submittedScore);
+    return isValidRandomSnapshot(snapshot.random) && isValidRobotInputs(snapshot.robotInputs);
 }
 
 function isValidModeSnapshot(value: unknown): value is CurrentModeSnapshot {
@@ -243,10 +237,6 @@ function isValidRobotInputs(value: unknown): value is RobotInputSnapshot[] {
     });
 }
 
-function isValidSubmittedScoreSnapshot(value: unknown): value is SubmittedScoreSnapshot {
-    return isValidSubmittedScoreTuple(value);
-}
-
 function isValidFieldBag(value: unknown, fields: readonly string[]): value is JsonRecord {
     const record = asRecord(value);
     return record !== null && hasExactKeys(record, fields) && fields.every((field) => isValidFieldValue(field, record[field]));
@@ -325,8 +315,7 @@ export class MsPacManGameStateSerializer {
             music: this.captureMusic(main),
             soundEffects: this.captureSoundEffects(main),
             random: this.captureRandom(main),
-            robotInputs: main.robotInputs.map((input) => this.captureRobotInput(input)),
-            submittedScore: this.captureSubmittedScore(main)
+            robotInputs: main.robotInputs.map((input) => this.captureRobotInput(input))
         };
     }
 
@@ -345,7 +334,6 @@ export class MsPacManGameStateSerializer {
         this.restoreFields(main, snapshot.mainFields, MAIN_FIELDS);
         this.restoreRandom(main, snapshot.random);
         this.restoreRobotInputs(main, snapshot.robotInputs);
-        this.restoreSubmittedScore(main, snapshot.submittedScore);
         this.restoreCurrentMode(main, snapshot.mode);
         Music.resetPlaybackState();
         this.restoreMusic(main, snapshot.music);
@@ -462,28 +450,11 @@ export class MsPacManGameStateSerializer {
         if (enterPressed !== true || typeof initials !== "string") {
             return;
         }
-        this.restoreSubmittedScore(main, { initials, score: main.score, world: main.worldIndex });
+        // The browser request that originally submitted these initials cannot
+        // survive a page lifetime. Rebuild only the local leaderboard mutation;
+        // accessScoresDatabase() is synchronous and does not perform network I/O.
+        main.accessScoresDatabase(true, main.worldIndex, main.score, initials);
         this.setField(main, "uploadComplete", true);
-    }
-
-    private captureSubmittedScore(main: Main): SubmittedScoreSnapshot | null {
-        if (main.submittedScore === null || !isValidSubmittedScoreSnapshot(main.submittedScore)) {
-            return null;
-        }
-        return { initials: main.submittedScore.initials, score: main.submittedScore.score, world: main.submittedScore.world };
-    }
-
-    private restoreSubmittedScore(main: Main, snapshot: SubmittedScoreSnapshot | null): void {
-        if (snapshot === null || !isValidSubmittedScoreSnapshot(snapshot)) {
-            return;
-        }
-        const rows = main.highScores[snapshot.world] ?? [];
-        const initials = normalizeHighScoreInitials(snapshot.initials);
-        if (rows.some((row) => row.score === snapshot.score && row.initials === initials)) {
-            main.submittedScore = { initials, score: snapshot.score, world: snapshot.world };
-            return;
-        }
-        main.accessScoresDatabase(true, snapshot.world, snapshot.score, initials);
     }
 
     private captureMusic(main: Main): MusicSnapshot | null {
