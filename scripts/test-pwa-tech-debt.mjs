@@ -111,7 +111,12 @@ test("browser-native responsibilities are decomposed and generation owned", () =
     assert.match(browserMain, /sessionCleanup\.run/);
     assert.doesNotMatch(browserMain, /ResourceLoader\.preloadResources|preloadAudioBuffers|unlockAudio/);
     assert.doesNotMatch(browserMain, /function safeReadVolume|function safeReadScalingPreference|function registerServiceWorker/);
-    assert.match(browserPreferences, /setVolume\(value: number, persist = true\)/);
+    assert.match(browserPreferences, /setVolume\(value: number, persist: boolean, isAuthorized: \(\) => boolean\)/);
+    assert.match(browserPreferences, /if \(!isAuthorized\(\)\) \{\s*return false;\s*\}/);
+    assert.match(browserMain, /function currentPreferenceWriteAuthorized\(\): boolean/);
+    assert.match(browserMain, /preferences\.setFullscreen\(!preferences\.fullscreen, currentPreferenceWriteAuthorized\)/);
+    assert.match(browserMain, /preferences\.setScaling\(value, currentPreferenceWriteAuthorized\)/);
+    assert.match(browserMain, /preferences\.reset\(currentPreferenceWriteAuthorized\)/);
     assert.match(browserPreferences, /BrowserPreferences\.isScaling/);
     assert.match(runtimeLoader, /setCacheVersionResolver\(getResourceVersion\)/);
     assert.match(runtimeLoader, /concurrency: RESOURCE_PRELOAD_CONCURRENCY/);
