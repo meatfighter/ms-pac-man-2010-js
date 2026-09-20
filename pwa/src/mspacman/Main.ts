@@ -195,6 +195,22 @@ export class Main extends BasicGame {
             return;
         }
 
+        if (this.paused) {
+            if (this.isGameplayPauseTogglePressed()) {
+                this.setPaused(false);
+                this.resumeCurrentMusicAfterPause();
+            }
+            this.resetNextFrameTime();
+            return;
+        }
+        if (this.isGameplayPauseTogglePressed()) {
+            this.setPaused(true);
+            this.stopAllSoundEffects();
+            this.pauseCurrentMusicForPause();
+            this.resetNextFrameTime();
+            return;
+        }
+
         if (this.fadeMusicFlag) {
             this.musicVolume -= this.musicVolumeFadeStep;
             if (this.musicVolume <= 0) {
@@ -205,21 +221,15 @@ export class Main extends BasicGame {
                 this.currentMusic.setVolume(this.musicVolume);
             }
         }
-        if (this.paused) {
-            if (this.isGameplayPauseTogglePressed()) {
-                this.setPaused(false);
-                this.resumeCurrentMusicAfterPause();
-            }
-            this.resetNextFrameTime();
-            return;
-        } else if (this.isGameplayPauseTogglePressed()) {
-            this.setPaused(true);
-            this.stopAllSoundEffects();
-            this.pauseCurrentMusicForPause();
-        }
+
         let count = 0;
         while (this.nextFrameTime < Sys.getTime()) {
-            this.mode.update(gc);
+            const mode = this.mode;
+            mode.update(gc);
+            if (this.paused || this.browserSuspended || this.mode !== mode) {
+                this.resetNextFrameTime();
+                break;
+            }
             this.nextFrameTime += intDiv(Sys.getTimerResolution(), 91);
             if (++count === 8) {
                 this.resetNextFrameTime();
