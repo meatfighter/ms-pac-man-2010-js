@@ -769,13 +769,11 @@ export const STATE_FIELD_REGISTRY = {
             "redOffset",
             "editingIndex",
             "initials",
-            "blinkingInitials",
             "editVisible",
             "blinkTimer",
-            "enterPressed",
-            "newScoreOf"
+            "enterPressed"
         ],
-        runtime: ["main", "whiteEnergizer", "input"]
+        runtime: ["main", "whiteEnergizer", "input", "blinkingInitials", "newScoreOf"]
     },
     HallOfFameMode: {
         all: [
