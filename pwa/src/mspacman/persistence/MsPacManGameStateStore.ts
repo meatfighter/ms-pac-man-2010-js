@@ -104,7 +104,10 @@ export class MsPacManGameStateStore {
         return this.inspectStoredGameState().status === "current";
     }
 
-    public clear(): boolean {
+    public clear(isAuthorized: () => boolean): boolean {
+        if (!isAuthorized()) {
+            return false;
+        }
         try {
             localStorage.removeItem(createBrowserStorageKeys().gameState);
             return true;
