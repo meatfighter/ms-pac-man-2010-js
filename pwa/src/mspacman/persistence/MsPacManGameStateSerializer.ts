@@ -414,7 +414,7 @@ function isValidStandaloneModeFieldState(id: Exclude<ModeId, "playing">, fields:
                 isIntegerInRange(fields.state, 0, 3) &&
                 isIntegerInRange(fields.dialogIndex, 0, 14) &&
                 isIntegerInRange(fields.delay, 0, 2 * 91) &&
-                isIntegerInRange(fields.creditsY, -4096, 4096)
+                isFiniteNumberInRange(fields.creditsY, -4096, 4096)
             );
         case "enterInitials":
             return isValidEnterInitialsState(fields);
@@ -589,7 +589,7 @@ function isFiniteNumberInRange(value: unknown, min: number, max: number, exclusi
     return isFiniteNumber(value) && value >= min && (exclusiveMax ? value < max : value <= max);
 }
 
-function isIntegerInRange(value: unknown, min: number, max: number): boolean {
+function isIntegerInRange(value: unknown, min: number, max: number): value is number {
     return typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
 }
 
