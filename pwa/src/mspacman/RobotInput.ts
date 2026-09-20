@@ -49,11 +49,15 @@ export class RobotInput implements IInput {
     }
 
     public isMenuStartPressed(): boolean {
-        return this.input.isKeyPressed(Input.KEY_ENTER) || this.input.isKeyPressed(Input.KEY_NUMPADENTER);
+        const enterPressed = this.input.isKeyPressed(Input.KEY_ENTER);
+        const numpadEnterPressed = this.input.isKeyPressed(Input.KEY_NUMPADENTER);
+        return enterPressed || numpadEnterPressed;
     }
 
     public isConfirmPressed(): boolean {
-        return this.input.isKeyPressed(Input.KEY_ENTER) || this.input.isKeyPressed(Input.KEY_NUMPADENTER);
+        const enterPressed = this.input.isKeyPressed(Input.KEY_ENTER);
+        const numpadEnterPressed = this.input.isKeyPressed(Input.KEY_NUMPADENTER);
+        return enterPressed || numpadEnterPressed;
     }
 
     public isGameplayStartPressed(): boolean {
