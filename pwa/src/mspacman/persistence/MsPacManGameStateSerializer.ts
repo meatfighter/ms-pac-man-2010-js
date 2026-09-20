@@ -262,10 +262,12 @@ function isValidRobotInputs(value: unknown): value is RobotInputSnapshot[] {
     }
     return value.every((entry, index) => {
         const snapshot = asRecord(entry);
+        const maximum = DEMO_LENGTHS[index];
         return (
+            maximum !== undefined &&
             snapshot !== null &&
             hasExactKeys(snapshot, ROBOT_INPUT_SNAPSHOT_KEYS) &&
-            isIntegerInRange(snapshot.index, 0, DEMO_LENGTHS[index])
+            isIntegerInRange(snapshot.index, 0, maximum)
         );
     });
 }
