@@ -394,13 +394,11 @@ export const STATE_FIELD_POLICY = {
             "redOffset",
             "editingIndex",
             "initials",
-            "blinkingInitials",
             "editVisible",
             "blinkTimer",
-            "enterPressed",
-            "newScoreOf"
+            "enterPressed"
         ],
-        runtime: ["main", "whiteEnergizer", "input"]
+        runtime: ["main", "whiteEnergizer", "input", "blinkingInitials", "newScoreOf"]
     },
     HallOfFameMode: {
         persisted: ["pressEnterDelay", "pressEnterVisible", "dotsOffset", "redOffset", "enterPressed", "fadeIndex", "fadeState", "ticks", "countDown"],
