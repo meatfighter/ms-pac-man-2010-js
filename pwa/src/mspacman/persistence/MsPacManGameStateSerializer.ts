@@ -124,7 +124,15 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
     }
     const music = snapshot.music;
     const gameplayPaused = mainFields.paused === true;
+    const demoMode = mainFields.demoMode === true;
     if (gameplayPaused && mode.id !== "playing") {
+        return false;
+    }
+    if (demoMode) {
+        if (mode.id !== "playing" || gameplayPaused || mode.inputRobotIndex === null) {
+            return false;
+        }
+    } else if (mode.id === "playing" && mode.inputRobotIndex !== null) {
         return false;
     }
     if (music !== null) {
