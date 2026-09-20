@@ -306,6 +306,29 @@ try {
         obsoleteUploadCompleteField.mainFields.uploadComplete = true;
         assert.equal(serializer.isSupportedSnapshot(obsoleteUploadCompleteField), false);
 
+        const playingSnapshot = serializer.createSnapshot(createFakeMain("playing", "source"), APP_VERSION);
+        assert.equal(serializer.isSupportedSnapshot(playingSnapshot), true);
+
+        const demoWithoutRobotInput = clone(playingSnapshot);
+        demoWithoutRobotInput.mainFields.demoMode = true;
+        demoWithoutRobotInput.mode.inputRobotIndex = null;
+        assert.equal(serializer.isSupportedSnapshot(demoWithoutRobotInput), false);
+
+        const robotInputOutsideDemo = clone(playingSnapshot);
+        robotInputOutsideDemo.mode.inputRobotIndex = 0;
+        assert.equal(serializer.isSupportedSnapshot(robotInputOutsideDemo), false);
+
+        const pausedDemo = clone(playingSnapshot);
+        pausedDemo.mainFields.demoMode = true;
+        pausedDemo.mainFields.paused = true;
+        pausedDemo.mode.inputRobotIndex = 0;
+        assert.equal(serializer.isSupportedSnapshot(pausedDemo), false);
+
+        const validDemo = clone(playingSnapshot);
+        validDemo.mainFields.demoMode = true;
+        validDemo.mode.inputRobotIndex = 0;
+        assert.equal(serializer.isSupportedSnapshot(validDemo), true);
+
         const validInitials = serializer.createSnapshot(
             createFakeMain("enterInitials", "source", { initials: "CAT", enterPressed: true }),
             APP_VERSION
