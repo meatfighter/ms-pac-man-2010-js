@@ -31,12 +31,6 @@ export interface RobotInputSnapshot {
     index: number;
 }
 
-export interface SubmittedScoreSnapshot {
-    initials: string;
-    score: number;
-    world: number;
-}
-
 export interface ModeSnapshot {
     id: ModeId;
     fields: JsonRecord;
