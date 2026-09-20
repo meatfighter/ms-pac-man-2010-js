@@ -10,7 +10,7 @@ const JAVA_INT_MAX = 2_147_483_647;
 const MAX_GAMEPLAY_NUMBER_MAGNITUDE = 100_000;
 const MAX_SNAPSHOT_STRING_LENGTH = 4_096;
 
-/** Only the current development schema is supported in its deployment-scoped storage slot. */
+/** Only the current exact schema is supported in its deployment-scoped storage slot. */
 export class MsPacManGameStateStore {
     private readonly serializer = new MsPacManGameStateSerializer();
 
