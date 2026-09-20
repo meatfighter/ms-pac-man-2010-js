@@ -633,7 +633,9 @@ export function isValidSnapshotForLoadedResources(main: Main, snapshot: MsPacMan
     }
     const fruit = snapshot.mode.fruitTarget;
     if (fruit.exitPath !== null) {
-        const candidates = fruit.fields.clockwise === true ? stage.rightExitMaps : stage.leftExitMaps;
+        const sideCandidates = fruit.fields.clockwise === true ? stage.rightExitMaps : stage.leftExitMaps;
+        const allCandidates = [...stage.leftExitMaps, ...stage.rightExitMaps];
+        const candidates = fruit.fields.exiting === true ? sideCandidates : allCandidates;
         if (!Array.isArray(candidates) || !candidates.some((candidate) => numberMatricesEqual(candidate, fruit.exitPath))) {
             return false;
         }
