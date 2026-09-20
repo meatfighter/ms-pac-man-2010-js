@@ -329,6 +329,18 @@ try {
         validDemo.mode.inputRobotIndex = 0;
         assert.equal(serializer.isSupportedSnapshot(validDemo), true);
 
+        const terminalDemoCursor = clone(playingSnapshot);
+        terminalDemoCursor.robotInputs[0].index = 4390;
+        assert.equal(serializer.isSupportedSnapshot(terminalDemoCursor), true);
+
+        const excessiveDemoCursor = clone(playingSnapshot);
+        excessiveDemoCursor.robotInputs[0].index = 4391;
+        assert.equal(serializer.isSupportedSnapshot(excessiveDemoCursor), false);
+
+        const excessiveFourthDemoCursor = clone(playingSnapshot);
+        excessiveFourthDemoCursor.robotInputs[3].index = 3677;
+        assert.equal(serializer.isSupportedSnapshot(excessiveFourthDemoCursor), false);
+
         const validInitials = serializer.createSnapshot(
             createFakeMain("enterInitials", "source", { initials: "CAT", enterPressed: true }),
             APP_VERSION
