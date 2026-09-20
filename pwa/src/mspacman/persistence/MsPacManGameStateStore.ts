@@ -22,7 +22,6 @@ export class MsPacManGameStateStore {
         }
         try {
             const snapshot = this.serializer.createSnapshot(main, this.appVersion);
-            normalizeTransientState(snapshot);
             if (!this.serializer.isSupportedSnapshot(snapshot) || !hasReasonableSnapshotValues(snapshot)) {
                 return false;
             }
@@ -83,18 +82,8 @@ export class MsPacManGameStateStore {
         if (!this.serializer.isSupportedSnapshot(snapshot) || !hasReasonableSnapshotValues(snapshot)) {
             return null;
         }
-        normalizeTransientState(snapshot);
         return snapshot;
     }
-}
-
-function normalizeTransientState(snapshot: MsPacManGameStateSnapshot): void {
-    // An old network request cannot survive a page lifetime. Do not resubmit it
-    // merely because the persisted initials screen had already submitted.
-    if (snapshot.mode.id === "enterInitials" && snapshot.mode.fields.enterPressed === true) {
-        snapshot.mainFields.uploadComplete = true;
-    }
-    snapshot.submittedScore = null;
 }
 
 function hasReasonableSnapshotValues(value: unknown, key = ""): boolean {
