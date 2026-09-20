@@ -136,6 +136,22 @@ try {
         }
     });
 
+    await runTest("advanceStage reaches the ending with completed-world stage sentinel 8", () => {
+        const main = new Main();
+        const transitions = [];
+        main.stageIndex = 7;
+        main.setMode = (mode) => {
+            transitions.push(mode);
+            main.mode = mode;
+        };
+
+        main.advanceStage({});
+
+        assert.equal(main.stageIndex, 8);
+        assert.deepEqual(transitions, [Main.endingMode]);
+        assert.equal(main.mode, Main.endingMode);
+    });
+
     await runTest("a mode transition terminates the current catch-up batch", () => {
         const main = new Main();
         let firstModeSteps = 0;
