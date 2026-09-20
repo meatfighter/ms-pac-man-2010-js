@@ -222,7 +222,7 @@ try {
         });
         assert.equal(storage.getItem(storageKey), futureSnapshot);
 
-        assert.equal(store.clear(), true);
+        assert.equal(store.clear(() => true), true);
         assert.equal(storage.getItem(storageKey), null);
         assert.deepEqual(store.save(createFakeMain("attract", "source"), () => true), { saved: true });
         assert.notEqual(storage.getItem(storageKey), null);
