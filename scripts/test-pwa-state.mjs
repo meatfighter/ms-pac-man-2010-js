@@ -889,7 +889,7 @@ function restoreLocation() {
 
 function createFakeMain(modeId, variant, options = {}) {
     const main = {
-        ...createMainFields(variant, options),
+        ...createMainFields(modeId, variant, options),
         input: createInput(),
         random: createRandom(variant),
         highScores: createHighScores(options.highScores ?? options.highScore),
@@ -966,11 +966,21 @@ function createFakeMain(modeId, variant, options = {}) {
     return main;
 }
 
-function createMainFields(variant, options) {
+function createMainFields(modeId, variant, options) {
     const alternate = variant === "target";
+    const defaultStageIndex =
+        modeId === "attract" || modeId === "intro"
+            ? 0
+            : modeId === "ending"
+              ? 8
+              : /^act[1-7]$/.test(modeId)
+                ? Number.parseInt(modeId.substring(3), 10)
+                : alternate
+                  ? 4
+                  : 2;
     return {
         worldIndex: options.worldIndex ?? (alternate ? 3 : 1),
-        stageIndex: options.stageIndex ?? (alternate ? 4 : 2),
+        stageIndex: options.stageIndex ?? defaultStageIndex,
         score: options.score ?? (alternate ? 10 : 43210),
         lives: alternate ? 1 : 2,
         paused: false,
