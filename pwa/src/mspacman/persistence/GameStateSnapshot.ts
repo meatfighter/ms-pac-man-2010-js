@@ -2,7 +2,7 @@ import type { MusicPlaybackSnapshot, SoundPlaybackSnapshot } from "slick2d-ts";
 import type { MusicId, SoundId } from "../AudioRegistry";
 
 // Current save schema: only this exact format is supported; earlier internal schemas are not migrated.
-export const GAME_STATE_VERSION = 8;
+export const GAME_STATE_VERSION = 9;
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | JsonRecord;
