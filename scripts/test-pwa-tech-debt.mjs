@@ -78,10 +78,10 @@ test("persistence uses public Slick random, Music, and Sound snapshot APIs", () 
     assert.match(serializer, /registeredSounds\(main\)/);
     assert.doesNotMatch(serializer, /getField\(music,\s*["'](?:looped|paused|playbackRate|buffer|positionOffset|fadeState)["']/);
     assert.doesNotMatch(serializer, /(?:getField|setField|numberField)\(main\.random/);
-    assert.match(snapshot, /GAME_STATE_VERSION = 8/);
+    assert.match(snapshot, /GAME_STATE_VERSION = 9/);
     assert.match(snapshot, /soundEffects: SoundSnapshot\[\]/);
     assert.doesNotMatch(snapshot, /FIRST_PUBLIC_GAME_STATE_VERSION/);
-    assert.match(browserStorageKeys, /game-state-v8/);
+    assert.match(browserStorageKeys, /game-state-v9/);
 });
 
 test("extended audio-policy qualification discovers the versioned save dynamically", () => {
