@@ -188,9 +188,7 @@ async function audioStats(page) {
 }
 
 async function readSave(page) {
-    const entries = await page.evaluate(() =>
-        Object.entries(localStorage).filter(([key]) => /:game-state-v\d+$/.test(key))
-    );
+    const entries = await page.evaluate(() => Object.entries(localStorage).filter(([key]) => /:game-state-v\d+$/.test(key)));
     assert.equal(entries.length, 1, `expected exactly one versioned saved game, found ${entries.length}`);
 
     const [key, text] = entries[0];
