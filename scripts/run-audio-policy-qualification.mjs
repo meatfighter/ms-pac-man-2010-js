@@ -111,7 +111,7 @@ try {
     assert.equal(pausedSave.snapshot.mainFields.paused, true, "saved gameplay is not paused");
     assert(pausedSave.snapshot.music !== null, "paused gameplay has no logical Music snapshot");
     assert.equal(pausedSave.snapshot.music.playback.transport, "paused", "gameplay Pause was not serialized as a paused Music transport");
-    assert.equal("audioSettings" in pausedSave.snapshot, false, "v7 save still contains global audio policy");
+    assert.equal("audioSettings" in pausedSave.snapshot, false, "current save still contains global audio policy");
 
     await page.reload();
     await page.locator(continueSelector).first().waitFor({ state: "visible" });
@@ -188,7 +188,17 @@ async function audioStats(page) {
 }
 
 async function readSave(page) {
-    const entry = await page.evaluate(() => Object.entries(localStorage).find(([key]) => /game-state-v7$/.test(key)) ?? null);
-    assert(entry !== null, "expected a v7 saved game");
-    return { key: entry[0], snapshot: JSON.parse(entry[1]) };
+    const entries = await page.evaluate(() =>
+        Object.entries(localStorage).filter(([key]) => /:game-state-v\d+$/.test(key))
+    );
+    assert.equal(entries.length, 1, `expected exactly one versioned saved game, found ${entries.length}`);
+
+    const [key, text] = entries[0];
+    const match = /:game-state-v(\d+)$/.exec(key);
+    assert(match !== null, `saved-game key is not versioned: ${key}`);
+
+    const snapshot = JSON.parse(text);
+    const keyVersion = Number(match[1]);
+    assert.equal(snapshot.version, keyVersion, `saved-game key/schema version mismatch: key v${keyVersion}, snapshot v${snapshot.version}`);
+    return { key, snapshot };
 }
