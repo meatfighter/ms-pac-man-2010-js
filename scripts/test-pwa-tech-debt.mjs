@@ -77,25 +77,31 @@ test("persistence uses public Slick random, Music, and Sound snapshot APIs", () 
     assert.match(serializer, /registeredSounds\(main\)/);
     assert.doesNotMatch(serializer, /getField\(music,\s*["'](?:looped|paused|playbackRate|buffer|positionOffset|fadeState)["']/);
     assert.doesNotMatch(serializer, /(?:getField|setField|numberField)\(main\.random/);
-    assert.match(snapshot, /GAME_STATE_VERSION = 7/);
+    assert.match(snapshot, /GAME_STATE_VERSION = 8/);
     assert.match(snapshot, /soundEffects: SoundSnapshot\[\]/);
     assert.doesNotMatch(snapshot, /FIRST_PUBLIC_GAME_STATE_VERSION/);
-    assert.match(browserStorageKeys, /game-state-v7/);
+    assert.match(browserStorageKeys, /game-state-v8/);
 });
 
-test("save-state inspection is read-only while explicit clear remains separate", () => {
-    const readSnapshot = sliceBetween(stateStore, "private readSnapshot", "\n}\n\nfunction normalizeTransientState");
-    assert.doesNotMatch(readSnapshot, /this\.clear\(|removeItem\(/);
-    assert.match(stateStore, /public clear\(\): void/);
+test("save-state inspection is read-only while explicit authorized clear remains separate", () => {
+    const inspection = sliceBetween(stateStore, "public inspectStoredGameState()", "private isSnapshotValid");
+    assert.doesNotMatch(inspection, /this\.clear\(|removeItem\(/);
+    assert.match(stateStore, /public clear\(isAuthorized: \(\) => boolean\): boolean/);
+    assert.match(stateStore, /if \(!isAuthorized\(\)\) \{\s*return false;\s*\}/);
     assert.match(stateStore, /localStorage\.removeItem\(createBrowserStorageKeys\(\)\.gameState\)/);
 });
 
-test("save state normalizes in-flight score submission state", () => {
+test("score submission browser lifetime is runtime-only while Enter Initials restore rebuilds local progress", () => {
     const mainPolicy = sliceBetween(statePolicy, "Main: {", "Thing: {");
     const persisted = sliceBetween(mainPolicy, "persisted: [", "runtime: [");
-    assert.match(persisted, /uploadComplete/);
-    assert.match(stateStore, /snapshot\.mainFields\.uploadComplete = true/);
-    assert.match(stateStore, /snapshot\.submittedScore = null/);
+    const runtime = sliceBetween(mainPolicy, "runtime: [", "]\n    }");
+    assert.doesNotMatch(persisted, /uploadComplete|submittedScore/);
+    assert.match(runtime, /uploadComplete/);
+    assert.match(runtime, /submittedScore/);
+    assert.doesNotMatch(snapshot, /submittedScore|uploadComplete/);
+    assert.match(serializer, /private restoreSubmittedInitials\(/);
+    assert.match(serializer, /main\.accessScoresDatabase\(true, main\.worldIndex, main\.score, initials\)/);
+    assert.match(serializer, /this\.setField\(main, "uploadComplete", true\)/);
     assert.match(enterInitialsMode, /main\.uploadComplete = true/);
     assert.match(enterInitialsMode, /main\.submittedScore = null/);
 });
