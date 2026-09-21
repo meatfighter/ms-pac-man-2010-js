@@ -3,9 +3,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { test } from "node:test";
 
-const EXPECTED_ENGINE_SHA = "1b8f902f611997d23db74540bf28d14d248334d2";
+const EXPECTED_ENGINE_SHA = "55332709786a2657e5231b1fd5ea0963097a4534";
 const EXPECTED_ENGINE_URL = `https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/${EXPECTED_ENGINE_SHA}`;
-const EXPECTED_ENGINE_VERSION = "1.7.1";
+const EXPECTED_ENGINE_VERSION = "1.7.2";
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const packageLock = JSON.parse(readFileSync("package-lock.json", "utf8"));
@@ -62,6 +62,12 @@ test("qualified Slick archive, lock metadata and emitted install all agree", asy
     assert.equal(typeof rootApi.Sound, "function");
     assert.equal(typeof rootApi.SoundStore, "function");
     assert.equal(typeof rootApi.SoundStore.get().poll, "function", "Slick 1.7 logical Sound clock is unavailable");
+    assert.equal(typeof rootApi.Input.prototype.getControllerSampleStatus, "function");
+    assert.equal(typeof rootApi.Input.prototype.sampleControllersForBaseline, "function");
+    assert.equal(typeof rootApi.Input.prototype.getControllerConnectionGeneration, "function");
+    assert.equal(typeof rootApi.Input.prototype.isControllerButtonDirectional, "function");
+    assert.equal(rootApi.Input.BROWSER_CONTROLLER_BUTTON_LIMIT, 64);
+    assert.equal(rootApi.Input.BROWSER_KEY_CODE_LIMIT, 256);
     assert.equal(typeof rootApi.Sound.prototype.capturePlaybackState, "function");
     assert.equal(typeof rootApi.Sound.prototype.restorePlaybackState, "function");
     assert.equal(typeof rootApi.isSoundPlaybackSnapshot, "function");
