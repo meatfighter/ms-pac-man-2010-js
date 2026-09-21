@@ -147,10 +147,9 @@ test("oversized public save is preserved by inspection and automatic saving", ()
     const store = new MsPacManGameStateStore("test");
     assert.equal(store.hasValidSave(), false);
     assert.equal(stored, text);
-    assert.deepEqual(store.save({ isStateSaveReady: () => true }, () => true), {
-        saved: false,
-        reason: "invalid-existing"
-    });
+    const saveResult = store.save({ isStateSaveReady: () => true }, () => true);
+    assert.equal(saveResult.saved, false);
+    assert.equal(saveResult.reason, "invalid-existing");
     assert.equal(stored, text);
     assert.equal(store.clear(() => true), true); // Explicit New Game / Reset remains authorized to discard it.
     assert.equal(stored, null);
