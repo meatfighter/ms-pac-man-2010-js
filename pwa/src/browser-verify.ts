@@ -100,7 +100,8 @@ async function verify(): Promise<void> {
     first.main.speaking[1][7].restorePlaybackState(speech);
     first.main.atePellotSound.restorePlaybackState(overlappingPellets);
 
-    assert(store.save(first.main), "Real browser Main could not create a save-state snapshot.");
+    const saveResult = store.save(first.main, () => true);
+    assert(saveResult.saved, `Real browser Main could not create a save-state snapshot: ${JSON.stringify(saveResult)}`);
     first.buffered.setScalingPreference("smooth");
     first.buffered.setScalingPreference("pixel-perfect");
     first.buffered.setScalingPreference("crisp");
@@ -121,7 +122,7 @@ async function verify(): Promise<void> {
     second.main.invalidateBrowserLifetime();
     second.container.destroy();
     Display.setParent(null);
-    store.clear();
+    assert(store.clear(() => true), "Real browser save-state cleanup failed.");
 }
 
 function soundStateForRef(ref: string, voices: Array<{ fraction: number; gain: number }>, activeVoiceIndex: number | null): SoundPlaybackSnapshot {
