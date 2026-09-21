@@ -29,6 +29,7 @@ const thingTs = read("pwa/src/mspacman/Thing.ts");
 const msPacManTs = read("pwa/src/mspacman/MsPacMan.ts");
 const ghostTs = read("pwa/src/mspacman/Ghost.ts");
 const fruitTargetTs = read("pwa/src/mspacman/FruitTarget.ts");
+const audioPolicyQualification = read("scripts/run-audio-policy-qualification.mjs");
 
 function sliceBetween(source, start, end) {
     const startIndex = source.indexOf(start);
@@ -81,6 +82,13 @@ test("persistence uses public Slick random, Music, and Sound snapshot APIs", () 
     assert.match(snapshot, /soundEffects: SoundSnapshot\[\]/);
     assert.doesNotMatch(snapshot, /FIRST_PUBLIC_GAME_STATE_VERSION/);
     assert.match(browserStorageKeys, /game-state-v8/);
+});
+
+test("extended audio-policy qualification discovers the versioned save dynamically", () => {
+    assert.doesNotMatch(audioPolicyQualification, /game-state-v\d+\$/);
+    assert.doesNotMatch(audioPolicyQualification, /expected a v\d+ saved game/);
+    assert.match(audioPolicyQualification, /Object\.entries\(localStorage\)\.filter\(\(\[key\]\) => \/:game-state-v\\d\+\$\/\.test\(key\)\)/);
+    assert.match(audioPolicyQualification, /assert\.equal\(snapshot\.version, keyVersion/);
 });
 
 test("save-state inspection is read-only while explicit authorized clear remains separate", () => {
