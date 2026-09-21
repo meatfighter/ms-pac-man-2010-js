@@ -20,18 +20,7 @@ delete process.env.MSPACMAN_SCORE_API_URL;
 delete process.env.MSPACMAN_CACHE_VERSION;
 delete process.env.MSPACMAN_HMAC_KEY_HEX;
 
-const MAIN_FIELDS = [
-    "worldIndex",
-    "stageIndex",
-    "score",
-    "lives",
-    "paused",
-    "musicVolume",
-    "musicVolumeFadeStep",
-    "fadeMusicFlag",
-    "demoIndex",
-    "demoMode"
-];
+const MAIN_FIELDS = ["worldIndex", "stageIndex", "score", "lives", "paused", "musicVolume", "musicVolumeFadeStep", "fadeMusicFlag", "demoIndex", "demoMode"];
 
 const ATTRACT_FIELDS = [
     "dotsOffset",
@@ -200,13 +189,25 @@ try {
 
         const preferences = new BrowserPreferences();
 
-        assert.equal(preferences.setVolume(0.8, true, () => false), false);
+        assert.equal(
+            preferences.setVolume(0.8, true, () => false),
+            false
+        );
         assert.equal(storage.getItem(keys.volume), "25");
-        assert.equal(preferences.setScaling("smooth", () => false), false);
+        assert.equal(
+            preferences.setScaling("smooth", () => false),
+            false
+        );
         assert.equal(storage.getItem(keys.scaling), "crisp");
-        assert.equal(preferences.setFullscreen(false, () => false), false);
+        assert.equal(
+            preferences.setFullscreen(false, () => false),
+            false
+        );
         assert.equal(storage.getItem(keys.fullscreen), "true");
-        assert.equal(preferences.clearGameState(() => false), false);
+        assert.equal(
+            preferences.clearGameState(() => false),
+            false
+        );
         assert.equal(storage.getItem(keys.gameState), "protected-save");
 
         let checks = 0;
@@ -246,15 +247,24 @@ try {
         assert.deepEqual(store.inspectStoredGameState(), { status: "unsupported-future", version: 999 });
         assert.equal(storage.getItem(storageKey), futureSnapshot);
 
-        assert.deepEqual(store.save(createFakeMain("attract", "source"), () => true), {
-            saved: false,
-            reason: "unsupported-future"
-        });
+        assert.deepEqual(
+            store.save(createFakeMain("attract", "source"), () => true),
+            {
+                saved: false,
+                reason: "unsupported-future"
+            }
+        );
         assert.equal(storage.getItem(storageKey), futureSnapshot);
 
-        assert.equal(store.clear(() => true), true);
+        assert.equal(
+            store.clear(() => true),
+            true
+        );
         assert.equal(storage.getItem(storageKey), null);
-        assert.deepEqual(store.save(createFakeMain("attract", "source"), () => true), { saved: true });
+        assert.deepEqual(
+            store.save(createFakeMain("attract", "source"), () => true),
+            { saved: true }
+        );
         assert.notEqual(storage.getItem(storageKey), null);
     });
 
@@ -265,15 +275,24 @@ try {
         const storageKey = createBrowserStorageKeys().gameState;
         const source = createFakeMain("attract", "source");
 
-        assert.deepEqual(store.save(source, () => false), { saved: false, reason: "not-authorized" });
+        assert.deepEqual(
+            store.save(source, () => false),
+            { saved: false, reason: "not-authorized" }
+        );
         assert.equal(storage.getItem(storageKey), null);
 
-        assert.deepEqual(store.save(source, () => true), { saved: true });
+        assert.deepEqual(
+            store.save(source, () => true),
+            { saved: true }
+        );
         const previous = storage.getItem(storageKey);
         assert.notEqual(previous, null);
 
         const replacement = createFakeMain("attract", "source", { score: 33330 });
-        assert.deepEqual(store.save(replacement, () => false), { saved: false, reason: "not-authorized" });
+        assert.deepEqual(
+            store.save(replacement, () => false),
+            { saved: false, reason: "not-authorized" }
+        );
         assert.equal(storage.getItem(storageKey), previous);
     });
 
@@ -285,7 +304,10 @@ try {
 
         setTestLocation(STAGE_URL);
         const stageKeys = createBrowserStorageKeys();
-        assert.deepEqual(store.save(stageSource, () => true), { saved: true });
+        assert.deepEqual(
+            store.save(stageSource, () => true),
+            { saved: true }
+        );
         assert.equal(store.hasValidSave(), true);
         const stageSnapshot = storage.getItem(stageKeys.gameState);
         assert.notEqual(stageSnapshot, null);
@@ -294,7 +316,10 @@ try {
         const productionKeys = createBrowserStorageKeys();
         assert.notEqual(stageKeys.gameState, productionKeys.gameState);
         assert.equal(store.hasValidSave(), false);
-        assert.deepEqual(store.save(productionSource, () => true), { saved: true });
+        assert.deepEqual(
+            store.save(productionSource, () => true),
+            { saved: true }
+        );
         const productionSnapshot = storage.getItem(productionKeys.gameState);
         assert.notEqual(productionSnapshot, null);
         assert.notEqual(stageSnapshot, productionSnapshot);
@@ -306,7 +331,10 @@ try {
         assert.equal(storage.getItem(stageKeys.gameState), "{");
         assert.equal(storage.getItem(productionKeys.gameState), productionSnapshot);
 
-        assert.deepEqual(store.save(stageSource, () => true), { saved: false, reason: "invalid-existing" });
+        assert.deepEqual(
+            store.save(stageSource, () => true),
+            { saved: false, reason: "invalid-existing" }
+        );
         assert.equal(storage.getItem(stageKeys.gameState), "{");
         assert.equal(storage.getItem(productionKeys.gameState), productionSnapshot);
     });
@@ -424,10 +452,7 @@ try {
         excessiveFourthDemoCursor.robotInputs[3].index = 3677;
         assert.equal(serializer.isSupportedSnapshot(excessiveFourthDemoCursor), false);
 
-        const validInitials = serializer.createSnapshot(
-            createFakeMain("enterInitials", "source", { initials: "CAT", enterPressed: true }),
-            APP_VERSION
-        );
+        const validInitials = serializer.createSnapshot(createFakeMain("enterInitials", "source", { initials: "CAT", enterPressed: true }), APP_VERSION);
         assert.equal(serializer.isSupportedSnapshot(validInitials), true);
 
         const malformedInitials = clone(validInitials);
@@ -633,7 +658,10 @@ try {
         const target = createFakeMain("attract", "target");
         const gc = createGameContainer();
 
-        assert.deepEqual(store.save(source, () => true), { saved: true });
+        assert.deepEqual(
+            store.save(source, () => true),
+            { saved: true }
+        );
         assert.equal(store.hasValidSave(), true);
         assert.notEqual(storage.getItem(storageKey), null);
 
@@ -667,7 +695,10 @@ try {
         const source = createFakeMain("attract", "source");
         const target = createFakeMain("attract", "target");
 
-        assert.deepEqual(store.save(source, () => true), { saved: true });
+        assert.deepEqual(
+            store.save(source, () => true),
+            { saved: true }
+        );
         const savedSnapshot = storage.getItem(storageKey);
         assert.notEqual(savedSnapshot, null);
         target.getModeForStateRestore = () => {

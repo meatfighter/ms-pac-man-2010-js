@@ -189,7 +189,6 @@ try {
             HighScoreService.downloadScores = originalDownload;
         }
     });
-
 } finally {
     restoreEnv("MSPACMAN_SCORE_API_URL", originalApiUrl);
     restoreEnv("MSPACMAN_HMAC_KEY_HEX", originalHmacKey);

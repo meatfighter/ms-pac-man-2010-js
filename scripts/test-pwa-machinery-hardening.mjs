@@ -95,7 +95,10 @@ test("ownership relinquishment performs the final save before destructive cleanu
 });
 
 test("high-score network callbacks are fenced by browser lifetime and per-operation generations", () => {
-    const operationFactory = gameMainSource.slice(gameMainSource.indexOf("function beginScoreOperation"), gameMainSource.indexOf("function retireScoreOperations"));
+    const operationFactory = gameMainSource.slice(
+        gameMainSource.indexOf("function beginScoreOperation"),
+        gameMainSource.indexOf("function retireScoreOperations")
+    );
     assert.match(operationFactory, /main\.isBrowserLifetimeGenerationCurrent\(lifetime\)/);
     assert.match(operationFactory, /state\[generationKey\] === generation/);
     assert.match(operationFactory, /state\[controllerKey\] === controller/);
@@ -113,12 +116,18 @@ test("high-score network callbacks are fenced by browser lifetime and per-operat
     assert.match(submit, /operation\.isCurrent\(\)/);
     assert.match(submit, /this\.runScoreSubmission\(submittedScore, revision, operation\)/);
 
-    const downloadRunner = gameMainSource.slice(gameMainSource.indexOf("private async runScoreDownload"), gameMainSource.indexOf("private async runScoreSubmission"));
+    const downloadRunner = gameMainSource.slice(
+        gameMainSource.indexOf("private async runScoreDownload"),
+        gameMainSource.indexOf("private async runScoreSubmission")
+    );
     assert.match(downloadRunner, /signal: operation\.controller\.signal/);
     assert.match(downloadRunner, /isCurrent: operation\.isCurrent/);
     assert.ok((downloadRunner.match(/operation\.isCurrent\(\)/g) ?? []).length >= 2);
 
-    const submitRunner = gameMainSource.slice(gameMainSource.indexOf("private async runScoreSubmission"), gameMainSource.indexOf("public accessScoresDatabase("));
+    const submitRunner = gameMainSource.slice(
+        gameMainSource.indexOf("private async runScoreSubmission"),
+        gameMainSource.indexOf("public accessScoresDatabase(")
+    );
     assert.match(submitRunner, /signal: operation\.controller\.signal/);
     assert.match(submitRunner, /isCurrent: operation\.isCurrent/);
     assert.ok((submitRunner.match(/operation\.isCurrent\(\)/g) ?? []).length >= 2);

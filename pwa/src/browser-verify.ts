@@ -122,7 +122,10 @@ async function verify(): Promise<void> {
     second.main.invalidateBrowserLifetime();
     second.container.destroy();
     Display.setParent(null);
-    assert(store.clear(() => true), "Real browser save-state cleanup failed.");
+    assert(
+        store.clear(() => true),
+        "Real browser save-state cleanup failed."
+    );
 }
 
 function soundStateForRef(ref: string, voices: Array<{ fraction: number; gain: number }>, activeVoiceIndex: number | null): SoundPlaybackSnapshot {

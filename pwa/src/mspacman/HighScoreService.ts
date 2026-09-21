@@ -30,12 +30,7 @@ export class HighScoreService {
         return runScoreOperation(context, (scope) => requestScores("GET", undefined, scope));
     }
 
-    public static async submitScore(
-        world: number,
-        score: number,
-        initials: string,
-        context: HighScoreRequestContext = {}
-    ): Promise<RemoteHighScore[] | null> {
+    public static async submitScore(world: number, score: number, initials: string, context: HighScoreRequestContext = {}): Promise<RemoteHighScore[] | null> {
         return runScoreOperation(context, async (scope) => {
             if (!isWorld(world) || !isPlausibleScore(score) || !isAllowedInitials(initials) || !scope.isCurrent()) {
                 return null;

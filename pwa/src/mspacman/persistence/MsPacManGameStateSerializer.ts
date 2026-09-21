@@ -134,12 +134,7 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
     }
     if (demoMode) {
         const demoIndex = mainFields.demoIndex;
-        if (
-            mode.id !== "playing" ||
-            gameplayPaused ||
-            mode.inputRobotIndex === null ||
-            !isIntegerInRange(demoIndex, 0, DEMO_LENGTHS.length - 1)
-        ) {
+        if (mode.id !== "playing" || gameplayPaused || mode.inputRobotIndex === null || !isIntegerInRange(demoIndex, 0, DEMO_LENGTHS.length - 1)) {
             return false;
         }
         const activeDemoIndex = (demoIndex + DEMO_LENGTHS.length - 1) % DEMO_LENGTHS.length;
@@ -228,11 +223,7 @@ function isValidGhostSnapshots(value: unknown): boolean {
         value.length === 4 &&
         value.every((entry, index) => {
             const snapshot = asRecord(entry);
-            return (
-                isValidThingSnapshot(entry, GHOST_FIELDS, "ghost") &&
-                snapshot !== null &&
-                asRecord(snapshot.fields)?.ghostIndex === index
-            );
+            return isValidThingSnapshot(entry, GHOST_FIELDS, "ghost") && snapshot !== null && asRecord(snapshot.fields)?.ghostIndex === index;
         })
     );
 }
@@ -434,19 +425,11 @@ function isValidStandaloneModeFieldState(id: Exclude<ModeId, "playing">, fields:
         case "enterInitials":
             return isValidEnterInitialsState(fields);
         case "hallOfFame":
-            return (
-                isIntegerInRange(fields.pressEnterDelay, 0, 35) &&
-                isIntegerInRange(fields.ticks, 0, 911) &&
-                isIntegerInRange(fields.countDown, 0, 60)
-            );
+            return isIntegerInRange(fields.pressEnterDelay, 0, 35) && isIntegerInRange(fields.ticks, 0, 911) && isIntegerInRange(fields.countDown, 0, 60);
         case "intro":
             return true;
         case "selectWorld":
-            return (
-                isIntegerInRange(fields.selection, 0, 3) &&
-                isIntegerInRange(fields.selectIndex, 0, 22) &&
-                isIntegerInRange(fields.countDown, 0, 60)
-            );
+            return isIntegerInRange(fields.selection, 0, 3) && isIntegerInRange(fields.selectIndex, 0, 22) && isIntegerInRange(fields.countDown, 0, 60);
     }
 }
 
@@ -502,12 +485,7 @@ function isValidRobotInputs(value: unknown): value is RobotInputSnapshot[] {
     return value.every((entry, index) => {
         const snapshot = asRecord(entry);
         const maximum = DEMO_LENGTHS[index];
-        return (
-            maximum !== undefined &&
-            snapshot !== null &&
-            hasExactKeys(snapshot, ROBOT_INPUT_SNAPSHOT_KEYS) &&
-            isIntegerInRange(snapshot.index, 0, maximum)
-        );
+        return maximum !== undefined && snapshot !== null && hasExactKeys(snapshot, ROBOT_INPUT_SNAPSHOT_KEYS) && isIntegerInRange(snapshot.index, 0, maximum);
     });
 }
 

@@ -139,12 +139,7 @@ export class MsPacManGameStateStore {
             return { status: "invalid" };
         }
 
-        if (
-            snapshot !== null &&
-            typeof snapshot === "object" &&
-            !Array.isArray(snapshot) &&
-            Object.hasOwn(snapshot, "version")
-        ) {
+        if (snapshot !== null && typeof snapshot === "object" && !Array.isArray(snapshot) && Object.hasOwn(snapshot, "version")) {
             const version = Reflect.get(snapshot, "version");
             if (typeof version === "number" && Number.isInteger(version) && version > GAME_STATE_VERSION) {
                 return { status: "unsupported-future", version };

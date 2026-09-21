@@ -2,18 +2,7 @@ import type { ModeId } from "./GameStateSnapshot.js";
 
 export const STATE_FIELD_POLICY = {
     Main: {
-        persisted: [
-            "worldIndex",
-            "stageIndex",
-            "score",
-            "lives",
-            "paused",
-            "musicVolume",
-            "musicVolumeFadeStep",
-            "fadeMusicFlag",
-            "demoIndex",
-            "demoMode"
-        ],
+        persisted: ["worldIndex", "stageIndex", "score", "lives", "paused", "musicVolume", "musicVolumeFadeStep", "fadeMusicFlag", "demoIndex", "demoMode"],
         runtime: [
             "browserLifetimeGeneration",
             "fades",
@@ -387,17 +376,7 @@ export const STATE_FIELD_POLICY = {
         runtime: ["main", "whiteEnergizer"]
     },
     EnterInitialsMode: {
-        persisted: [
-            "fadeIndex",
-            "fadeState",
-            "dotsOffset",
-            "redOffset",
-            "editingIndex",
-            "initials",
-            "editVisible",
-            "blinkTimer",
-            "enterPressed"
-        ],
+        persisted: ["fadeIndex", "fadeState", "dotsOffset", "redOffset", "editingIndex", "initials", "editVisible", "blinkTimer", "enterPressed"],
         runtime: ["main", "whiteEnergizer", "input", "blinkingInitials", "newScoreOf"]
     },
     HallOfFameMode: {

@@ -276,18 +276,40 @@ function pauseInput({ pausePressed, startPressed }) {
             return value;
         },
         clearKeyPressedRecord() {},
-        isUp() { return false; },
-        isDown() { return false; },
-        isLeft() { return false; },
-        isRight() { return false; },
-        isUpPressed() { return false; },
-        isDownPressed() { return false; },
-        isLeftPressed() { return false; },
-        isRightPressed() { return false; },
-        isMenuStartPressed() { return false; },
-        isConfirmPressed() { return false; },
+        isUp() {
+            return false;
+        },
+        isDown() {
+            return false;
+        },
+        isLeft() {
+            return false;
+        },
+        isRight() {
+            return false;
+        },
+        isUpPressed() {
+            return false;
+        },
+        isDownPressed() {
+            return false;
+        },
+        isLeftPressed() {
+            return false;
+        },
+        isRightPressed() {
+            return false;
+        },
+        isMenuStartPressed() {
+            return false;
+        },
+        isConfirmPressed() {
+            return false;
+        },
         reset() {},
-        update() { return true; }
+        update() {
+            return true;
+        }
     };
 }
 
