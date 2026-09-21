@@ -77,18 +77,7 @@ export const STATE_FIELD_REGISTRY = {
             "pressedEnterSound",
             "speaking"
         ],
-        persisted: [
-            "worldIndex",
-            "stageIndex",
-            "score",
-            "lives",
-            "paused",
-            "musicVolume",
-            "musicVolumeFadeStep",
-            "fadeMusicFlag",
-            "demoIndex",
-            "demoMode"
-        ],
+        persisted: ["worldIndex", "stageIndex", "score", "lives", "paused", "musicVolume", "musicVolumeFadeStep", "fadeMusicFlag", "demoIndex", "demoMode"],
         runtime: [
             "browserLifetimeGeneration",
             "fades",
@@ -762,17 +751,7 @@ export const STATE_FIELD_REGISTRY = {
             "enterPressed",
             "newScoreOf"
         ],
-        persisted: [
-            "fadeIndex",
-            "fadeState",
-            "dotsOffset",
-            "redOffset",
-            "editingIndex",
-            "initials",
-            "editVisible",
-            "blinkTimer",
-            "enterPressed"
-        ],
+        persisted: ["fadeIndex", "fadeState", "dotsOffset", "redOffset", "editingIndex", "initials", "editVisible", "blinkTimer", "enterPressed"],
         runtime: ["main", "whiteEnergizer", "input", "blinkingInitials", "newScoreOf"]
     },
     HallOfFameMode: {
