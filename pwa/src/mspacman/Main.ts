@@ -148,20 +148,76 @@ export class Main extends BasicGame {
     public static readonly WHITE = 4;
     public static readonly YELLOW = 5;
 
-    public static readonly attractMode: IMode = new AttractMode();
-    public static readonly selectWorldMode: IMode = new SelectWorldMode();
-    public static readonly introMode: IMode = new IntroMode();
-    public static readonly playingMode: IMode = new PlayingMode();
-    public static readonly act1Mode: IMode = new Act1Mode();
-    public static readonly act2Mode: IMode = new Act2Mode();
-    public static readonly act3Mode: IMode = new Act3Mode();
-    public static readonly act4Mode: IMode = new Act4Mode();
-    public static readonly act5Mode: IMode = new Act5Mode();
-    public static readonly act6Mode: IMode = new Act6Mode();
-    public static readonly act7Mode: IMode = new Act7Mode();
-    public static readonly endingMode: IMode = new EndingMode();
-    public static readonly hallOfFameMode: IMode = new HallOfFameMode();
-    public static readonly enterInitialsMode: IMode = new EnterInitialsMode();
+    private static attractModeInstance: IMode | null = null;
+    private static selectWorldModeInstance: IMode | null = null;
+    private static introModeInstance: IMode | null = null;
+    private static playingModeInstance: IMode | null = null;
+    private static act1ModeInstance: IMode | null = null;
+    private static act2ModeInstance: IMode | null = null;
+    private static act3ModeInstance: IMode | null = null;
+    private static act4ModeInstance: IMode | null = null;
+    private static act5ModeInstance: IMode | null = null;
+    private static act6ModeInstance: IMode | null = null;
+    private static act7ModeInstance: IMode | null = null;
+    private static endingModeInstance: IMode | null = null;
+    private static hallOfFameModeInstance: IMode | null = null;
+    private static enterInitialsModeInstance: IMode | null = null;
+
+    public static get attractMode(): IMode {
+        return (Main.attractModeInstance ??= new AttractMode());
+    }
+
+    public static get selectWorldMode(): IMode {
+        return (Main.selectWorldModeInstance ??= new SelectWorldMode());
+    }
+
+    public static get introMode(): IMode {
+        return (Main.introModeInstance ??= new IntroMode());
+    }
+
+    public static get playingMode(): IMode {
+        return (Main.playingModeInstance ??= new PlayingMode());
+    }
+
+    public static get act1Mode(): IMode {
+        return (Main.act1ModeInstance ??= new Act1Mode());
+    }
+
+    public static get act2Mode(): IMode {
+        return (Main.act2ModeInstance ??= new Act2Mode());
+    }
+
+    public static get act3Mode(): IMode {
+        return (Main.act3ModeInstance ??= new Act3Mode());
+    }
+
+    public static get act4Mode(): IMode {
+        return (Main.act4ModeInstance ??= new Act4Mode());
+    }
+
+    public static get act5Mode(): IMode {
+        return (Main.act5ModeInstance ??= new Act5Mode());
+    }
+
+    public static get act6Mode(): IMode {
+        return (Main.act6ModeInstance ??= new Act6Mode());
+    }
+
+    public static get act7Mode(): IMode {
+        return (Main.act7ModeInstance ??= new Act7Mode());
+    }
+
+    public static get endingMode(): IMode {
+        return (Main.endingModeInstance ??= new EndingMode());
+    }
+
+    public static get hallOfFameMode(): IMode {
+        return (Main.hallOfFameModeInstance ??= new HallOfFameMode());
+    }
+
+    public static get enterInitialsMode(): IMode {
+        return (Main.enterInitialsModeInstance ??= new EnterInitialsMode());
+    }
 
     public fades: Color[] = new Array<Color>(23);
     public random = new JavaRandom();
