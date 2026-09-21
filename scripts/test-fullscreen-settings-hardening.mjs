@@ -27,7 +27,7 @@ test("Scaling preference is applied both to fresh and retained gameplay", () => 
     assert.match(mount, /scalableGame\.setScalingPreference\(scalingPreference\)/);
 
     const setter = mainSource.slice(mainSource.indexOf("function setScalingPreference"), mainSource.indexOf("function requestPreferredFullscreen"));
-    assert.match(setter, /preferences\.setScaling\(value\)/);
+    assert.match(setter, /preferences\.setScaling\(value, currentPreferenceWriteAuthorized\)/);
     assert.match(setter, /activeScalableGame\?\.setScalingPreference\(value\)/);
     assert.match(setter, /viewport\.scheduleResize\(\)/);
 });
