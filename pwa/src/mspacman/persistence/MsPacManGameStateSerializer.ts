@@ -133,10 +133,16 @@ export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPac
         return false;
     }
     if (demoMode) {
-        if (mode.id !== "playing" || gameplayPaused || mode.inputRobotIndex === null) {
+        const demoIndex = mainFields.demoIndex;
+        if (
+            mode.id !== "playing" ||
+            gameplayPaused ||
+            mode.inputRobotIndex === null ||
+            !isIntegerInRange(demoIndex, 0, DEMO_LENGTHS.length - 1)
+        ) {
             return false;
         }
-        const activeDemoIndex = (mainFields.demoIndex + DEMO_LENGTHS.length - 1) % DEMO_LENGTHS.length;
+        const activeDemoIndex = (demoIndex + DEMO_LENGTHS.length - 1) % DEMO_LENGTHS.length;
         if (
             mode.inputRobotIndex !== activeDemoIndex ||
             mainFields.stageIndex !== activeDemoIndex ||
@@ -745,7 +751,7 @@ export class MsPacManGameStateSerializer {
 
     private restoreCurrentMode(main: Main, snapshot: CurrentModeSnapshot): void {
         if (snapshot.id === "playing") {
-            this.restorePlayingMode(main, snapshot as PlayingModeSnapshot);
+            this.restorePlayingMode(main, snapshot);
             return;
         }
         const fields = MODE_FIELDS[snapshot.id];
