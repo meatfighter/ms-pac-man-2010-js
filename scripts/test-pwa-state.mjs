@@ -173,6 +173,7 @@ try {
     const { MsPacManGameStateSerializer, isValidMsPacManGameStateSnapshot, isValidSnapshotForLoadedResources, isValidStageIndexForMode } =
         await server.ssrLoadModule("/src/mspacman/persistence/MsPacManGameStateSerializer.ts");
     const { MsPacManGameStateStore } = await server.ssrLoadModule("/src/mspacman/persistence/MsPacManGameStateStore.ts");
+    const { GAME_STATE_VERSION } = await server.ssrLoadModule("/src/mspacman/persistence/GameStateSnapshot.ts");
     ({ EnterInitialsMode: EnterInitialsModeClass } = await server.ssrLoadModule("/src/mspacman/EnterInitialsMode.ts"));
     const { createBrowserStorageKeys } = await server.ssrLoadModule("/src/app/BrowserStorageKeys.ts");
     const { BrowserPreferences } = await server.ssrLoadModule("/src/app/BrowserPreferences.ts");
@@ -266,6 +267,23 @@ try {
             { saved: true }
         );
         assert.notEqual(storage.getItem(storageKey), null);
+    });
+
+    await runTest("prior development schema storage cannot block the current Pac save", () => {
+        const storage = installMemoryLocalStorage();
+        const store = new MsPacManGameStateStore(APP_VERSION);
+        setTestLocation(STAGE_URL);
+        const currentKey = createBrowserStorageKeys().gameState;
+        const priorKey = currentKey.replace(/game-state-v\d+$/, `game-state-v${GAME_STATE_VERSION - 1}`);
+        const priorText = JSON.stringify({ version: GAME_STATE_VERSION - 1, obsoleteShape: true });
+        storage.setItem(priorKey, priorText);
+
+        assert.deepEqual(
+            store.save(createFakeMain("attract", "source"), () => true),
+            { saved: true }
+        );
+        assert.equal(storage.getItem(priorKey), priorText, "prior development schema bytes must remain untouched");
+        assert.equal(JSON.parse(storage.getItem(currentKey)).version, GAME_STATE_VERSION);
     });
 
     await runTest("save authority is checked at the Pac storage write boundary", () => {
