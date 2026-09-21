@@ -32,7 +32,7 @@ export interface RobotInputSnapshot {
 }
 
 export interface ModeSnapshot {
-    id: ModeId;
+    id: Exclude<ModeId, "playing">;
     fields: JsonRecord;
 }
 
@@ -44,7 +44,9 @@ export interface FruitTargetSnapshot extends ThingSnapshot {
     exitPath: number[][] | null;
 }
 
-export interface PlayingModeSnapshot extends ModeSnapshot {
+export interface PlayingModeSnapshot {
+    id: "playing";
+    fields: JsonRecord;
     eatenGhostIndex: number | null;
     fruitTarget: FruitTargetSnapshot;
     ghosts: ThingSnapshot[];
