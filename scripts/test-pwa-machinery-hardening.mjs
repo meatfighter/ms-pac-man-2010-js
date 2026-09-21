@@ -94,13 +94,34 @@ test("ownership relinquishment performs the final save before destructive cleanu
     assert.match(save, /store\.save\(mainGame, \(\) => ownership\.owned && game === mainGame\)/);
 });
 
-test("high-score network callbacks are fenced by the Main browser lifetime", () => {
+test("high-score network callbacks are fenced by browser lifetime and per-operation generations", () => {
+    const operationFactory = gameMainSource.slice(gameMainSource.indexOf("function beginScoreOperation"), gameMainSource.indexOf("function retireScoreOperations"));
+    assert.match(operationFactory, /main\.isBrowserLifetimeGenerationCurrent\(lifetime\)/);
+    assert.match(operationFactory, /state\[generationKey\] === generation/);
+    assert.match(operationFactory, /state\[controllerKey\] === controller/);
+    assert.match(operationFactory, /!controller\.signal\.aborted/);
+    assert.match(operationFactory, /state\[controllerKey\]\?\.abort\(/);
+
     const download = gameMainSource.slice(gameMainSource.indexOf("public downloadScores"), gameMainSource.indexOf("public accessScoresDatabaseAsync"));
-    const submit = gameMainSource.slice(gameMainSource.indexOf("public accessScoresDatabaseAsync"), gameMainSource.indexOf("public accessScoresDatabase("));
     assert.match(download, /const lifetime = this\.captureBrowserLifetimeGeneration\(\)/);
-    assert.ok((download.match(/this\.isBrowserLifetimeGenerationCurrent\(lifetime\)/g) ?? []).length >= 2);
+    assert.match(download, /beginScoreOperation\(this, "download", lifetime\)/);
+    assert.match(download, /this\.runScoreDownload\(revision, operation\)/);
+
+    const submit = gameMainSource.slice(gameMainSource.indexOf("public accessScoresDatabaseAsync"), gameMainSource.indexOf("private async runScoreDownload"));
     assert.match(submit, /const lifetime = this\.captureBrowserLifetimeGeneration\(\)/);
-    assert.ok((submit.match(/this\.isBrowserLifetimeGenerationCurrent\(lifetime\)/g) ?? []).length >= 2);
+    assert.match(submit, /beginScoreOperation\(this, "upload", lifetime\)/);
+    assert.match(submit, /operation\.isCurrent\(\)/);
+    assert.match(submit, /this\.runScoreSubmission\(submittedScore, revision, operation\)/);
+
+    const downloadRunner = gameMainSource.slice(gameMainSource.indexOf("private async runScoreDownload"), gameMainSource.indexOf("private async runScoreSubmission"));
+    assert.match(downloadRunner, /signal: operation\.controller\.signal/);
+    assert.match(downloadRunner, /isCurrent: operation\.isCurrent/);
+    assert.ok((downloadRunner.match(/operation\.isCurrent\(\)/g) ?? []).length >= 2);
+
+    const submitRunner = gameMainSource.slice(gameMainSource.indexOf("private async runScoreSubmission"), gameMainSource.indexOf("public accessScoresDatabase("));
+    assert.match(submitRunner, /signal: operation\.controller\.signal/);
+    assert.match(submitRunner, /isCurrent: operation\.isCurrent/);
+    assert.ok((submitRunner.match(/operation\.isCurrent\(\)/g) ?? []).length >= 2);
 });
 
 test("live Continue is scoped to its playback attempt and retained session", () => {
