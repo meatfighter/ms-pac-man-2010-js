@@ -306,8 +306,8 @@ try {
         assert.equal(storage.getItem(stageKeys.gameState), "{");
         assert.equal(storage.getItem(productionKeys.gameState), productionSnapshot);
 
-        assert.deepEqual(store.save(stageSource, () => true), { saved: true });
-        assert.notEqual(storage.getItem(stageKeys.gameState), productionSnapshot);
+        assert.deepEqual(store.save(stageSource, () => true), { saved: false, reason: "invalid-existing" });
+        assert.equal(storage.getItem(stageKeys.gameState), "{");
         assert.equal(storage.getItem(productionKeys.gameState), productionSnapshot);
     });
 
