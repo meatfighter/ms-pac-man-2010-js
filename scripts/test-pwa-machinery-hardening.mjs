@@ -10,8 +10,8 @@ const runtimeLoaderSource = readFileSync(join(rootDir, "pwa", "src", "app", "Run
 const serviceWorkerSource = readFileSync(join(rootDir, "pwa", "public", "sw.js"), "utf8");
 
 test("forced runtime retry awaits canceled preparation before replacement", () => {
-    assert.match(runtimeLoaderSource, /if \(forceRetry && this\.pending !== null\)/);
-    assert.match(runtimeLoaderSource, /await this\.pending\.catch/);
+    assert.match(runtimeLoaderSource, /if \(!forceRetry && !alreadyCancelled\) return prior/);
+    assert.match(runtimeLoaderSource, /await prior\.catch/);
     assert.match(runtimeLoaderSource, /if \(this\.reloadFailure !== null\) throw this\.reloadFailure/);
 });
 
@@ -148,7 +148,7 @@ test("live Continue is scoped to its playback attempt and retained session", () 
 test("synchronous post-commit viewport hooks are rechecked before RUNNING", () => {
     const mount = mainSource.slice(mainSource.indexOf("async function mountGame"), mainSource.indexOf("function applyVolume"));
     const mountPause = mount.indexOf("appContainer.getInput().pause();");
-    const mountStart = mount.indexOf("await initializeWithDeadline(appContainer.start(), sessionCleanup);");
+    const mountStart = mount.indexOf("await initializeWithDeadline(appContainer.start(), sessionCleanup, initializationOwner);");
     const mountFocus = mount.indexOf("viewport.focusCanvas();");
     const mountGuard = mount.indexOf("if (!isStartingGameSession(generation, audio) || game !== mainGame || container !== appContainer)", mountFocus);
     const mountResume = mount.indexOf("appContainer.getInput().resume();", mountGuard);
@@ -174,7 +174,7 @@ test("synchronous post-commit viewport hooks are rechecked before RUNNING", () =
 test("STARTING container is owned before the first asynchronous display operation", () => {
     const mount = mainSource.slice(mainSource.indexOf("async function mountGame"), mainSource.indexOf("function applyVolume"));
     const ownership = mount.indexOf("container = appContainer;");
-    const firstDisplayAwait = mount.indexOf("await initializeWithDeadline(Promise.resolve(appContainer.setDisplayMode");
+    const firstDisplayAwait = mount.indexOf("Promise.resolve(appContainer.setDisplayMode");
     assert.ok(ownership >= 0);
     assert.ok(firstDisplayAwait >= 0);
     assert.ok(ownership < firstDisplayAwait);
