@@ -1,3 +1,5 @@
+import { createBrowserStorageKeys } from "./app/BrowserStorageKeys.js";
+import { verifyAuthoritativeSave } from "./PersistenceContractVerification.js";
 import { AppGameContainer, Display, ResourceLoader, SoundStore, type SoundPlaybackSnapshot } from "slick2d-ts";
 import { RESOURCE_REFS } from "./app/resourceManifest.js";
 import { getResourceVersion } from "./app/ResourceVersions.js";
@@ -77,6 +79,7 @@ async function verify(): Promise<void> {
 
     const store = new MsPacManGameStateStore("browser-verify");
     const first = await mountMain(null);
+    verifyAuthoritativeSave(createBrowserStorageKeys().gameState, first.main, (main) => store.save(main, () => true));
     const savedMode = first.main.getCurrentModeIdForState();
     assert(savedMode === "attract", `Expected the real game to start in attract mode, got ${savedMode}.`);
     first.main.score = 123450;

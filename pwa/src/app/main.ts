@@ -1,3 +1,4 @@
+import { PersistenceSession, RestoreAttempt } from "./PersistenceSession.js";
 import { SessionCleanup } from "./SessionCleanup.js";
 import {
     beginGameAudio,
@@ -12,7 +13,7 @@ import "./styles.css";
 import { GameSessionOwnership } from "./GameSessionOwnership.js";
 import { GameViewportController } from "./GameViewportController.js";
 import { SoundStore, type AppGameContainer, type GameContainer } from "slick2d-ts";
-import { BrowserPreferences, DEFAULT_SCALING_PREFERENCE, DEFAULT_VOLUME, type ScalingPreference } from "./BrowserPreferences";
+import { BrowserPreferences, type ScalingPreference } from "./BrowserPreferences";
 import { RuntimeLoader, type PreparedRuntime } from "./RuntimeLoader";
 import { ScreenWakeLockManager } from "./ScreenWakeLockManager.js";
 import { registerServiceWorker } from "./ServiceWorkerRegistrar";
@@ -47,7 +48,9 @@ let gameLaunchInProgress = false;
 let pwaSessionState: PwaSessionState = "booting";
 let gameOwnershipEpoch = -1;
 let menuRequestSerial = 0;
-const preferences = new BrowserPreferences();
+const preferences = new BrowserPreferences(false);
+const persistence = new PersistenceSession<MsPacManMain>();
+let activeMenu: HTMLElement | null = null;
 const sessionGeneration = new SessionGeneration();
 const runtimeLoader = new RuntimeLoader(refreshVisibleBootProgress);
 const screenWakeLock = new ScreenWakeLockManager();
@@ -86,7 +89,7 @@ function canActivateFromMenu(): boolean {
 }
 
 function currentPreferenceWriteAuthorized(): boolean {
-    return ownership.owned;
+    return ownership?.isCurrent(ownership.epoch) === true;
 }
 
 function isCurrentGameSession(generation: number): boolean {
@@ -109,6 +112,7 @@ function startPwaMenu(): void {
     if (!sessionCleanup.safe || !ownership.isCurrent(epoch)) {
         return;
     }
+    refreshOwnedSettings();
     const request = ++menuRequestSerial;
     pwaSessionState = "booting";
     renderBoot(runtimeLoader.progress);
@@ -147,6 +151,7 @@ function renderMenu(errorText = ""): void {
 function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: string, overlay: boolean): HTMLElement {
     const menuRoot = document.createElement("main");
     menuRoot.className = overlay ? "shell menu-screen menu-overlay" : "shell menu-screen";
+    guardMenuEvents(menuRoot);
     if (overlay) {
         menuRoot.dataset.liveMenu = "true";
     }
@@ -313,54 +318,47 @@ function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: stri
 }
 
 async function startGame(restoreSavedGame: boolean): Promise<void> {
-    if (!canActivateFromMenu()) {
-        return;
-    }
+    if (!canActivateFromMenu()) return;
     const runtime = runtimeLoader.prepared;
     if (runtime === null) {
         startPwaMenu();
         return;
     }
-    if (!destroyGame()) {
-        return;
-    }
-    applyApplicationAudioPreferences();
+    if (!destroyGame()) return;
     gameOwnershipEpoch = ownership.epoch;
     const generation = sessionGeneration.begin();
     activeSessionGeneration = generation;
     pwaSessionState = "starting";
     gameLaunchInProgress = true;
-    syncScreenWakeLock();
-    if (!isCurrentGameSession(generation) || pwaSessionState !== "starting") {
-        return;
-    }
-    const host = viewport.createShell(generation);
-    runtime.slick.Display.setParent(host);
-    const audio = beginGameAudio();
-    requestPreferredFullscreen();
+    const restoreAttempt = new RestoreAttempt();
+    let audio: GameAudioAttempt | null = null;
     try {
-        if (!(await audio.ready) || !isStartingGameSession(generation, audio)) {
+        applyApplicationAudioPreferences();
+        syncScreenWakeLock();
+        if (!isCurrentGameSession(generation)) return;
+        const host = viewport.createShell(generation);
+        runtime.slick.Display.setParent(host);
+        audio = beginGameAudio();
+        requestPreferredFullscreen();
+        if (!(await audio.ready) || !isStartingGameSession(generation, audio)) return;
+        if (restoreSavedGame && !hasPotentialSavedGameState()) {
+            renderMenu();
             return;
         }
-        await mountGame(runtime, restoreSavedGame, generation, audio);
+        await mountGame(runtime, restoreSavedGame, generation, audio, restoreAttempt);
     } catch (error) {
-        if (!isCurrentGameSession(generation)) {
-            return;
+        if (!isCurrentGameSession(generation)) return;
+        if (restoreAttempt.rejected) {
+            persistence.rejectStored();
+            renderMenu();
+        } else {
+            console.error(error);
+            if (!destroyGame()) return;
+            renderLoadError(error);
         }
-        console.error(error);
-        if (!destroyGame()) {
-            return;
-        }
-        pwaSessionState = "menu";
-        if (restoreSavedGame) {
-            renderMenuUi(app, hasPotentialSavedGameState(), "", false);
-            return;
-        }
-        renderLoadError(error);
     } finally {
-        if (isGameAudioLatest(audio) && isCurrentGameSession(generation) && pwaSessionState === "starting") {
-            requestPwaMenu("start-failed");
-        }
+        if (isCurrentGameSession(generation) && pwaSessionState === "starting" && (audio === null || isGameAudioLatest(audio)))
+            requestPwaMenu("start-not-accepted");
     }
 }
 
@@ -399,7 +397,7 @@ function renderBootLoadError(error: unknown): void {
     document.querySelector<HTMLButtonElement>("#retryButton")?.addEventListener("click", startPwaMenu);
 }
 
-function renderLoadError(error: unknown): void {
+function renderLoadError(error: unknown, title = "Unable to start."): void {
     void error;
     if (!ownership.owned) {
         return;
@@ -409,8 +407,8 @@ function renderLoadError(error: unknown): void {
         <main class="shell">
             <section class="boot boot-error">
                 <div class="failure-icon" aria-hidden="true">&#x1F480;</div>
-                <div class="boot-title">Unable to start.</div>
-                <p class="error-text">Check your connection and try again.</p>
+                <div class="boot-title">${escapeHtml(title)}</div>
+                <p class="error-text">The game could not be started. Try again.</p>
                 <button id="retryButton" class="retry-button" type="button">Retry</button>
             </section>
         </main>
@@ -418,7 +416,13 @@ function renderLoadError(error: unknown): void {
     document.querySelector<HTMLButtonElement>("#retryButton")?.addEventListener("click", startPwaMenu);
 }
 
-async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean, generation: number, audio: GameAudioAttempt): Promise<void> {
+async function mountGame(
+    runtime: PreparedRuntime,
+    restoreSavedGame: boolean,
+    generation: number,
+    audio: GameAudioAttempt,
+    restoreAttempt: RestoreAttempt
+): Promise<void> {
     if (!isStartingGameSession(generation, audio)) {
         return;
     }
@@ -455,7 +459,7 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean, ge
                 return false;
             }
             if (!getGameStateStore(runtime).restore(mainGame, gc)) {
-                throw new Error("Saved game could not be restored.");
+                restoreAttempt.reject();
             }
             return true;
         };
@@ -494,7 +498,7 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean, ge
             if (!destroyGame()) {
                 return;
             }
-            renderLoadError(error);
+            renderLoadError(error, "Game error.");
         });
         applyVolume();
         if (!(await commitGameAudio(audio)) || !isStartingGameSession(generation, audio)) {
@@ -519,6 +523,7 @@ async function mountGame(runtime: PreparedRuntime, restoreSavedGame: boolean, ge
         ) {
             return;
         }
+        persistence.accept(mainGame);
         appContainer.setLoopSuspended(false);
         viewport.startHamburgerVisibilityMonitor();
         syncScreenWakeLock();
@@ -801,6 +806,8 @@ function destroyGame(): boolean {
     activeSessionGeneration = 0;
     gameLaunchInProgress = false;
     const oldGame = game;
+    persistence.retire(oldGame);
+    activeMenu = null;
     const oldContainer = container;
     sessionCleanup.run(
         () => syncScreenWakeLock(),
@@ -837,14 +844,19 @@ function destroyGame(): boolean {
 
 function saveCurrentGameState(): boolean {
     const mainGame = game;
-    if (!ownership.owned || mainGame === null || !mainGame.isStateSaveReady()) {
+    if (
+        !sessionCleanup.safe ||
+        !ownership?.owned ||
+        mainGame === null ||
+        !persistence.canSave(mainGame) ||
+        container?.isLoopSuspended() !== true ||
+        !mainGame.isStateSaveReady()
+    )
         return false;
-    }
     const store = getLoadedGameStateStore();
-    if (store === null) {
-        return false;
-    }
-    const result = store.save(mainGame, () => ownership.owned && game === mainGame);
+    if (store === null) return false;
+    const result = store.save(mainGame, () => ownership.owned && game === mainGame && persistence.canSave(mainGame));
+    if (result.saved) persistence.didSave();
     return result.saved;
 }
 
@@ -866,13 +878,14 @@ function getLoadedGameStateStore(): MsPacManGameStateStore | null {
 }
 
 function hasPotentialSavedGameState(): boolean {
-    return getLoadedGameStateStore()?.hasValidSave() ?? false;
+    return persistence.canReadStored() && (getLoadedGameStateStore()?.hasValidSave() ?? false);
 }
 
 function clearStoredGameState(): void {
     if (!currentPreferenceWriteAuthorized()) {
         return;
     }
+    persistence.abandonStored();
     const store = getLoadedGameStateStore();
     if (store !== null) {
         store.clear(currentPreferenceWriteAuthorized);
@@ -882,19 +895,18 @@ function clearStoredGameState(): void {
 }
 
 function resetPwaState(): void {
-    if (!canActivateFromMenu()) {
-        return;
-    }
-    if (!destroyGame()) {
-        return;
-    }
-    pwaSessionState = "menu";
-    preferences.reset(currentPreferenceWriteAuthorized);
+    if (!canActivateFromMenu()) return;
+    const epoch = ownership.epoch;
+    persistence.abandonStored();
+    if (!destroyGame()) return;
+    const cleared = preferences.reset(() => ownership.isCurrent(epoch));
+    if (!ownership.isCurrent(epoch)) return;
     gameStateStore = null;
-    volume = DEFAULT_VOLUME;
-    scalingPreference = DEFAULT_SCALING_PREFERENCE;
+    volume = preferences.volume;
+    scalingPreference = preferences.scaling;
     applyApplicationAudioPreferences();
-    renderMenuUi(app, false, "", false);
+    pwaSessionState = "menu";
+    renderMenuUi(app, false, cleared ? "" : "Some settings could not be reset.", false);
 }
 
 function hasLiveSuspendedGame(): boolean {
@@ -926,8 +938,7 @@ async function showLiveMenuOverlay(): Promise<void> {
     pwaSessionState = "stopping";
     liveMenuOpen = true;
     sessionCleanup.run(() => syncScreenWakeLock());
-    suspendGameForMenu();
-    const saved = sessionCleanup.trySave(saveCurrentGameState);
+    if (suspendGameForMenu()) sessionCleanup.trySave(saveCurrentGameState);
     sessionCleanup.run(
         () => viewport.stopHamburgerVisibilityMonitor(),
         () => viewport.hideHamburger(),
@@ -945,7 +956,7 @@ async function showLiveMenuOverlay(): Promise<void> {
     }
     if (
         !sessionCleanup.run(() => {
-            menuOverlay = renderMenuUi(app, true, saved ? "" : "Progress could not be saved. Continue still preserves this live game.", true);
+            menuOverlay = renderMenuUi(app, true, "", true);
         })
     ) {
         destroyGame();
@@ -1067,8 +1078,8 @@ function requestPwaMenu(_reason: string): void {
     const session = activeSessionGeneration;
     pwaSessionState = "stopping";
     sessionCleanup.run(() => syncScreenWakeLock());
-    suspendGameForMenu();
-    sessionCleanup.trySave(saveCurrentGameState);
+    const suspended = suspendGameForMenu();
+    if (suspended && !retainExistingOverlay) sessionCleanup.trySave(saveCurrentGameState);
     if (!sessionCleanup.safe) {
         destroyGame();
         return;
@@ -1097,11 +1108,10 @@ function reportResponsiveResizeError(error: unknown, generation: number): void {
     }
     console.error(error);
     suspendGameForMenu();
-    sessionCleanup.trySave(saveCurrentGameState);
     if (!destroyGame()) {
         return;
     }
-    renderLoadError(error);
+    renderLoadError(error, "Game error.");
 }
 
 function handleBrowserReservedKey(event: KeyboardEvent): void {
@@ -1135,20 +1145,12 @@ function setupPageLifecycleHandlers(): void {
 }
 
 function showStartupError(error: unknown): void {
-    if (ownership.owned && app.childElementCount === 0) {
-        renderMenu(formatError(error));
-    }
+    console.error("Unhandled application error.", error);
+    if (ownership.owned && sessionCleanup.safe && app.childElementCount === 0) renderLoadError(error);
 }
 
 function escapeHtml(text: string): string {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-}
-
-function formatError(error: unknown): string {
-    if (error instanceof Error) {
-        return error.message;
-    }
-    return String(error);
 }
 
 function releaseOwnedSession(): void {
@@ -1156,8 +1158,7 @@ function releaseOwnedSession(): void {
     sessionGeneration.invalidate();
     menuRequestSerial++;
     sessionCleanup.run(() => syncScreenWakeLock());
-    suspendGameForMenu();
-    sessionCleanup.trySave(saveCurrentGameState);
+    if (suspendGameForMenu()) sessionCleanup.trySave(saveCurrentGameState);
     destroyGame();
     if (sessionCleanup.safe) {
         pwaSessionState = "menu";
@@ -1180,4 +1181,22 @@ function showCleanupFailure(): void {
     } catch (error) {
         console.error("Unable to display the reload message.", error);
     }
+}
+
+function guardMenuEvents(menu: HTMLElement): void {
+    const epoch = ownership.epoch;
+    activeMenu = menu;
+    const guard = (event: Event): void => {
+        if (activeMenu === menu && menu.isConnected && ownership.isCurrent(epoch) && pwaSessionState === "menu") return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    };
+    for (const name of ["click", "input", "change", "keydown", "pointerdown"]) menu.addEventListener(name, guard, true);
+}
+
+function refreshOwnedSettings(): void {
+    if (!persistence.beginOwnership(ownership.epoch)) return;
+    preferences.reload();
+    volume = preferences.volume;
+    scalingPreference = preferences.scaling;
 }

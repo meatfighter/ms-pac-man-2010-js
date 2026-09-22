@@ -211,9 +211,16 @@ try {
         );
         assert.equal(storage.getItem(keys.gameState), "protected-save");
 
-        let checks = 0;
-        const resetAuthorized = () => ++checks <= 2;
-        assert.equal(preferences.reset(resetAuthorized), false);
+        let authorized = true;
+        const removeItem = storage.removeItem.bind(storage);
+        storage.removeItem = (key) => {
+            removeItem(key);
+            authorized = false;
+        };
+        assert.equal(
+            preferences.reset(() => authorized),
+            false
+        );
         assert.equal(storage.getItem(keys.gameState), null, "first reset removal may commit while ownership is valid");
         assert.equal(storage.getItem(keys.volume), "25", "reset must stop before later keys after ownership revocation");
         assert.equal(storage.getItem(keys.scaling), "crisp");
@@ -236,54 +243,47 @@ try {
         assert.equal(storage.getItem(storageKey), invalidCurrent);
     });
 
-    await runTest("future saves are protected until an explicit owned clear", () => {
+    await runTest("future-format reads are rejected but current saves replace the same slot", () => {
         const storage = installMemoryLocalStorage();
         const store = new MsPacManGameStateStore(APP_VERSION);
         setTestLocation(STAGE_URL);
-        const storageKey = createBrowserStorageKeys().gameState;
-
-        const futureSnapshot = JSON.stringify({ version: 999, futureShape: true });
-        storage.setItem(storageKey, futureSnapshot);
+        const key = createBrowserStorageKeys().gameState;
+        const previous = JSON.stringify({ version: GAME_STATE_VERSION + 1, futureShape: true });
+        storage.setItem(key, previous);
         assert.equal(store.hasValidSave(), false);
-        assert.deepEqual(store.inspectStoredGameState(), { status: "unsupported-future", version: 999 });
-        assert.equal(storage.getItem(storageKey), futureSnapshot);
-
-        assert.deepEqual(
-            store.save(createFakeMain("attract", "source"), () => true),
-            {
-                saved: false,
-                reason: "unsupported-future"
-            }
-        );
-        assert.equal(storage.getItem(storageKey), futureSnapshot);
-
-        assert.equal(
-            store.clear(() => true),
-            true
-        );
-        assert.equal(storage.getItem(storageKey), null);
+        assert.deepEqual(store.inspectStoredGameState(), { status: "invalid" });
+        assert.equal(storage.getItem(key), previous);
         assert.deepEqual(
             store.save(createFakeMain("attract", "source"), () => true),
             { saved: true }
         );
-        assert.notEqual(storage.getItem(storageKey), null);
+        assert.equal(JSON.parse(storage.getItem(key)).version, GAME_STATE_VERSION);
     });
 
-    await runTest("prior development schema storage cannot block the current Pac save", () => {
+    await runTest("a stable slot remains writable after an obsolete-format load", () => {
         const storage = installMemoryLocalStorage();
         const store = new MsPacManGameStateStore(APP_VERSION);
         setTestLocation(STAGE_URL);
-        const currentKey = createBrowserStorageKeys().gameState;
-        const priorKey = currentKey.replace(/game-state-v\d+$/, `game-state-v${GAME_STATE_VERSION - 1}`);
-        const priorText = JSON.stringify({ version: GAME_STATE_VERSION - 1, obsoleteShape: true });
-        storage.setItem(priorKey, priorText);
-
-        assert.deepEqual(
-            store.save(createFakeMain("attract", "source"), () => true),
-            { saved: true }
-        );
-        assert.equal(storage.getItem(priorKey), priorText, "prior development schema bytes must remain untouched");
-        assert.equal(JSON.parse(storage.getItem(currentKey)).version, GAME_STATE_VERSION);
+        const key = createBrowserStorageKeys().gameState;
+        assert.match(key, /:game-state$/);
+        storage.setItem(key, JSON.stringify({ version: GAME_STATE_VERSION - 1, obsoleteShape: true }));
+        assert.equal(store.hasValidSave(), false);
+        const originalGet = storage.getItem;
+        let getCalls = 0;
+        storage.getItem = () => {
+            getCalls++;
+            throw new Error("read unavailable during save");
+        };
+        try {
+            assert.deepEqual(
+                store.save(createFakeMain("attract", "source"), () => true),
+                { saved: true }
+            );
+            assert.equal(getCalls, 0);
+        } finally {
+            storage.getItem = originalGet;
+        }
+        assert.equal(JSON.parse(storage.getItem(key)).version, GAME_STATE_VERSION);
     });
 
     await runTest("save authority is checked at the Pac storage write boundary", () => {
@@ -351,9 +351,9 @@ try {
 
         assert.deepEqual(
             store.save(stageSource, () => true),
-            { saved: false, reason: "invalid-existing" }
+            { saved: true }
         );
-        assert.equal(storage.getItem(stageKeys.gameState), "{");
+        assert.equal(JSON.parse(storage.getItem(stageKeys.gameState)).version, GAME_STATE_VERSION);
         assert.equal(storage.getItem(productionKeys.gameState), productionSnapshot);
     });
 

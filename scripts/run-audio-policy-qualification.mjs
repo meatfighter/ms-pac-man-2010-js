@@ -188,15 +188,12 @@ async function audioStats(page) {
 }
 
 async function readSave(page) {
-    const entries = await page.evaluate(() => Object.entries(localStorage).filter(([key]) => /:game-state-v\d+$/.test(key)));
-    assert.equal(entries.length, 1, `expected exactly one versioned saved game, found ${entries.length}`);
-
-    const [key, text] = entries[0];
-    const match = /:game-state-v(\d+)$/.exec(key);
-    assert(match !== null, `saved-game key is not versioned: ${key}`);
-
-    const snapshot = JSON.parse(text);
-    const keyVersion = Number(match[1]);
-    assert.equal(snapshot.version, keyVersion, `saved-game key/schema version mismatch: key v${keyVersion}, snapshot v${snapshot.version}`);
-    return { key, snapshot };
+    const entry = await page.evaluate(() => {
+        const key = `ms-pac-man-2010:${encodeURIComponent(new URL(".", globalThis.location.href).pathname)}:game-state`;
+        return { key, text: localStorage.getItem(key) };
+    });
+    assert.notEqual(entry.text, null, `No saved game in ${entry.key}`);
+    const snapshot = JSON.parse(entry.text);
+    assert.equal(Number.isInteger(snapshot.version), true, "Snapshot has no integer format discriminator.");
+    return { key: entry.key, snapshot };
 }

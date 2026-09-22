@@ -164,8 +164,6 @@
                         return;
                     }
 
-                    window.__msPacManBootFailed = true;
-
                     var boot = getBootScreen();
                     if (!boot) {
                         if (document.readyState === "loading") {
@@ -176,6 +174,7 @@
                     if (!boot.isConnected) {
                         return;
                     }
+                    window.__msPacManBootFailed = true;
                     boot.classList.add("static-boot-failed");
                 }
 

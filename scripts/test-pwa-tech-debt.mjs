@@ -81,14 +81,14 @@ test("persistence uses public Slick random, Music, and Sound snapshot APIs", () 
     assert.match(snapshot, /GAME_STATE_VERSION = 9/);
     assert.match(snapshot, /soundEffects: SoundSnapshot\[\]/);
     assert.doesNotMatch(snapshot, /FIRST_PUBLIC_GAME_STATE_VERSION/);
-    assert.match(browserStorageKeys, /game-state-v9/);
+    assert.match(browserStorageKeys, /createStorageKey\(deploymentId, "game-state"\)/);
 });
 
-test("extended audio-policy qualification discovers the versioned save dynamically", () => {
-    assert.doesNotMatch(audioPolicyQualification, /game-state-v\d+\$/);
-    assert.doesNotMatch(audioPolicyQualification, /expected a v\d+ saved game/);
-    assert.match(audioPolicyQualification, /Object\.entries\(localStorage\)\.filter\(\(\[key\]\) => \/:game-state-v\\d\+\$\/\.test\(key\)\)/);
-    assert.match(audioPolicyQualification, /assert\.equal\(snapshot\.version, keyVersion/);
+test("extended audio-policy qualification reads the stable deployment slot", () => {
+    assert.doesNotMatch(audioPolicyQualification, /Object\.entries\(localStorage\)|game-state-v/);
+    assert.match(audioPolicyQualification, /encodeURIComponent\(new URL\("\.", location\.href\)\.pathname\)/);
+    assert.match(audioPolicyQualification, /localStorage\.getItem\(key\)/);
+    assert.match(audioPolicyQualification, /Number\.isInteger\(snapshot\.version\)/);
 });
 
 test("save-state inspection is read-only while explicit authorized clear remains separate", () => {
@@ -116,7 +116,7 @@ test("score submission browser lifetime is runtime-only while Enter Initials res
 
 test("browser-native responsibilities are decomposed and generation owned", () => {
     assert.doesNotMatch(browserMain, /slick2d-ts\/slick\//);
-    assert.match(browserMain, /new BrowserPreferences\(\)/);
+    assert.match(browserMain, /new BrowserPreferences\(false\)/);
     assert.match(browserMain, /new RuntimeLoader\(/);
     assert.match(browserMain, /new SessionGeneration\(\)/);
     assert.match(browserMain, /sessionGeneration\.isCurrent/);
@@ -126,11 +126,11 @@ test("browser-native responsibilities are decomposed and generation owned", () =
     assert.doesNotMatch(browserMain, /ResourceLoader\.preloadResources|preloadAudioBuffers|unlockAudio/);
     assert.doesNotMatch(browserMain, /function safeReadVolume|function safeReadScalingPreference|function registerServiceWorker/);
     assert.match(browserPreferences, /setVolume\(value: number, persist: boolean, isAuthorized: \(\) => boolean\)/);
-    assert.match(browserPreferences, /if \(!isAuthorized\(\)\) \{\s*return false;\s*\}/);
+    assert.match(browserPreferences, /if \(!isAuthorized\(\)\) return false;/);
     assert.match(browserMain, /function currentPreferenceWriteAuthorized\(\): boolean/);
     assert.match(browserMain, /preferences\.setFullscreen\(!preferences\.fullscreen, currentPreferenceWriteAuthorized\)/);
     assert.match(browserMain, /preferences\.setScaling\(value, currentPreferenceWriteAuthorized\)/);
-    assert.match(browserMain, /preferences\.reset\(currentPreferenceWriteAuthorized\)/);
+    assert.match(browserMain, /preferences\.reset\(\(\) => ownership\.isCurrent\(epoch\)\)/);
     assert.match(browserPreferences, /BrowserPreferences\.isScaling/);
     assert.match(runtimeLoader, /setCacheVersionResolver\(getResourceVersion\)/);
     assert.match(runtimeLoader, /concurrency: RESOURCE_PRELOAD_CONCURRENCY/);
@@ -154,7 +154,7 @@ test("live-menu save/Continue keeps logical audio detached through save and reat
     assert.doesNotMatch(suspend, /stopAllSounds|stopAllSoundEffects|destroyGame/);
 
     const showMenu = sliceBetween(browserMain, "async function showLiveMenuOverlay", "async function resumeLiveGameFromMenu");
-    assertBefore(showMenu, "suspendGameForMenu();", "sessionCleanup.trySave(saveCurrentGameState)", "Audio must be retired before the live game is saved.");
+    assertBefore(showMenu, "suspendGameForMenu()", "sessionCleanup.trySave(saveCurrentGameState)", "Audio must be retired before the live game is saved.");
 
     const resume = sliceBetween(browserMain, "async function resumeLiveGameFromMenu", "function removeMenuOverlay");
     assertBefore(resume, "commitGameAudio(audio)", "liveGame.setBrowserSuspended(false)", "Audio must commit before the game logical clock resumes.");

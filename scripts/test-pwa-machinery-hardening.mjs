@@ -58,7 +58,7 @@ test("graphics lifecycle is exit-only and restoration never resumes gameplay", (
 
 test("live-menu transition freezes and retires playback before serializing progress", () => {
     const liveMenu = mainSource.slice(mainSource.indexOf("function showLiveMenuOverlay"), mainSource.indexOf("async function resumeLiveGameFromMenu"));
-    assert.ok(liveMenu.indexOf("suspendGameForMenu();") < liveMenu.indexOf("saveCurrentGameState"));
+    assert.ok(liveMenu.indexOf("suspendGameForMenu()") < liveMenu.indexOf("saveCurrentGameState"));
     const suspend = mainSource.slice(mainSource.indexOf("function suspendGameForMenu"), mainSource.indexOf("function showLiveMenuOverlay"));
     assert.match(suspend, /setLoopSuspended\(true\)/);
     assert.match(suspend, /setBrowserSuspended\(true\)/);
@@ -66,32 +66,25 @@ test("live-menu transition freezes and retires playback before serializing progr
     assert.match(suspend, /releaseGameAudio\(\)/);
 });
 
-test("live-menu presentation exits fullscreen before publishing recoverable save state", () => {
+test("live-menu presentation exits fullscreen before publishing a quiet retained menu", () => {
     const liveMenu = mainSource.slice(mainSource.indexOf("function showLiveMenuOverlay"), mainSource.indexOf("async function resumeLiveGameFromMenu"));
-    assert.match(liveMenu, /const saved = sessionCleanup\.trySave\(saveCurrentGameState\)/);
-    assert.match(liveMenu, /Progress could not be saved\. Continue still preserves this live game\./);
+    assert.match(liveMenu, /trySave\(saveCurrentGameState\)/);
+    assert.doesNotMatch(liveMenu, /Progress could not be saved|const saved =/);
     const exitIndex = liveMenu.indexOf("await viewport.exitFullscreenForMenu()");
-    const renderIndex = liveMenu.indexOf("menuOverlay = renderMenuUi");
+    const renderIndex = liveMenu.indexOf("menuOverlay =");
     const publishIndex = liveMenu.indexOf('pwaSessionState = "menu";');
     assert.ok(exitIndex >= 0 && renderIndex > exitIndex && publishIndex > renderIndex);
-    // A rendering/cleanup failure may still destroy the session. An early destroy
-    // before fullscreen exit is also valid when cleanup is already unsafe. What
-    // must not happen is destructive cleanup during the ordinary exit-to-menu
-    // interval before the retained menu has been rendered.
-    const destroyIndex = liveMenu.indexOf("destroyGame();");
-    assert.ok(
-        destroyIndex < 0 || destroyIndex < exitIndex || destroyIndex > renderIndex,
-        "destroyGame() may only be an early unsafe-cleanup abort or occur after retained-menu rendering"
-    );
 });
 
 test("ownership relinquishment performs the final save before destructive cleanup", () => {
     const release = mainSource.slice(mainSource.indexOf("function releaseOwnedSession"), mainSource.indexOf("function showCleanupFailure"));
-    const save = mainSource.slice(mainSource.indexOf("function saveCurrentGameState"), mainSource.indexOf("function getGameStateStore"));
-    assert.ok(release.indexOf("sessionCleanup.trySave(saveCurrentGameState);") < release.indexOf("destroyGame();"));
-    assert.match(save, /const mainGame = game;/);
-    assert.match(save, /if \(!ownership\.owned \|\| mainGame === null \|\| !mainGame\.isStateSaveReady\(\)\)/);
-    assert.match(save, /store\.save\(mainGame, \(\) => ownership\.owned && game === mainGame\)/);
+    const saveIndex = release.indexOf("trySave(saveCurrentGameState)");
+    const destroyIndex = release.indexOf("destroyGame()");
+    assert.ok(saveIndex >= 0 && destroyIndex > saveIndex);
+    const save = mainSource.slice(mainSource.indexOf("function saveCurrentGameState"), mainSource.indexOf("function clearStoredGameState"));
+    assert.match(save, /ownership/);
+    assert.match(save, /persistence\.canSave\(mainGame\)/);
+    assert.doesNotMatch(save, /canReadStored|inspectStored|hasValidSave/);
 });
 
 test("high-score network callbacks are fenced by browser lifetime and per-operation generations", () => {

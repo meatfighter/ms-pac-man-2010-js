@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Persistence transition matrix</title>
+        <style>
+            body {
+                margin: 0;
+                font: 14px system-ui;
+            }
+            header {
+                padding: 12px;
+            }
+            button,
+            select,
+            input {
+                margin: 4px;
+                padding: 6px;
+            }
+            #game-host {
+                width: min(90vw, 960px);
+                height: 70vh;
+                margin: auto;
+            }
+            canvas {
+                display: block;
+                max-width: 100%;
+                max-height: 100%;
+            }
+            #status {
+                white-space: pre-wrap;
+            }
+            #failure {
+                white-space: pre-wrap;
+            }
+            .controls {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>Persistence transition matrix</h1>
+            <p>
+                Local, isolated test fixture. Play normally to reach a case. Pause and verify captures the real runtime, reconstructs a fresh one, and compares
+                a controlled neutral-input continuation.
+            </p>
+            <div class="controls">
+                <button id="start">Start fresh</button
+                ><select id="case" aria-label="Case"></select
+                ><input id="notes" placeholder="Stage/phase/input evidence" aria-label="Evidence notes" /><button id="verify" disabled>Pause and verify</button
+                ><button id="resume" disabled>Resume</button><button id="export">Export evidence</button>
+            </div>
+            <p id="status" role="status">Not started.</p>
+            <pre id="failure"></pre>
+        </header>
+        <div id="game-host"></div>
+        <script type="module" src="/src/PersistenceMatrix.ts"></script>
+    </body>
+</html>

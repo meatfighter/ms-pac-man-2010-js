@@ -13,7 +13,7 @@ export function createBrowserStorageKeys(locationHref = getCurrentLocationHref()
     const deploymentId = createDeploymentStorageId(locationHref);
     return {
         deploymentId,
-        gameState: createStorageKey(deploymentId, "game-state-v9"),
+        gameState: createStorageKey(deploymentId, "game-state"),
         scaling: createStorageKey(deploymentId, "scaling"),
         fullscreen: createStorageKey(deploymentId, "fullscreen"),
         volume: createStorageKey(deploymentId, "volume")

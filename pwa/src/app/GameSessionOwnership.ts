@@ -294,7 +294,22 @@ export class GameSessionOwnership {
     }
 
     private showCleanupFailure(): void {
-        this.showMessage("Unable to close this session safely. Reload this tab before continuing elsewhere.", false);
+        if (this.disposed || this.sleeping) return;
+        const screen = document.createElement("main");
+        screen.className = "session-ownership-screen";
+        screen.setAttribute("role", "alert");
+        const panel = document.createElement("section");
+        panel.className = "session-ownership-panel";
+        const text = document.createElement("p");
+        text.textContent = "This session could not be stopped safely. Reload this tab before continuing.";
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "start-button";
+        button.textContent = "Reload";
+        button.addEventListener("click", () => window.location.reload());
+        panel.append(text, button);
+        screen.append(panel);
+        this.root.replaceChildren(screen);
     }
 
     private showMessage(message: string, allowRetry = true): void {

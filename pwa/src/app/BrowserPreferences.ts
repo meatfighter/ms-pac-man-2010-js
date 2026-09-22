@@ -1,3 +1,4 @@
+import { writePreference, removePreference } from "./BrowserPersistence.js";
 import { createBrowserStorageKeys } from "./BrowserStorageKeys.js";
 
 export type ScalingPreference = "smooth" | "crisp" | "pixel-perfect";
@@ -7,21 +8,24 @@ export const DEFAULT_SCALING_PREFERENCE: ScalingPreference = "crisp";
 export const DEFAULT_FULLSCREEN_PREFERENCE = true;
 
 export class BrowserPreferences {
-    public volume = this.readVolume();
-    public scaling = this.readScaling();
-    public fullscreen = this.readFullscreen();
+    public volume = DEFAULT_VOLUME;
+    public scaling: ScalingPreference = DEFAULT_SCALING_PREFERENCE;
+    public fullscreen = DEFAULT_FULLSCREEN_PREFERENCE;
 
     public setVolume(value: number, persist: boolean, isAuthorized: () => boolean): boolean {
+        if (!isAuthorized()) return false;
         this.volume = BrowserPreferences.clampVolume(value);
         return !persist || this.write(createBrowserStorageKeys().volume, String(Math.round(this.volume * 100)), "volume", isAuthorized);
     }
 
     public setScaling(value: ScalingPreference, isAuthorized: () => boolean): boolean {
+        if (!isAuthorized()) return false;
         this.scaling = value;
         return this.write(createBrowserStorageKeys().scaling, value, "scaling preference", isAuthorized);
     }
 
     public setFullscreen(value: boolean, isAuthorized: () => boolean): boolean {
+        if (!isAuthorized()) return false;
         this.fullscreen = value;
         return this.write(createBrowserStorageKeys().fullscreen, String(value), "fullscreen preference", isAuthorized);
     }
@@ -31,6 +35,8 @@ export class BrowserPreferences {
     }
 
     public reset(isAuthorized: () => boolean): boolean {
+        if (!isAuthorized()) return false;
+        this.resetInMemory();
         const keys = createBrowserStorageKeys();
         let success = true;
         for (const [key, label] of [
@@ -39,14 +45,9 @@ export class BrowserPreferences {
             [keys.scaling, "scaling preference"],
             [keys.fullscreen, "fullscreen preference"]
         ] as const) {
-            if (!isAuthorized()) {
-                return false;
-            }
+            if (!isAuthorized()) return false;
             success = this.remove(key, label, isAuthorized) && success;
         }
-        this.volume = DEFAULT_VOLUME;
-        this.scaling = DEFAULT_SCALING_PREFERENCE;
-        this.fullscreen = DEFAULT_FULLSCREEN_PREFERENCE;
         return success;
     }
 
@@ -55,7 +56,7 @@ export class BrowserPreferences {
     }
 
     public static clampVolume(value: number): number {
-        return Math.max(0, Math.min(1, value));
+        return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : DEFAULT_VOLUME;
     }
 
     private readVolume(): number {
@@ -93,28 +94,26 @@ export class BrowserPreferences {
     }
 
     private write(key: string, value: string, label: string, isAuthorized: () => boolean): boolean {
-        if (!isAuthorized()) {
-            return false;
-        }
-        try {
-            localStorage.setItem(key, value);
-            return true;
-        } catch (error) {
-            console.warn(`Unable to save Ms. Pac-Man ${label}.`, error);
-            return false;
-        }
+        return writePreference("Ms. Pac-Man " + label, key, value, isAuthorized);
     }
 
     private remove(key: string, label: string, isAuthorized: () => boolean): boolean {
-        if (!isAuthorized()) {
-            return false;
-        }
-        try {
-            localStorage.removeItem(key);
-            return true;
-        } catch (error) {
-            console.warn(`Unable to clear Ms. Pac-Man ${label}.`, error);
-            return false;
-        }
+        return removePreference("Ms. Pac-Man " + label, key, isAuthorized);
+    }
+
+    public constructor(loadStored = true) {
+        if (loadStored) this.reload();
+    }
+
+    public reload(): void {
+        this.volume = this.readVolume();
+        this.scaling = this.readScaling();
+        this.fullscreen = this.readFullscreen();
+    }
+
+    public resetInMemory(): void {
+        this.volume = DEFAULT_VOLUME;
+        this.scaling = DEFAULT_SCALING_PREFERENCE;
+        this.fullscreen = DEFAULT_FULLSCREEN_PREFERENCE;
     }
 }

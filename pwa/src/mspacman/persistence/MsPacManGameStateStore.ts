@@ -1,8 +1,9 @@
+import { captureAndWriteSnapshot, type SnapshotWriteResult } from "../../app/BrowserPersistence.js";
 import type { GameContainer } from "slick2d-ts";
 import { createBrowserStorageKeys } from "../../app/BrowserStorageKeys";
 import { MAX_SNAPSHOT_TEXT_LENGTH } from "../../app/SnapshotLimits.js";
 import type { Main } from "../Main";
-import { GAME_STATE_VERSION, type MsPacManGameStateSnapshot } from "./GameStateSnapshot";
+import { type MsPacManGameStateSnapshot } from "./GameStateSnapshot";
 import { MsPacManGameStateSerializer } from "./MsPacManGameStateSerializer";
 
 const JAVA_INT_MIN = -2_147_483_648;
@@ -14,23 +15,9 @@ export type StoredMsPacManGameStateInspection =
     | { readonly status: "read-failed" }
     | { readonly status: "missing" }
     | { readonly status: "invalid" }
-    | { readonly status: "unsupported-future"; readonly version: number }
     | { readonly status: "current"; readonly snapshot: MsPacManGameStateSnapshot };
 
-export type MsPacManGameStateWriteResult =
-    | { readonly saved: true }
-    | {
-          readonly saved: false;
-          readonly reason:
-              | "not-authorized"
-              | "invalid-snapshot"
-              | "read-failed"
-              | "invalid-existing"
-              | "unsupported-future"
-              | "encode-failed"
-              | "too-large"
-              | "write-failed";
-      };
+export type MsPacManGameStateWriteResult = SnapshotWriteResult;
 
 /** Only the current exact schema is supported in its deployment-scoped storage slot. */
 export class MsPacManGameStateStore {
@@ -39,51 +26,15 @@ export class MsPacManGameStateStore {
     public constructor(private readonly appVersion: string) {}
 
     public save(main: Main, isAuthorized: () => boolean): MsPacManGameStateWriteResult {
-        if (!main.isStateSaveReady()) {
-            return { saved: false, reason: "invalid-snapshot" };
-        }
-        try {
-            const existing = this.inspectStoredGameState();
-            switch (existing.status) {
-                case "read-failed":
-                    return { saved: false, reason: "read-failed" };
-                case "invalid":
-                    return { saved: false, reason: "invalid-existing" };
-                case "unsupported-future":
-                    return { saved: false, reason: "unsupported-future" };
-                case "missing":
-                case "current":
-                    break;
-            }
-
-            const snapshot = this.serializer.createSnapshot(main, this.appVersion);
-            if (!this.isSnapshotValid(snapshot)) {
-                return { saved: false, reason: "invalid-snapshot" };
-            }
-
-            let text: string;
-            try {
-                text = JSON.stringify(snapshot);
-            } catch {
-                return { saved: false, reason: "encode-failed" };
-            }
-            if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
-                return { saved: false, reason: "too-large" };
-            }
-            if (!isAuthorized()) {
-                return { saved: false, reason: "not-authorized" };
-            }
-            try {
-                localStorage.setItem(createBrowserStorageKeys().gameState, text);
-                return { saved: true };
-            } catch (error) {
-                console.warn("Unable to save MS Pac-Man game state.", error);
-                return { saved: false, reason: "write-failed" };
-            }
-        } catch (error) {
-            console.warn("Unable to save MS Pac-Man game state.", error);
-            return { saved: false, reason: "encode-failed" };
-        }
+        if (!main.isStateSaveReady()) return { saved: false, reason: "invalid-snapshot" };
+        return captureAndWriteSnapshot(
+            "Ms. Pac-Man game state",
+            createBrowserStorageKeys().gameState,
+            () => this.serializer.createSnapshot(main, this.appVersion),
+            (snapshot) => this.isSnapshotValid(snapshot),
+            MAX_SNAPSHOT_TEXT_LENGTH,
+            isAuthorized
+        );
     }
 
     public restore(main: Main, gc: GameContainer): boolean {
@@ -120,33 +71,18 @@ export class MsPacManGameStateStore {
     public inspectStoredGameState(): StoredMsPacManGameStateInspection {
         let text: string | null;
         try {
-            text = localStorage.getItem(createBrowserStorageKeys().gameState);
-        } catch (error) {
-            console.warn("Unable to inspect MS Pac-Man game state.", error);
+            text = globalThis.localStorage.getItem(createBrowserStorageKeys().gameState);
+        } catch {
             return { status: "read-failed" };
         }
-        if (text === null) {
-            return { status: "missing" };
-        }
-        if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) {
-            return { status: "invalid" };
-        }
-
-        let snapshot: unknown;
+        if (text === null) return { status: "missing" };
+        if (text.length > MAX_SNAPSHOT_TEXT_LENGTH) return { status: "invalid" };
         try {
-            snapshot = JSON.parse(text) as unknown;
+            const snapshot: unknown = JSON.parse(text);
+            return this.isSnapshotValid(snapshot) ? { status: "current", snapshot: snapshot as MsPacManGameStateSnapshot } : { status: "invalid" };
         } catch {
             return { status: "invalid" };
         }
-
-        if (snapshot !== null && typeof snapshot === "object" && !Array.isArray(snapshot) && Object.hasOwn(snapshot, "version")) {
-            const version = Reflect.get(snapshot, "version");
-            if (typeof version === "number" && Number.isInteger(version) && version > GAME_STATE_VERSION) {
-                return { status: "unsupported-future", version };
-            }
-        }
-
-        return this.isSnapshotValid(snapshot) ? { status: "current", snapshot } : { status: "invalid" };
     }
 
     private isSnapshotValid(snapshot: unknown): snapshot is MsPacManGameStateSnapshot {

@@ -31,7 +31,7 @@ export class SessionCleanup {
         try {
             return save();
         } catch (error) {
-            console.warn("Unable to save progress; the last successful save is unchanged.", error);
+            console.warn("Unable to save game state during session transition.", error);
             return false;
         }
     }
