@@ -1,4 +1,4 @@
-import { captureAndWriteSnapshot, type SnapshotWriteResult } from "../../app/BrowserPersistence.js";
+import { captureAndWriteSnapshot, removePreference, type SnapshotWriteResult } from "../../app/BrowserPersistence.js";
 import type { GameContainer } from "slick2d-ts";
 import { createBrowserStorageKeys } from "../../app/BrowserStorageKeys";
 import { MAX_SNAPSHOT_TEXT_LENGTH } from "../../app/SnapshotLimits.js";
@@ -56,16 +56,7 @@ export class MsPacManGameStateStore {
     }
 
     public clear(isAuthorized: () => boolean): boolean {
-        if (!isAuthorized()) {
-            return false;
-        }
-        try {
-            localStorage.removeItem(createBrowserStorageKeys().gameState);
-            return true;
-        } catch (error) {
-            console.warn("Unable to clear MS Pac-Man game state.", error);
-            return false;
-        }
+        return removePreference("Ms. Pac-Man game state", createBrowserStorageKeys().gameState, isAuthorized);
     }
 
     public inspectStoredGameState(): StoredMsPacManGameStateInspection {

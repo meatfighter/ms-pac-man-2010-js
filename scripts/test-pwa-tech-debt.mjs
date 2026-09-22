@@ -95,8 +95,8 @@ test("save-state inspection is read-only while explicit authorized clear remains
     const inspection = sliceBetween(stateStore, "public inspectStoredGameState()", "private isSnapshotValid");
     assert.doesNotMatch(inspection, /this\.clear\(|removeItem\(/);
     assert.match(stateStore, /public clear\(isAuthorized: \(\) => boolean\): boolean/);
-    assert.match(stateStore, /if \(!isAuthorized\(\)\) \{\s*return false;\s*\}/);
-    assert.match(stateStore, /localStorage\.removeItem\(createBrowserStorageKeys\(\)\.gameState\)/);
+    assert.match(stateStore, /removePreference\("Ms\. Pac-Man game state", createBrowserStorageKeys\(\)\.gameState, isAuthorized\)/);
+    assert.doesNotMatch(stateStore, /localStorage\.removeItem|globalThis\.localStorage\.removeItem/);
 });
 
 test("score submission browser lifetime is runtime-only while Enter Initials restore rebuilds local progress", () => {

@@ -19,11 +19,19 @@ test("new game requires boot-prepared runtime before fresh playback activation",
     const startGame = mainSource.slice(mainSource.indexOf("async function startGame"), mainSource.indexOf("function renderBoot"));
     assert.match(startGame, /const runtime = runtimeLoader\.prepared;/);
     assert.match(startGame, /if \(runtime === null\) \{\s*startPwaMenu\(\);\s*return;\s*\}/);
-    assert.ok(startGame.indexOf("if (!destroyGame())") > startGame.indexOf("const runtime = runtimeLoader.prepared;"));
-    assert.ok(startGame.indexOf("const generation = sessionGeneration.begin();") < startGame.indexOf("const audio = beginGameAudio();"));
-    assert.ok(startGame.indexOf('pwaSessionState = "starting";') < startGame.indexOf("const audio = beginGameAudio();"));
-    assert.ok(startGame.indexOf("viewport.createShell(generation)") < startGame.indexOf("const audio = beginGameAudio();"));
-    assert.ok(startGame.indexOf("requestPreferredFullscreen()") < startGame.indexOf("await audio.ready"));
+    const runtimeIndex = startGame.indexOf("const runtime = runtimeLoader.prepared;");
+    const destroyIndex = startGame.indexOf("if (!destroyGame())");
+    const generationIndex = startGame.indexOf("const generation = sessionGeneration.begin();");
+    const startingIndex = startGame.indexOf('pwaSessionState = "starting";');
+    const shellIndex = startGame.indexOf("viewport.createShell(generation)");
+    const audioIndex = startGame.indexOf("const audio = beginGameAudio();");
+    const fullscreenIndex = startGame.indexOf("requestPreferredFullscreen()");
+    const readyIndex = startGame.indexOf("await audio.ready");
+    assert.ok(runtimeIndex >= 0 && destroyIndex > runtimeIndex);
+    assert.ok(generationIndex >= 0 && audioIndex > generationIndex);
+    assert.ok(startingIndex >= 0 && audioIndex > startingIndex);
+    assert.ok(shellIndex >= 0 && audioIndex > shellIndex);
+    assert.ok(fullscreenIndex >= 0 && readyIndex > fullscreenIndex);
     assert.match(startGame, /await audio\.ready/);
     assert.doesNotMatch(startGame, /unlockAudio|runtimeLoader\.prepare\s*\(|renderBoot/);
 });
@@ -58,7 +66,9 @@ test("graphics lifecycle is exit-only and restoration never resumes gameplay", (
 
 test("live-menu transition freezes and retires playback before serializing progress", () => {
     const liveMenu = mainSource.slice(mainSource.indexOf("function showLiveMenuOverlay"), mainSource.indexOf("async function resumeLiveGameFromMenu"));
-    assert.ok(liveMenu.indexOf("suspendGameForMenu()") < liveMenu.indexOf("saveCurrentGameState"));
+    const suspendIndex = liveMenu.indexOf("suspendGameForMenu()");
+    const saveIndex = liveMenu.indexOf("saveCurrentGameState");
+    assert.ok(suspendIndex >= 0 && saveIndex > suspendIndex);
     const suspend = mainSource.slice(mainSource.indexOf("function suspendGameForMenu"), mainSource.indexOf("function showLiveMenuOverlay"));
     assert.match(suspend, /setLoopSuspended\(true\)/);
     assert.match(suspend, /setBrowserSuspended\(true\)/);
@@ -130,7 +140,9 @@ test("live Continue is scoped to its playback attempt and retained session", () 
     const resume = mainSource.slice(mainSource.indexOf("async function resumeLiveGameFromMenu"), mainSource.indexOf("function removeMenuOverlay"));
     assert.match(resume, /const audio = beginGameAudio\(\)/);
     assert.match(resume, /requestPreferredFullscreen\(\)/);
-    assert.ok(resume.indexOf("requestPreferredFullscreen()") < resume.indexOf("await audio.ready"));
+    const fullscreenIndex = resume.indexOf("requestPreferredFullscreen()");
+    const readyIndex = resume.indexOf("await audio.ready");
+    assert.ok(fullscreenIndex >= 0 && readyIndex > fullscreenIndex);
     assert.match(resume, /commitGameAudio\(audio\)/);
     assert.match(resume, /isGameAudioLatest\(audio\)/);
     assert.equal((resume.match(/isGameAudioLatest\(audio\)/g) ?? []).length, 2, "Continue catch and finally must both reject stale attempts.");

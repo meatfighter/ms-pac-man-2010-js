@@ -93,6 +93,8 @@ function world() {
         tab({ href = "https://example.test/game/", acquired = () => {}, relinquish = () => {} } = {}) {
             const root = new Element();
             const window = new Events();
+            let reloadCalls = 0;
+            window.location = { reload: () => reloadCalls++ };
             const document = new Events();
             document.visibilityState = "visible";
             document.createElement = (name) => new Element(name);
@@ -189,6 +191,7 @@ function world() {
                 document,
                 env,
                 log,
+                reloadCalls: () => reloadCalls,
                 button: () => descendants(root).find((node) => node.tag === "button"),
                 text: () =>
                     descendants(root)
@@ -262,7 +265,9 @@ test("failed cleanup revokes write capability while retaining the native lock", 
     assert.equal(first.owner.isCurrent(epoch), false);
     assert.equal(w.locks.size, 1);
     assert.match(first.text(), /Reload this tab/);
-    assert.equal(first.button(), undefined);
+    assert.equal(first.button()?.textContent, "Reload");
+    first.button().click();
+    assert.equal(first.reloadCalls(), 1);
     const second = w.tab();
     second.owner.start();
     await flush();
@@ -457,7 +462,9 @@ test("acquired-callback and teardown failure keep the native lock without leavin
     assert.equal(tab.owner.owned, false);
     assert.equal(tab.owner.isCurrent(tab.owner.epoch), false);
     assert.match(tab.text(), /Reload this tab/);
-    assert.equal(tab.button(), undefined);
+    assert.equal(tab.button()?.textContent, "Reload");
+    tab.button().click();
+    assert.equal(tab.reloadCalls(), 1);
 });
 
 test("disposal requested from inside relinquishment is completed once cleanup returns", async () => {

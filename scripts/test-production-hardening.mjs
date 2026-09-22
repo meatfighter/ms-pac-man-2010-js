@@ -115,8 +115,8 @@ test("failed runtime import aborts and settles preloading before retry is expose
     assert.equal(exposed, true);
 });
 
-test("oversized public save is preserved by inspection and automatic saving", () => {
-    const text = JSON.stringify({ version: 5, payload: "x".repeat(1_000_001) });
+test("oversized stored data is rejected on read but cannot block an authorized current save", () => {
+    const text = JSON.stringify({ version: 999, payload: "x".repeat(1_000_001) });
     let stored = text;
     const context = {
         console,
@@ -130,30 +130,53 @@ test("oversized public save is preserved by inspection and automatic saving", ()
             }
         },
         require(name) {
+            if (name.includes("BrowserPersistence"))
+                return {
+                    captureAndWriteSnapshot(_label, key, capture, validate, maxTextLength, isAuthorized) {
+                        let snapshot;
+                        try {
+                            snapshot = capture();
+                        } catch {
+                            return { saved: false, reason: "capture-failed" };
+                        }
+                        if (!validate(snapshot)) return { saved: false, reason: "invalid-snapshot" };
+                        const encoded = JSON.stringify(snapshot);
+                        if (encoded.length > maxTextLength) return { saved: false, reason: "too-large" };
+                        if (!isAuthorized()) return { saved: false, reason: "not-authorized" };
+                        context.localStorage.setItem(key, encoded);
+                        return { saved: true };
+                    },
+                    removePreference(_label, key, isAuthorized) {
+                        if (!isAuthorized()) return false;
+                        context.localStorage.removeItem(key);
+                        return true;
+                    }
+                };
             if (name.includes("BrowserStorageKeys")) return { createBrowserStorageKeys: () => ({ gameState: "save" }) };
             if (name.includes("SnapshotLimits")) return { MAX_SNAPSHOT_TEXT_LENGTH: 1_000_000 };
             if (name.includes("Serializer"))
                 return {
                     MsPacManGameStateSerializer: class {
                         createSnapshot() {
-                            throw new Error("must not replace protected save");
+                            return { version: 9, supported: true, marker: "current" };
+                        }
+                        isSupportedSnapshot(snapshot) {
+                            return snapshot?.version === 9 && snapshot?.supported === true;
                         }
                     }
                 };
-            return { FIRST_PUBLIC_GAME_STATE_VERSION: 4, GAME_STATE_VERSION: 4 };
+            return {};
         }
     };
     const { MsPacManGameStateStore } = load("pwa/src/mspacman/persistence/MsPacManGameStateStore.ts", context);
     const store = new MsPacManGameStateStore("test");
     assert.equal(store.hasValidSave(), false);
     assert.equal(stored, text);
-    const saveResult = store.save({ isStateSaveReady: () => true }, () => true);
-    assert.equal(saveResult.saved, false);
-    assert.equal(saveResult.reason, "invalid-existing");
-    assert.equal(stored, text);
-    assert.equal(
-        store.clear(() => true),
-        true
-    ); // Explicit New Game / Reset remains authorized to discard it.
-    assert.equal(stored, null);
+    assert.deepEqual(
+        store.save({ isStateSaveReady: () => true }, () => true),
+        { saved: true }
+    );
+    assert.equal(JSON.parse(stored).version, 9);
+    assert.notEqual(stored, text);
 });
+

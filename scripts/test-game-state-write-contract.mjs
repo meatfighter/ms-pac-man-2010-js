@@ -87,6 +87,43 @@ test("real store boundary: invalid old data cannot poison writes and no read is 
     }
 });
 
+test("real store clear rechecks authority at the final storage boundary", () => {
+    install();
+    console.warn = () => {};
+    try {
+        assert.equal(store.save(main(), () => true).saved, true);
+        const key = s.calls.set.at(-1);
+        const previous = s.values.get(key);
+        const storage = s;
+        let authorized = true;
+        Object.defineProperty(globalThis, "localStorage", {
+            configurable: true,
+            get() {
+                authorized = false;
+                return storage;
+            }
+        });
+        s.clearCalls();
+        assert.equal(store.clear(() => authorized), false);
+        assert.equal(s.values.get(key), previous);
+        assert.deepEqual(s.calls.get, []);
+        assert.deepEqual(s.calls.set, []);
+        assert.deepEqual(s.calls.remove, []);
+
+        install();
+        authorized = true;
+        s.clearCalls();
+        assert.equal(store.clear(() => authorized), true);
+        assert.deepEqual(s.calls.get, []);
+        assert.deepEqual(s.calls.set, []);
+        assert.deepEqual(s.calls.remove, [key]);
+        assert.equal(s.values.has(key), false);
+    } finally {
+        console.warn = warn;
+        restore();
+    }
+});
+
 test("real store boundary: capture, mutation failure, denial, and restore failure preserve bytes", () => {
     install();
     console.warn = () => {};

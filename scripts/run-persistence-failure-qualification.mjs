@@ -170,7 +170,7 @@ try {
     await running(page);
     // Events dispatched at a detached old menu must not write settings.
     await arm(page, {});
-    if (retiredControl) await retiredControl.evaluate((el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true })));
+    if (retiredControl) await retiredControl.evaluate((el) => el.dispatchEvent(new globalThis.MouseEvent("click", { bubbles: true, cancelable: true })));
     assert.deepEqual((await faultInfo(page)).otherWrites, []);
     await disarm(page);
     await page.locator(menuSelector).first().click();
