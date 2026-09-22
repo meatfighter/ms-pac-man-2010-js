@@ -9,10 +9,10 @@ const gameMainSource = readFileSync(join(rootDir, "pwa", "src", "mspacman", "Mai
 const runtimeLoaderSource = readFileSync(join(rootDir, "pwa", "src", "app", "RuntimeLoader.ts"), "utf8");
 const serviceWorkerSource = readFileSync(join(rootDir, "pwa", "public", "sw.js"), "utf8");
 
-test("forced runtime retry supersedes pending preparation cleanly", () => {
-    assert.match(runtimeLoaderSource, /if \(forceRetry && this\.preparationPromise !== null\) \{/);
-    assert.match(runtimeLoaderSource, /this\.abortController\?\.abort\(new Error\("Ms\. Pac-Man runtime preparation superseded by retry\."\)\)/);
-    assert.match(runtimeLoaderSource, /await this\.preparationPromise;/);
+test("forced runtime retry awaits canceled preparation before replacement", () => {
+    assert.match(runtimeLoaderSource, /if \(forceRetry && this\.pending !== null\)/);
+    assert.match(runtimeLoaderSource, /await this\.pending\.catch/);
+    assert.match(runtimeLoaderSource, /if \(this\.reloadFailure !== null\) throw this\.reloadFailure/);
 });
 
 test("new game requires boot-prepared runtime before fresh playback activation", () => {
@@ -36,16 +36,12 @@ test("new game requires boot-prepared runtime before fresh playback activation",
     assert.doesNotMatch(startGame, /unlockAudio|runtimeLoader\.prepare\s*\(|renderBoot/);
 });
 
-test("runtime preload waits for both resource branches before exposing failure", () => {
-    assert.match(runtimeLoaderSource, /const results = await Promise\.allSettled\(\[/);
-    assert.match(runtimeLoaderSource, /results\.find\(\(result\): result is PromiseRejectedResult => result\.status === "rejected"\)/);
-    assert.match(runtimeLoaderSource, /if \(failure !== undefined\) \{\s*throw failure\.reason;\s*\}/);
-    assert.match(runtimeLoaderSource, /if \(signal\.aborted\) \{\s*throw signal\.reason/);
-    assert.doesNotMatch(
-        runtimeLoaderSource,
-        /await Promise\.all\(\[\s*ResourceLoader\.preloadResources[\s\S]*?SoundStore\.get\(\)\.preloadAudioBuffers/,
-        "Audio and non-audio preload branches must not fail-fast and leave sibling work running behind a retry screen."
-    );
+test("runtime preload observes both settled batches and aborts on first failure", () => {
+    assert.match(runtimeLoaderSource, /await Promise\.all\(\[/);
+    assert.match(runtimeLoaderSource, /runSettledBatch\(resources, RESOURCE_PRELOAD_CONCURRENCY, runRequired\)/);
+    assert.match(runtimeLoaderSource, /runSettledBatch\(audio, AUDIO_PRELOAD_CONCURRENCY, runRequired\)/);
+    assert.match(runtimeLoaderSource, /controller\.abort\(error\)/);
+    assert.match(runtimeLoaderSource, /if \(failed\) throw firstFailure/);
 });
 
 test("browser lifecycle only enters the PWA menu and never auto-resumes", () => {
@@ -138,7 +134,7 @@ test("high-score network callbacks are fenced by browser lifetime and per-operat
 
 test("live Continue is scoped to its playback attempt and retained session", () => {
     const resume = mainSource.slice(mainSource.indexOf("async function resumeLiveGameFromMenu"), mainSource.indexOf("function removeMenuOverlay"));
-    assert.match(resume, /const audio = beginGameAudio\(\)/);
+    assert.match(resume, /audio = beginGameAudio\(\)/);
     assert.match(resume, /requestPreferredFullscreen\(\)/);
     const fullscreenIndex = resume.indexOf("requestPreferredFullscreen()");
     const readyIndex = resume.indexOf("await audio.ready");
@@ -152,7 +148,7 @@ test("live Continue is scoped to its playback attempt and retained session", () 
 test("synchronous post-commit viewport hooks are rechecked before RUNNING", () => {
     const mount = mainSource.slice(mainSource.indexOf("async function mountGame"), mainSource.indexOf("function applyVolume"));
     const mountPause = mount.indexOf("appContainer.getInput().pause();");
-    const mountStart = mount.indexOf("await appContainer.start();");
+    const mountStart = mount.indexOf("await initializeWithDeadline(appContainer.start(), sessionCleanup);");
     const mountFocus = mount.indexOf("viewport.focusCanvas();");
     const mountGuard = mount.indexOf("if (!isStartingGameSession(generation, audio) || game !== mainGame || container !== appContainer)", mountFocus);
     const mountResume = mount.indexOf("appContainer.getInput().resume();", mountGuard);
@@ -178,16 +174,14 @@ test("synchronous post-commit viewport hooks are rechecked before RUNNING", () =
 test("STARTING container is owned before the first asynchronous display operation", () => {
     const mount = mainSource.slice(mainSource.indexOf("async function mountGame"), mainSource.indexOf("function applyVolume"));
     const ownership = mount.indexOf("container = appContainer;");
-    const firstDisplayAwait = mount.indexOf("await appContainer.setDisplayMode");
+    const firstDisplayAwait = mount.indexOf("await initializeWithDeadline(Promise.resolve(appContainer.setDisplayMode");
     assert.ok(ownership >= 0);
     assert.ok(firstDisplayAwait >= 0);
     assert.ok(ownership < firstDisplayAwait);
 });
 
-test("service worker treats HTTP failures like network failures", () => {
-    assert.match(serviceWorkerSource, /async function fetchOnce\(request\)/);
-    assert.match(serviceWorkerSource, /if \(!response\.ok\) \{\s*throw new Error\(`HTTP \$\{response\.status\}`\);\s*\}/);
-    assert.match(serviceWorkerSource, /event\.respondWith\(fetchOnce\(request\)\.catch\(\(\) => matchCurrentCache\(APP_INDEX\)\)\)/);
+test("service worker routes bounded navigation and discards failed response bodies", () => {
+    assert.match(serviceWorkerSource, /serveNavigation\(request\)/);
+    assert.match(serviceWorkerSource, /discardResponse\(response\)/);
     assert.match(serviceWorkerSource, /return cached \|\| fetchOnce\(request\);/);
-    assert.doesNotMatch(serviceWorkerSource, /event\.respondWith\(fetch\(request\)\.catch\(/);
 });

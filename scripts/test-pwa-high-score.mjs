@@ -39,6 +39,49 @@ try {
     const { Main } = await server.ssrLoadModule("/src/mspacman/Main.ts");
     const { HighScore } = await server.ssrLoadModule("/src/mspacman/HighScore.ts");
 
+    await runTest("unused score bodies cancel without waiting for native cancellation", async () => {
+        let canceled = 0;
+        const response = new Response(
+            new ReadableStream({
+                cancel() {
+                    canceled++;
+                    return new Promise(() => {});
+                }
+            }),
+            { status: 503 }
+        );
+        installFetch(() => response);
+        assert.equal(await HighScoreService.downloadScores(), null);
+        assert.equal(canceled, 1);
+    });
+
+    await runTest("score readers release locks on success, read failure, and oversized data", async () => {
+        for (const kind of ["success", "failure", "oversize"]) {
+            let canceled = 0;
+            const stream = new ReadableStream({
+                start(controller) {
+                    if (kind === "failure") controller.error(new Error("read failed"));
+                    else if (kind === "oversize") controller.enqueue(new Uint8Array(8193));
+                    else {
+                        controller.enqueue(new TextEncoder().encode(JSON.stringify({ protocolVersion: 1, scores: [] })));
+                        controller.close();
+                    }
+                },
+                cancel() {
+                    canceled++;
+                    return new Promise(() => {});
+                }
+            });
+            const response = new Response(stream, { headers: protocolHeaders("application/json") });
+            installFetch(() => response);
+            const result = await HighScoreService.downloadScores();
+            assert.equal(stream.locked, false);
+            if (kind === "success") assert.deepEqual(result, []);
+            else assert.equal(result, null);
+            if (kind === "oversize") assert.equal(canceled, 1);
+        }
+    });
+
     await runTest("HMAC checksum matches the cross-language vector", async () => {
         const checksum = await calculateScoreChecksumForTesting(KEY_HEX, {
             world: 0,
@@ -320,6 +363,7 @@ try {
             ]
         ]);
         main.worldIndex = 0;
+        main.beginUserRunHighScoreQualification();
         main.score = 10000;
         assert.equal(main.isHighScore(), false);
         main.score = 10010;

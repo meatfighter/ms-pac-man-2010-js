@@ -20,7 +20,7 @@ test("first-run service worker readiness is bounded before runtime resource prel
     assert.match(registrar, /SERVICE_WORKER_STARTUP_TIMEOUT_MS = 3000/);
     assert.match(registrar, /navigator\.serviceWorker\.ready/);
     assert.match(registrar, /controllerchange/);
-    assert.match(loader, /await waitForServiceWorkerReadiness\(\);/);
+    assert.match(loader, /await waitForServiceWorkerStartupGrace\(\);/);
 });
 
 test("Windows desktop launcher tolerates paths containing parentheses", () => {
@@ -73,46 +73,24 @@ test("Windows desktop launcher tolerates paths containing parentheses", () => {
     }
 });
 
-test("failed runtime import aborts and settles preloading before retry is exposed", async () => {
-    let settled = false;
-    let signal;
+test("failed import siblings remain observed until settlement", async () => {
+    const { settleRequired } = await import("./persistence-test-loader.mjs").then((module) => module.loadTypeScript("pwa/src/app/PreparationDeadline.ts"));
+    const controller = new AbortController();
     let finish;
-    const context = {
-        console,
-        AbortController,
-        loadModule: async (name) => {
-            if (name.includes("Main.js")) throw new Error("chunk missing");
-            return {};
-        },
-        require(name) {
-            if (name === "slick2d-ts") return { ResourceLoader: {}, SoundStore: {} };
-            if (name.includes("resourceManifest")) return { RESOURCE_REFS: ["image.png"] };
-            return {};
-        }
-    };
-    const { RuntimeLoader } = load("pwa/src/app/RuntimeLoader.ts", context);
-    const loader = new RuntimeLoader(() => {});
-    loader.preloadPreparedResources = (_refs, value) => {
-        signal = value;
-        return new Promise((_resolve, reject) => {
-            finish = () => {
-                settled = true;
-                reject(signal.reason);
-            };
-        });
-    };
     let exposed = false;
-    const pending = loader.prepareRuntime(new AbortController()).catch((error) => {
+    const original = new Error("chunk missing");
+    const sibling = new Promise((resolve) => {
+        finish = resolve;
+    });
+    const pending = settleRequired([Promise.reject(original), sibling], controller).catch((error) => {
         exposed = true;
         throw error;
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
-    assert.equal(signal.aborted, true);
+    assert.equal(controller.signal.aborted, true);
     assert.equal(exposed, false);
-    finish();
-    await assert.rejects(pending, /chunk missing/);
-    assert.equal(settled, true);
-    assert.equal(exposed, true);
+    finish({});
+    await assert.rejects(pending, (error) => error === original);
 });
 
 test("oversized stored data is rejected on read but cannot block an authorized current save", () => {

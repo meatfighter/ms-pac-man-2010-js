@@ -281,8 +281,8 @@ function assertImmutableServiceWorkerRuntimeCache(serviceWorker) {
     assert.equal(serviceWorker.includes("cache.put("), false, "Service worker must not overwrite precached resources at runtime.");
     assert.equal(serviceWorker.includes("remember("), false, "Service worker must not keep the old runtime cache-write helper.");
     assert.ok(
-        serviceWorker.includes("fetchOnce(request).catch(() => matchCurrentCache(APP_INDEX))"),
-        "Navigation fallback must use the HTTP-aware network fetch first and fall back to cached APP_INDEX without replacing APP_INDEX."
+        serviceWorker.includes("serveNavigation(request)") && serviceWorker.includes('caches.match(createCacheUrl("./index.html"), { cacheName: CACHE_NAME })'),
+        "Navigation uses bounded network fetch and the exact active cache without replacing precached content."
     );
     assert.ok(
         serviceWorker.includes("return cached || fetchOnce(request);"),
@@ -388,8 +388,8 @@ function assertServiceWorkerResolvesWithinScope(serviceWorker, resources, base, 
     assert.equal(new URL(worker.APP_INDEX).href.startsWith(base), true, `APP_INDEX must resolve under ${base}.`);
     assert.equal(new URL(worker.APP_INDEX).searchParams.get("v"), cacheBust, `APP_INDEX must use the current release cache key for ${base}.`);
 
-    const serviceWorkerUrl = new URL(`./sw.js?v=${encodeURIComponent(cacheBust)}`, base);
-    assert.equal(serviceWorkerUrl.href, `${base}sw.js?v=${encodeURIComponent(cacheBust)}`, `Service worker URL must resolve under ${base}.`);
+    const serviceWorkerUrl = new URL("./sw.js", base);
+    assert.equal(serviceWorkerUrl.href, `${base}sw.js`, `Service worker URL must resolve under ${base}.`);
     assert.equal(new URL("./", serviceWorkerUrl).href, base, `Service worker default scope must be the current PWA directory for ${base}.`);
     assert.equal(new URL("/api/ms-pac-man-2010/scores", base).href, "https://example.invalid/api/ms-pac-man-2010/scores");
 
@@ -497,6 +497,12 @@ function createServiceWorkerHarness(serviceWorker, scriptUrlVersion, scope = "ht
         skipWaitingCalls: 0
     };
     const context = {
+        AbortController,
+        Request,
+        Response,
+        Headers,
+        setTimeout,
+        clearTimeout,
         URL,
         caches: {
             delete(cacheName) {
@@ -510,7 +516,7 @@ function createServiceWorkerHarness(serviceWorker, scriptUrlVersion, scope = "ht
                 openedCacheNames.push(cacheName);
                 return Promise.resolve({
                     addAll(urls) {
-                        addAllUrls.push(...urls.map(String));
+                        addAllUrls.push(...urls.map((request) => (typeof request === "string" ? request : request.url)));
                         return Promise.resolve();
                     },
                     match() {
@@ -548,7 +554,7 @@ function createServiceWorkerHarness(serviceWorker, scriptUrlVersion, scope = "ht
     runInNewContext(
         `${serviceWorker}
 self.__pwaVerifier = {
-    APP_INDEX,
+    APP_INDEX: createCacheUrl("./index.html"),
     APP_STATIC_RESOURCES,
     CACHE_PREFIX,
     CACHE_NAME,

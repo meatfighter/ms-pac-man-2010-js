@@ -76,6 +76,7 @@ export class SelectWorldMode implements IMode {
             } else {
                 this.main.stopAllSounds();
                 this.main.worldIndex = this.selection;
+                this.main.beginUserRunHighScoreQualification();
                 this.main.setMode(Main.introMode, gc);
             }
         } else {

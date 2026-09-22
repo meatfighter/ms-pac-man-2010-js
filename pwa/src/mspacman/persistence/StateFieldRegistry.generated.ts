@@ -75,9 +75,22 @@ export const STATE_FIELD_REGISTRY = {
             "extraLifeSound",
             "diedSound",
             "pressedEnterSound",
-            "speaking"
+            "speaking",
+            "highScoreQualificationCutoff"
         ],
-        persisted: ["worldIndex", "stageIndex", "score", "lives", "paused", "musicVolume", "musicVolumeFadeStep", "fadeMusicFlag", "demoIndex", "demoMode"],
+        persisted: [
+            "worldIndex",
+            "stageIndex",
+            "score",
+            "highScoreQualificationCutoff",
+            "lives",
+            "paused",
+            "musicVolume",
+            "musicVolumeFadeStep",
+            "fadeMusicFlag",
+            "demoIndex",
+            "demoMode"
+        ],
         runtime: [
             "browserLifetimeGeneration",
             "fades",

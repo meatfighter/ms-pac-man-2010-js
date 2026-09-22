@@ -152,63 +152,53 @@
         </noscript>
         <script>
             (function () {
-                window.__msPacManBooted = false;
-                window.__msPacManBootFailed = false;
-
-                function getBootScreen() {
-                    return document.getElementById("staticBootScreen");
+                var phase = "bootstrap";
+                var timer = window.setTimeout(fail, 60000);
+                function removeBootstrapListeners() {
+                    window.removeEventListener("error", onError, true);
+                    window.removeEventListener("unhandledrejection", fail);
                 }
-
-                function showStaticBootFailure() {
-                    if (window.__msPacManBooted) {
-                        return;
-                    }
-
-                    var boot = getBootScreen();
-                    if (!boot) {
-                        if (document.readyState === "loading") {
-                            window.addEventListener("DOMContentLoaded", showStaticBootFailure, { once: true });
-                        }
-                        return;
-                    }
-                    if (!boot.isConnected) {
-                        return;
-                    }
-                    window.__msPacManBootFailed = true;
+                function renderFailure() {
+                    var boot = document.getElementById("staticBootScreen");
+                    if (!boot || !boot.isConnected) return;
                     boot.classList.add("static-boot-failed");
+                    var action = boot.querySelector(".static-retry-link");
+                    if (action) action.focus();
                 }
-
-                function hasSameOriginUrl(urlText) {
+                function fail() {
+                    if (phase !== "bootstrap") return;
+                    phase = "failed";
+                    clearTimeout(timer);
+                    removeBootstrapListeners();
+                    if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", renderFailure, { once: true });
+                    else renderFailure();
+                }
+                function claim() {
+                    if (phase !== "bootstrap") return false;
+                    phase = "app";
+                    clearTimeout(timer);
+                    removeBootstrapListeners();
+                    return true;
+                }
+                function hasSameOriginUrl(text) {
                     try {
-                        return new URL(urlText, window.location.href).origin === window.location.origin;
-                    } catch (error) {
+                        return new URL(text, window.location.href).origin === window.location.origin;
+                    } catch {
                         return false;
                     }
                 }
-
-                function isInitialAssetFailure(target) {
-                    if (!target || window.__msPacManBooted) {
-                        return false;
-                    }
-                    if (target instanceof HTMLScriptElement) {
-                        return target.type === "module" && hasSameOriginUrl(target.src);
-                    }
-                    if (target instanceof HTMLLinkElement) {
-                        return target.rel.toLowerCase() === "stylesheet" && hasSameOriginUrl(target.href);
-                    }
-                    return false;
+                function onError(event) {
+                    var target = event.target;
+                    if (
+                        target === window ||
+                        (target instanceof HTMLScriptElement && target.type === "module" && hasSameOriginUrl(target.src)) ||
+                        (target instanceof HTMLLinkElement && target.rel === "stylesheet" && hasSameOriginUrl(target.href))
+                    )
+                        fail();
                 }
-
-                window.addEventListener(
-                    "error",
-                    function (event) {
-                        if (isInitialAssetFailure(event.target) || (!window.__msPacManBooted && event.target === window)) {
-                            showStaticBootFailure();
-                        }
-                    },
-                    true
-                );
-                window.addEventListener("unhandledrejection", showStaticBootFailure);
+                window.__msPacManBootstrap = { claim: claim, fail: fail };
+                window.addEventListener("error", onError, true);
+                window.addEventListener("unhandledrejection", fail);
             })();
         </script>
     </head>
@@ -224,7 +214,7 @@
                     <div class="static-failure-icon" aria-hidden="true">&#x1F480;</div>
                     <div class="static-boot-title">Unable to start.</div>
                     <p class="static-boot-error">Check your connection and try again.</p>
-                    <a class="static-retry-link" href="">Retry</a>
+                    <a class="static-retry-link" href="">Reload</a>
                 </section>
             </main>
         </div>

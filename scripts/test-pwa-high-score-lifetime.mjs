@@ -25,6 +25,21 @@ try {
     const { Main } = await server.ssrLoadModule("/src/mspacman/Main.ts");
     const { HighScore } = await server.ssrLoadModule("/src/mspacman/HighScore.ts");
 
+    await runTest("run qualification cutoff ignores later leaderboard updates", async () => {
+        const main = createMain(Main, HighScore);
+        main.worldIndex = 0;
+        main.highScores[0][4].score = 100;
+        main.beginUserRunHighScoreQualification();
+        main.score = 100;
+        assert.equal(main.isHighScore(), false);
+        main.score = 110;
+        assert.equal(main.isHighScore(), true);
+        main.highScores[0][4].score = 200;
+        assert.equal(main.isHighScore(), true);
+        main.beginUserRunHighScoreQualification();
+        assert.equal(main.isHighScore(), false);
+    });
+
     await runTest("disposed Main ignores a late score download completion", async () => {
         const pending = deferred();
         const originalDownload = HighScoreService.downloadScores;

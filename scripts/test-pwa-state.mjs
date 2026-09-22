@@ -20,7 +20,19 @@ delete process.env.MSPACMAN_SCORE_API_URL;
 delete process.env.MSPACMAN_CACHE_VERSION;
 delete process.env.MSPACMAN_HMAC_KEY_HEX;
 
-const MAIN_FIELDS = ["worldIndex", "stageIndex", "score", "lives", "paused", "musicVolume", "musicVolumeFadeStep", "fadeMusicFlag", "demoIndex", "demoMode"];
+const MAIN_FIELDS = [
+    "worldIndex",
+    "stageIndex",
+    "score",
+    "highScoreQualificationCutoff",
+    "lives",
+    "paused",
+    "musicVolume",
+    "musicVolumeFadeStep",
+    "fadeMusicFlag",
+    "demoIndex",
+    "demoMode"
+];
 
 const ATTRACT_FIELDS = [
     "dotsOffset",
@@ -686,7 +698,7 @@ try {
         const savedText = storage.getItem(storageKey);
         assert.notEqual(savedText, null);
         const savedSnapshot = JSON.parse(savedText);
-        assert.equal(savedSnapshot.version, 8);
+        assert.equal(savedSnapshot.version, GAME_STATE_VERSION);
         assert.equal("audioSettings" in savedSnapshot, false);
         assert.equal("submittedScore" in savedSnapshot, false);
         assert.equal("uploadComplete" in savedSnapshot.mainFields, false);
@@ -743,6 +755,28 @@ try {
         }
         assert.equal(warnCalls, 1);
         assert.equal(storage.getItem(storageKey), savedSnapshot);
+    });
+
+    await runTest("run qualification cutoff survives restore and rejects invalid durable values", () => {
+        const serializer = new MsPacManGameStateSerializer();
+        const source = createFakeMain("playing", "source");
+        source.highScoreQualificationCutoff = 12340;
+        const snapshot = serializer.createSnapshot(source, APP_VERSION);
+        assert.equal(isValidMsPacManGameStateSnapshot(snapshot), true);
+        const target = createFakeMain("playing", "target");
+        target.highScoreQualificationCutoff = 99990;
+        serializer.restoreSnapshot(target, createGameContainer(), snapshot);
+        assert.equal(target.highScoreQualificationCutoff, 12340);
+        for (const value of [undefined, null, -1, 0.5, 2147483648, "12340"]) {
+            const invalid = structuredClone(snapshot);
+            invalid.mainFields.highScoreQualificationCutoff = value;
+            assert.equal(isValidMsPacManGameStateSnapshot(invalid), false);
+        }
+        for (const value of [0, 2147483647]) {
+            const valid = structuredClone(snapshot);
+            valid.mainFields.highScoreQualificationCutoff = value;
+            assert.equal(isValidMsPacManGameStateSnapshot(valid), true);
+        }
     });
 
     await runTest("serializer restores playing mode fields and runtime bindings", () => {
@@ -1030,6 +1064,7 @@ function createMainFields(modeId, variant, options) {
     return {
         worldIndex: options.worldIndex ?? (alternate ? 3 : 1),
         stageIndex: options.stageIndex ?? defaultStageIndex,
+        highScoreQualificationCutoff: options.highScoreQualificationCutoff ?? 0,
         score: options.score ?? (alternate ? 10 : 43210),
         lives: alternate ? 1 : 2,
         paused: false,

@@ -632,8 +632,14 @@ export class Main extends BasicGame {
         return ax2 >= bx1 && ax1 <= bx2 && ay2 >= by1 && ay1 <= by2;
     }
 
+    public highScoreQualificationCutoff = 0;
+
+    public beginUserRunHighScoreQualification(): void {
+        this.highScoreQualificationCutoff = this.highScores[this.worldIndex][4].score;
+    }
+
     public isHighScore(): boolean {
-        return this.score > 0 && this.highScores[this.worldIndex][4].score < this.score;
+        return this.score > 0 && this.score > this.highScoreQualificationCutoff;
     }
 
     public downloadScores(): void {

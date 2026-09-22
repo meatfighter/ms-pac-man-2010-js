@@ -2,7 +2,19 @@ import type { ModeId } from "./GameStateSnapshot.js";
 
 export const STATE_FIELD_POLICY = {
     Main: {
-        persisted: ["worldIndex", "stageIndex", "score", "lives", "paused", "musicVolume", "musicVolumeFadeStep", "fadeMusicFlag", "demoIndex", "demoMode"],
+        persisted: [
+            "worldIndex",
+            "stageIndex",
+            "score",
+            "highScoreQualificationCutoff",
+            "lives",
+            "paused",
+            "musicVolume",
+            "musicVolumeFadeStep",
+            "fadeMusicFlag",
+            "demoIndex",
+            "demoMode"
+        ],
         runtime: [
             "browserLifetimeGeneration",
             "fades",

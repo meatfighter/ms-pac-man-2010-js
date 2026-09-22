@@ -6,7 +6,7 @@ function read(relativePath) {
     return readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
-const webApp = read("pwa/src/app/main.ts");
+const webApp = read("pwa/src/app/main.ts").replace(/^ {4}/gm, "");
 const viewport = read("pwa/src/app/GameViewportController.ts");
 const preferences = read("pwa/src/app/BrowserPreferences.ts");
 const storageKeys = read("pwa/src/app/BrowserStorageKeys.ts");

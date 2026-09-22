@@ -92,6 +92,7 @@ const BOOLEAN_FIELD_NAMES = new Set<string>([
 const STRING_FIELD_NAMES = new Set<string>(["stageMessage", "initials", "blinkingInitials", "newScoreOf"]);
 const NUMBER_ARRAY_FIELD_NAMES = new Set<string>(["regionCounts"]);
 const INTEGER_FIELD_RANGES = new Map<string, readonly [number, number]>([
+    ["highScoreQualificationCutoff", [0, 2_147_483_647]],
     ["ghostsVisible", [0, 4]],
     ["worldIndex", [0, 3]],
     ["stageIndex", [0, 8]],
@@ -247,6 +248,7 @@ function isValidMainFieldState(fields: Record<string, unknown>): boolean {
         isIntegerInRange(fields.worldIndex, 0, 3) &&
         isIntegerInRange(fields.stageIndex, 0, 8) &&
         isIntegerInRange(fields.score, 0, 2_147_483_647) &&
+        isIntegerInRange(fields.highScoreQualificationCutoff, 0, 2_147_483_647) &&
         isIntegerInRange(fields.lives, 0, 6) &&
         typeof fields.paused === "boolean" &&
         isFiniteNumberInRange(fields.musicVolume, 0, 1) &&

@@ -37,6 +37,15 @@ class Events {
 }
 
 class Element extends Events {
+    parent = null;
+    rootConnected = false;
+    get isConnected() {
+        return this.rootConnected || (this.parent?.isConnected ?? false);
+    }
+    focus() {}
+    querySelector() {
+        return descendants(this).find((node) => node.tag === "button") ?? null;
+    }
     children = [];
     textContent = "";
     constructor(tag = "div") {
@@ -44,9 +53,12 @@ class Element extends Events {
         this.tag = tag;
     }
     append(...children) {
+        for (const child of children) child.parent = this;
         this.children.push(...children);
     }
     replaceChildren(...children) {
+        for (const child of this.children) child.parent = null;
+        for (const child of children) child.parent = this;
         this.children = children;
     }
     setAttribute() {}
@@ -92,11 +104,13 @@ function world() {
         },
         tab({ href = "https://example.test/game/", acquired = () => {}, relinquish = () => {} } = {}) {
             const root = new Element();
+            root.rootConnected = true;
             const window = new Events();
             let reloadCalls = 0;
             window.location = { reload: () => reloadCalls++ };
             const document = new Events();
             document.visibilityState = "visible";
+            document.hasFocus = () => true;
             document.createElement = (name) => new Element(name);
             const env = { manualRequests: false, failOpen: false, failClose: false, failRemove: false, post: null };
             const log = [];
@@ -344,7 +358,8 @@ test("late lock callback from before sleep cannot acquire after a newer wake att
     tab.owner.start();
     tab.window.emit("pagehide");
     tab.window.emit("pageshow");
-    assert.equal(w.pending.length, 2);
+    await flush();
+    assert.equal(w.pending.length, 1);
     w.pending.shift()();
     await flush();
     assert.equal(acquired, 0);
@@ -363,6 +378,7 @@ test("disposal invalidates pending acquisition and removes listeners", async () 
     tab.env.manualRequests = true;
     tab.owner.start();
     tab.owner.start();
+    await flush();
     assert.equal(w.pending.length, 1);
     tab.owner.dispose();
     tab.owner.dispose();
@@ -486,4 +502,53 @@ test("disposal requested from inside relinquishment is completed once cleanup re
     tab.owner.start();
     await flush();
     assert.equal(tab.owner.owned, false);
+});
+
+test("native acquisition timeout latches reload and a late grant never publishes ownership", async () => {
+    const w = world();
+    let acquired = 0;
+    const tab = w.tab({ acquired: () => acquired++ });
+    tab.env.manualRequests = true;
+    tab.owner.start();
+    await flush();
+    await w.advance(5000);
+    assert.match(tab.text(), /Reload/);
+    tab.window.emit("pageshow");
+    await flush();
+    assert.equal(w.requests.length, 1);
+    w.pending.shift()();
+    await flush();
+    assert.equal(acquired, 0);
+    assert.equal(w.locks.size, 0);
+    assert.equal(tab.owner.owned, false);
+    tab.owner.dispose();
+});
+
+test("detached ownership control cannot start a takeover", async () => {
+    const w = world();
+    w.locks.set("game-session:/game/", {});
+    const tab = w.tab();
+    tab.owner.start();
+    await flush();
+    const old = tab.button();
+    tab.root.replaceChildren(new Element());
+    old.click();
+    await flush();
+    assert.equal(w.requests.length, 1);
+    tab.owner.dispose();
+});
+
+test("ownership timeout while sleeping displays Reload on wake", async () => {
+    const w = world();
+    const tab = w.tab();
+    tab.env.manualRequests = true;
+    tab.owner.start();
+    await flush();
+    tab.window.emit("pagehide");
+    await w.advance(5000);
+    tab.window.emit("pageshow");
+    await flush();
+    assert.match(tab.text(), /Reload/);
+    assert.equal(w.requests.length, 1);
+    tab.owner.dispose();
 });

@@ -1,5 +1,8 @@
 /** One writer per deployment, including across save-schema versions. */
 export class GameSessionOwnership {
+    private acquisitionFailed = false;
+    private nativeAcquisitionPending = false;
+    private screenGeneration = 0;
     private holdingLock = false;
     private releaseLock: (() => void) | null = null;
     private readonly name = `game-session:${new URL(".", location.href).pathname}`;
@@ -108,6 +111,10 @@ export class GameSessionOwnership {
             return;
         }
         this.sleeping = false;
+        if (this.acquisitionFailed) {
+            this.showMessage("Ownership acquisition did not settle. Reload this tab.", false);
+            return;
+        }
         if (this.cleanupFailed) {
             this.showCleanupFailure();
             return;
@@ -213,44 +220,76 @@ export class GameSessionOwnership {
         return !this.disposed && !this.disposing && !this.sleeping && !this.cleanupFailed && !this.releasing && attempt === this.attemptSerial;
     }
 
-    private tryAcquire(attempt: number): Promise<boolean> {
+    private tryAcquire(attempt: number, budget: number): Promise<boolean> {
+        this.nativeAcquisitionPending = true;
         return new Promise<boolean>((resolve, reject) => {
-            void navigator.locks
-                .request(this.name, { ifAvailable: true }, async (lock) => {
-                    if (lock === null || !this.isAttemptCurrent(attempt)) {
-                        resolve(false);
-                        return;
-                    }
-                    const held = new Promise<void>((release) => {
-                        this.releaseLock = release;
-                    });
-                    this.holdingLock = true;
-                    const epoch = ++this.ownershipEpoch;
-                    try {
-                        this.acquired();
-                        resolve(this.owned && epoch === this.ownershipEpoch && this.isAttemptCurrent(attempt));
-                    } catch (error) {
-                        this.release();
-                        reject(error);
-                    }
-                    // If relinquishment failed, keep this callback pending and keep the lock.
-                    await held;
+            let eligible = true;
+            let granted = false;
+            const timer = setTimeout(() => {
+                eligible = false;
+                this.acquisitionFailed = true;
+                if (!this.sleeping && !this.disposed) this.showMessage("Ownership acquisition did not settle. Reload this tab.", false);
+                reject(new Error("Native ownership acquisition timed out. Reload this tab."));
+            }, budget);
+            void Promise.resolve()
+                .then(() =>
+                    navigator.locks.request(this.name, { ifAvailable: true }, async (lock) => {
+                        this.nativeAcquisitionPending = false;
+                        clearTimeout(timer);
+                        if (!eligible || lock === null || !this.isAttemptCurrent(attempt) || document.visibilityState === "hidden") {
+                            resolve(false);
+                            return;
+                        }
+                        const held = new Promise<void>((release) => {
+                            this.releaseLock = release;
+                        });
+                        granted = true;
+                        this.holdingLock = true;
+                        const epoch = ++this.ownershipEpoch;
+                        try {
+                            this.acquired();
+                            resolve(this.owned && epoch === this.ownershipEpoch && this.isAttemptCurrent(attempt));
+                        } catch (error) {
+                            this.release();
+                            reject(error);
+                        }
+                        // If relinquishment failed, keep this callback pending and keep the lock.
+                        await held;
+                    })
+                )
+                .then(() => {
+                    if (!granted && attempt !== this.attemptSerial && !this.sleeping && !this.disposed && !this.acquisitionFailed) void this.acquire(false);
                 })
-                .catch(reject);
+                .catch((error: unknown) => {
+                    this.nativeAcquisitionPending = false;
+                    clearTimeout(timer);
+                    eligible = false;
+                    reject(error);
+                });
         });
     }
 
     private async acquire(takeover: boolean): Promise<void> {
-        if (this.pendingAttempt !== null || this.holdingLock || this.sleeping || this.disposed || this.disposing || this.cleanupFailed || this.releasing) {
+        if (
+            this.acquisitionFailed ||
+            this.nativeAcquisitionPending ||
+            this.pendingAttempt !== null ||
+            this.holdingLock ||
+            this.sleeping ||
+            this.disposed ||
+            this.disposing ||
+            this.cleanupFailed ||
+            this.releasing
+        ) {
             return;
         }
         const attempt = ++this.attemptSerial;
         this.pendingAttempt = attempt;
         try {
             this.openChannel();
-            const deadline = performance.now() + (takeover ? 5000 : 0);
+            const deadline = performance.now() + 5000;
             do {
-                if (await this.tryAcquire(attempt)) {
+                if (await this.tryAcquire(attempt, Math.max(1, deadline - performance.now()))) {
                     return;
                 }
                 if (!this.isAttemptCurrent(attempt) || !takeover) {
@@ -270,7 +309,12 @@ export class GameSessionOwnership {
                 this.showCleanupFailure();
             } else if (this.isAttemptCurrent(attempt)) {
                 console.warn("Unable to acquire game session.", error);
-                this.showMessage("Unable to open saved progress safely. Close other game tabs and try again.", !this.owned);
+                this.showMessage(
+                    this.acquisitionFailed
+                        ? "Ownership acquisition did not settle. Reload this tab."
+                        : "Unable to open saved progress safely. Close other game tabs and try again.",
+                    !this.owned && !this.acquisitionFailed
+                );
             }
         } finally {
             if (this.pendingAttempt === attempt) {
@@ -295,6 +339,7 @@ export class GameSessionOwnership {
 
     private showCleanupFailure(): void {
         if (this.disposed || this.sleeping) return;
+        const screenGeneration = ++this.screenGeneration;
         const screen = document.createElement("main");
         screen.className = "session-ownership-screen";
         screen.setAttribute("role", "alert");
@@ -306,16 +351,20 @@ export class GameSessionOwnership {
         button.type = "button";
         button.className = "start-button";
         button.textContent = "Reload";
-        button.addEventListener("click", () => window.location.reload());
+        button.addEventListener("click", () => {
+            if (screenGeneration === this.screenGeneration && screen.isConnected) window.location.reload();
+        });
         panel.append(text, button);
         screen.append(panel);
         this.root.replaceChildren(screen);
+        if (screenGeneration === this.screenGeneration && screen.isConnected && document.hasFocus()) screen.querySelector<HTMLButtonElement>("button")?.focus();
     }
 
     private showMessage(message: string, allowRetry = true): void {
         if (this.disposed || this.sleeping) {
             return;
         }
+        const screenGeneration = ++this.screenGeneration;
         const screen = document.createElement("main");
         screen.className = "session-ownership-screen";
         screen.setAttribute("aria-live", "polite");
@@ -325,13 +374,25 @@ export class GameSessionOwnership {
         text.className = "session-ownership-message";
         text.textContent = message;
         panel.append(text);
-        if (allowRetry && !this.cleanupFailed && this.supportsOwnership()) {
+        if (this.acquisitionFailed) {
+            const reload = document.createElement("button");
+            reload.type = "button";
+            reload.textContent = "Reload";
+            reload.addEventListener("click", () => {
+                if (screenGeneration === this.screenGeneration && screen.isConnected) window.location.reload();
+            });
+            panel.append(reload);
+        }
+        if (allowRetry && !this.cleanupFailed && !this.acquisitionFailed && this.supportsOwnership()) {
             const button = document.createElement("button");
             button.className = "start-button";
             button.type = "button";
             button.textContent = "Continue Here";
             button.addEventListener("click", () => {
                 if (
+                    screenGeneration !== this.screenGeneration ||
+                    !screen.isConnected ||
+                    !button.isConnected ||
                     this.pendingAttempt !== null ||
                     this.holdingLock ||
                     this.disposed ||
@@ -349,5 +410,6 @@ export class GameSessionOwnership {
         }
         screen.append(panel);
         this.root.replaceChildren(screen);
+        if (screenGeneration === this.screenGeneration && screen.isConnected && document.hasFocus()) screen.querySelector<HTMLButtonElement>("button")?.focus();
     }
 }

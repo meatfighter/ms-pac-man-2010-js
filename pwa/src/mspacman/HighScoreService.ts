@@ -131,13 +131,15 @@ async function requestScores(method: "GET" | "POST", body: unknown, scope: Activ
 
     const response = await fetch(HIGH_SCORE_URL, request);
     if (!scope.isCurrent()) {
-        await response.body?.cancel().catch(() => undefined);
+        discardResponse(response);
         return null;
     }
     if (response.status !== 200 || response.headers.get("MsPacMan-Protocol-Version") !== String(PROTOCOL_VERSION)) {
+        discardResponse(response);
         return null;
     }
     if (!isJsonContentType(response.headers.get("Content-Type"))) {
+        discardResponse(response);
         return null;
     }
     const text = await readBoundedText(response, MAX_RESPONSE_BYTES, scope);
@@ -153,51 +155,56 @@ async function readBoundedText(response: Response, maxBytes: number, scope: Acti
     }
 
     const reader = response.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let byteCount = 0;
-    while (scope.isCurrent()) {
-        let result: ReadableStreamReadResult<Uint8Array>;
-        try {
-            result = await awaitWithAbort(reader.read(), scope.signal);
-        } catch (error) {
-            void reader.cancel().catch(() => undefined);
-            throw error;
+    let complete = false;
+    try {
+        const chunks: Uint8Array[] = [];
+        let byteCount = 0;
+        while (scope.isCurrent()) {
+            const result = await awaitWithAbort(reader.read(), scope.signal);
+            const { done, value } = result;
+            if (!scope.isCurrent()) {
+                throw new DOMException("High-score request retired.", "AbortError");
+            }
+            if (done) {
+                break;
+            }
+            if (value !== undefined) {
+                byteCount += value.byteLength;
+                if (byteCount > maxBytes) {
+                    throw new Error("High-score response was too large.");
+                }
+                chunks.push(value);
+            }
         }
-        const { done, value } = result;
         if (!scope.isCurrent()) {
-            void reader.cancel().catch(() => undefined);
             throw new DOMException("High-score request retired.", "AbortError");
         }
-        if (done) {
-            break;
-        }
-        if (value !== undefined) {
-            byteCount += value.byteLength;
-            if (byteCount > maxBytes) {
-                void reader.cancel().catch(() => undefined);
-                throw new Error("High-score response was too large.");
-            }
-            chunks.push(value);
-        }
-    }
-    if (!scope.isCurrent()) {
-        void reader.cancel().catch(() => undefined);
-        throw new DOMException("High-score request retired.", "AbortError");
-    }
 
-    const bytes = new Uint8Array(byteCount);
-    let offset = 0;
-    for (const chunk of chunks) {
-        bytes.set(chunk, offset);
-        offset += chunk.byteLength;
+        const bytes = new Uint8Array(byteCount);
+        let offset = 0;
+        for (const chunk of chunks) {
+            bytes.set(chunk, offset);
+            offset += chunk.byteLength;
+        }
+        complete = true;
+        return new TextDecoder().decode(bytes);
+    } finally {
+        if (!complete) {
+            try {
+                void reader.cancel().catch(() => undefined);
+            } catch {
+                /* Best effort. */
+            }
+        }
+        try {
+            reader.releaseLock();
+        } catch {
+            /* Aborted read cleanup cannot hide the original failure. */
+        }
     }
-    return new TextDecoder().decode(bytes);
 }
 
 async function awaitWithAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-    if (signal.aborted) {
-        throw signal.reason ?? new DOMException("High-score request aborted.", "AbortError");
-    }
     return await new Promise<T>((resolve, reject) => {
         const onAbort = (): void => {
             cleanup();
@@ -207,6 +214,7 @@ async function awaitWithAbort<T>(promise: Promise<T>, signal: AbortSignal): Prom
             signal.removeEventListener("abort", onAbort);
         };
         signal.addEventListener("abort", onAbort, { once: true });
+        if (signal.aborted) onAbort();
         promise.then(
             (value) => {
                 cleanup();
@@ -268,4 +276,12 @@ function isJsonContentType(value: string | null): boolean {
     }
     const [mediaType] = value.toLowerCase().split(";");
     return mediaType?.trim() === "application/json";
+}
+
+function discardResponse(response: Response): void {
+    try {
+        if (response.body !== null && !response.body.locked) void response.body.cancel().catch(() => undefined);
+    } catch {
+        /* Best-effort disposal cannot hide the original failure. */
+    }
 }

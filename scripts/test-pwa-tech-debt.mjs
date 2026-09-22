@@ -78,7 +78,7 @@ test("persistence uses public Slick random, Music, and Sound snapshot APIs", () 
     assert.match(serializer, /registeredSounds\(main\)/);
     assert.doesNotMatch(serializer, /getField\(music,\s*["'](?:looped|paused|playbackRate|buffer|positionOffset|fadeState)["']/);
     assert.doesNotMatch(serializer, /(?:getField|setField|numberField)\(main\.random/);
-    assert.match(snapshot, /GAME_STATE_VERSION = 9/);
+    assert.match(snapshot, /GAME_STATE_VERSION = 10/);
     assert.match(snapshot, /soundEffects: SoundSnapshot\[\]/);
     assert.doesNotMatch(snapshot, /FIRST_PUBLIC_GAME_STATE_VERSION/);
     assert.match(browserStorageKeys, /createStorageKey\(deploymentId, "game-state"\)/);
@@ -133,7 +133,7 @@ test("browser-native responsibilities are decomposed and generation owned", () =
     assert.match(browserMain, /preferences\.reset\(\(\) => ownership\.isCurrent\(epoch\)\)/);
     assert.match(browserPreferences, /BrowserPreferences\.isScaling/);
     assert.match(runtimeLoader, /setCacheVersionResolver\(getResourceVersion\)/);
-    assert.match(runtimeLoader, /concurrency: RESOURCE_PRELOAD_CONCURRENCY/);
+    assert.match(runtimeLoader, /runSettledBatch\(resources, RESOURCE_PRELOAD_CONCURRENCY, runRequired\)/);
     assert.match(sessionGeneration, /isCurrent\(generation: number\)/);
     assert.match(playbackSession, /let revision = 0/);
     assert.match(playbackSession, /isGameAudioCurrent/);

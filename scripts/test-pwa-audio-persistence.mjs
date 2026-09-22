@@ -101,13 +101,13 @@ try {
         }
     });
 
-    await runTest("v7 validator enforces sparse Sound ids, shape, uniqueness, total voice capacity, and audio-policy ownership", () => {
+    await runTest("current-schema validator enforces sparse Sound ids, shape, uniqueness, total voice capacity, and audio-policy ownership", () => {
         const serializer = new MsPacManGameStateSerializer();
         const main = createSerializableMain();
         main.blueGhostsSound.state = soundPlayback([voice(1.5, 1, false)], 0);
         const snapshot = serializer.createSnapshot(main, APP_VERSION);
 
-        assert.equal(snapshot.version, 8);
+        assert.equal(snapshot.version, 10);
         assert.equal(snapshot.soundEffects.length, 1);
         assert.equal("audioSettings" in snapshot, false);
         assert.equal(isValidMsPacManGameStateSnapshot(snapshot), true);
@@ -315,6 +315,7 @@ function createSerializableMain() {
     Object.assign(main, {
         worldIndex: 0,
         stageIndex: 0,
+        highScoreQualificationCutoff: 0,
         score: 0,
         lives: 5,
         paused: false,

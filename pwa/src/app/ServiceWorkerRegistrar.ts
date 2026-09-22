@@ -1,17 +1,17 @@
 const SERVICE_WORKER_STARTUP_TIMEOUT_MS = 3000;
 let readinessPromise: Promise<void> | null = null;
 
-export function registerServiceWorker(cacheBust: string): Promise<void> {
-    readinessPromise ??= registerServiceWorkerOnce(cacheBust);
+export function registerServiceWorker(): Promise<void> {
+    readinessPromise ??= registerServiceWorkerOnce();
     return readinessPromise;
 }
 
-/** Lets resource preparation avoid racing the first service-worker install. */
-export async function waitForServiceWorkerReadiness(): Promise<void> {
+/** Best-effort startup grace; completion does not establish offline readiness. */
+export async function waitForServiceWorkerStartupGrace(): Promise<void> {
     await readinessPromise;
 }
 
-async function registerServiceWorkerOnce(cacheBust: string): Promise<void> {
+async function registerServiceWorkerOnce(): Promise<void> {
     if (!("serviceWorker" in navigator) || location.protocol === "file:") {
         return;
     }
@@ -20,14 +20,14 @@ async function registerServiceWorkerOnce(cacheBust: string): Promise<void> {
         return;
     }
 
-    const serviceWorkerUrl = new URL(`./sw.js?v=${encodeURIComponent(cacheBust)}`, window.location.href);
+    const serviceWorkerUrl = new URL("./sw.js", window.location.href);
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let removeControllerListener: () => void = () => undefined;
     let expired = false;
     try {
         await Promise.race([
             (async () => {
-                await navigator.serviceWorker.register(serviceWorkerUrl.href, { scope: "./" });
+                await navigator.serviceWorker.register(serviceWorkerUrl.href, { scope: "./", updateViaCache: "none" });
                 if (expired) return;
                 await navigator.serviceWorker.ready;
                 if (expired || navigator.serviceWorker.controller !== null) return;
