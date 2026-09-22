@@ -1,8 +1,8 @@
 import { SoundStore } from "slick2d-ts/slick/openal/SoundStore";
 
 export class ReloadRequiredError extends Error {
-    public constructor(cause: unknown) {
-        super("Preparation could not be stopped. Reload this tab before continuing.", { cause });
+    public constructor(cause: unknown, message = "Preparation could not be stopped. Reload this tab before continuing.") {
+        super(message, { cause });
         this.name = "ReloadRequiredError";
     }
 }
@@ -50,20 +50,43 @@ export async function prepareWithDeadline<T>(controller: AbortController, operat
     }
 }
 
-/** A timed-out initializer may still hold native resources; recovery requires a new page. */
-export async function initializeWithDeadline<T>(operation: Promise<T>, cleanup: { run(...steps: Array<() => void>): boolean }): Promise<T> {
+export interface InitializationOwner {
+    readonly signal: AbortSignal;
+    readonly isCurrent: () => boolean;
+}
+
+/** Only the current candidate may turn an unresolved initializer into terminal recovery. */
+export async function initializeWithDeadline<T>(
+    operation: Promise<T>,
+    cleanup: { run(...steps: Array<() => void>): boolean },
+    owner: InitializationOwner
+): Promise<T> {
     const controller = new AbortController();
+    const retiredReason = (): unknown => owner.signal.reason ?? new DOMException("Initialization owner retired.", "AbortError");
+    const retire = (): void => controller.abort(retiredReason());
+    if (owner.signal.aborted || !owner.isCurrent()) retire();
+    else owner.signal.addEventListener("abort", retire, { once: true });
     const timer = setTimeout(() => {
+        if (owner.signal.aborted || !owner.isCurrent()) {
+            retire();
+            return;
+        }
         const failure = new ReloadRequiredError(new Error("Initialization timed out."));
-        cleanup.run(() => {
-            throw failure;
-        });
-        controller.abort(failure);
+        try {
+            cleanup.run(() => {
+                throw failure;
+            });
+        } finally {
+            controller.abort(failure);
+        }
     }, 120000);
     try {
-        return await observeUntilAbort(operation, controller.signal);
+        const result = await observeUntilAbort(operation, controller.signal);
+        if (owner.signal.aborted || !owner.isCurrent()) throw retiredReason();
+        return result;
     } finally {
         clearTimeout(timer);
+        owner.signal.removeEventListener("abort", retire);
     }
 }
 

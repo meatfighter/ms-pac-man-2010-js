@@ -95,6 +95,9 @@ function hasReasonableSnapshotValues(value: unknown, key = ""): boolean {
         if (key === "score") {
             return Number.isInteger(value) && value >= JAVA_INT_MIN && value <= JAVA_INT_MAX;
         }
+        if (key === "highScoreQualificationCutoff") {
+            return Number.isInteger(value) && value >= 0 && value <= JAVA_INT_MAX;
+        }
         return Math.abs(value) <= MAX_GAMEPLAY_NUMBER_MAGNITUDE;
     }
     if (Array.isArray(value)) {

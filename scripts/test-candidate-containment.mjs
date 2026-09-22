@@ -78,6 +78,10 @@ for (const fault of ["constructor", "setter", "stale", "unsafe", "published-time
             constructor() {
                 if (fault === "constructor") throw new Error("constructor failed");
             }
+            getBrowserLifetimeSignal() {
+                return new AbortController().signal;
+            }
+
             setPreserveAudioCacheOnDestroy() {}
             setLoopSuspended() {}
             getInput() {

@@ -137,8 +137,14 @@ function startApplication(): void {
                 if (request !== menuRequestSerial || !ownership.isCurrent(epoch) || pwaSessionState !== "booting") {
                     return;
                 }
-                pwaSessionState = "menu";
-                renderMenuUi(app, hasPotentialSavedGameState(), "", false);
+                try {
+                    pwaSessionState = "menu";
+                    renderMenuUi(app, hasPotentialSavedGameState(), "", false);
+                } catch (error) {
+                    if (request !== menuRequestSerial || !ownership.isCurrent(epoch)) return;
+                    console.error("Unable to display the game menu.", error);
+                    renderLoadError(new ReloadRequiredError(error, "The menu could not be displayed. Reload this tab."));
+                }
             })
             .catch((error) => {
                 if (request !== menuRequestSerial || !ownership.isCurrent(epoch) || pwaSessionState !== "booting") {
@@ -479,6 +485,10 @@ function startApplication(): void {
             container = appContainer;
             game = mainGame;
             publishedToShell = true;
+            const initializationOwner = {
+                signal: appContainer.getBrowserLifetimeSignal(),
+                isCurrent: () => isStartingGameSession(generation, audio) && game === mainGame && container === appContainer
+            };
             activeScalableGame = scalableGame;
             activeSessionGeneration = generation;
             viewport.attach(appContainer, generation);
@@ -504,7 +514,11 @@ function startApplication(): void {
                     disposeStaleLaunch(mainGame, appContainer);
                     return;
                 }
-                await initializeWithDeadline(Promise.resolve(appContainer.setDisplayMode(displayMode.width, displayMode.height, false)), sessionCleanup);
+                await initializeWithDeadline(
+                    Promise.resolve(appContainer.setDisplayMode(displayMode.width, displayMode.height, false)),
+                    sessionCleanup,
+                    initializationOwner
+                );
                 if (!isStartingGameSession(generation, audio)) {
                     disposeStaleLaunch(mainGame, appContainer);
                     return;
@@ -514,12 +528,12 @@ function startApplication(): void {
                 appContainer.setSmoothDeltas(false);
                 appContainer.setShowFPS(false);
                 appContainer.setClearEachFrame(true);
-                await initializeWithDeadline(appContainer.start(), sessionCleanup);
+                await initializeWithDeadline(appContainer.start(), sessionCleanup, initializationOwner);
                 if (!isStartingGameSession(generation, audio)) {
                     disposeStaleLaunch(mainGame, appContainer);
                     return;
                 }
-                await initializeWithDeadline(runtime.slick.ResourceLoader.waitForAll(), sessionCleanup);
+                await initializeWithDeadline(runtime.slick.ResourceLoader.waitForAll(), sessionCleanup, initializationOwner);
                 if (!isStartingGameSession(generation, audio)) {
                     disposeStaleLaunch(mainGame, appContainer);
                     return;

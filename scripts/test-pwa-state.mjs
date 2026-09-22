@@ -757,6 +757,49 @@ try {
         assert.equal(storage.getItem(storageKey), savedSnapshot);
     });
 
+    await runTest("real store accepts the full cutoff domain with no-read schema-10 overwrite", () => {
+        const storage = installMemoryLocalStorage();
+        const store = new MsPacManGameStateStore(APP_VERSION);
+        setTestLocation(STAGE_URL);
+        const key = createBrowserStorageKeys().gameState;
+        const read = storage.getItem.bind(storage);
+        for (const cutoff of [100000, 100001, 250000, 2147483647]) {
+            const source = createFakeMain("playing", "source", { highScoreQualificationCutoff: cutoff });
+            for (const old of ["{", JSON.stringify({ version: 9 }), JSON.stringify({ version: 11 })]) {
+                storage.setItem(key, old);
+                let reads = 0;
+                storage.getItem = () => {
+                    reads++;
+                    throw new Error("Old slot must not be read");
+                };
+                try {
+                    assert.deepEqual(
+                        store.save(source, () => true),
+                        { saved: true }
+                    );
+                    assert.equal(reads, 0);
+                } finally {
+                    storage.getItem = read;
+                }
+                assert.equal(JSON.parse(read(key)).version, 10);
+                assert.equal(store.hasValidSave(), true);
+                const target = createFakeMain("playing", "target");
+                assert.equal(store.restore(target, createGameContainer()), true);
+                assert.equal(target.highScoreQualificationCutoff, cutoff);
+            }
+        }
+        for (const cutoff of [-1, 0.5, NaN, Infinity, -Infinity, 2147483648]) {
+            const source = createFakeMain("playing", "source", { highScoreQualificationCutoff: cutoff });
+            assert.equal(store.save(source, () => true).saved, false);
+            const snapshot = new MsPacManGameStateSerializer().createSnapshot(source, APP_VERSION);
+            storage.setItem(key, JSON.stringify(snapshot));
+            assert.equal(store.hasValidSave(), false);
+        }
+        const source = createFakeMain("playing", "source", { highScoreQualificationCutoff: 250000 });
+        source.playingMode.mspacman.x = 100001;
+        assert.equal(store.save(source, () => true).saved, false);
+    });
+
     await runTest("run qualification cutoff survives restore and rejects invalid durable values", () => {
         const serializer = new MsPacManGameStateSerializer();
         const source = createFakeMain("playing", "source");

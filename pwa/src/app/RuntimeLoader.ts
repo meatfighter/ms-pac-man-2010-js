@@ -38,12 +38,14 @@ export class RuntimeLoader {
     public async prepare(forceRetry = false): Promise<PreparedRuntime> {
         if (this.reloadFailure !== null) throw this.reloadFailure;
         if (this.prepared !== null) return this.prepared;
-        if (forceRetry && this.pending !== null) {
+        const prior = this.pending;
+        if (prior !== null) {
+            const alreadyCancelled = this.controller?.signal.aborted === true;
+            if (!forceRetry && !alreadyCancelled) return prior;
             this.controller?.abort(new DOMException("Preparation superseded", "AbortError"));
-            await this.pending.catch(() => undefined);
-            return this.prepare(true);
+            await prior.catch(() => undefined);
+            return this.prepare(this.pending === null);
         }
-        if (this.pending !== null) return this.pending;
         if (!forceRetry && this.error !== null) throw this.error;
         const controller = new AbortController();
         this.controller = controller;
