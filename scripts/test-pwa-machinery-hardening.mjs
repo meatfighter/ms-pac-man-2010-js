@@ -24,7 +24,7 @@ test("new game requires boot-prepared runtime before fresh playback activation",
     const generationIndex = startGame.indexOf("const generation = sessionGeneration.begin();");
     const startingIndex = startGame.indexOf('pwaSessionState = "starting";');
     const shellIndex = startGame.indexOf("viewport.createShell(generation)");
-    const audioIndex = startGame.indexOf("const audio = beginGameAudio();");
+    const audioIndex = startGame.indexOf("audio = beginGameAudio();");
     const fullscreenIndex = startGame.indexOf("requestPreferredFullscreen()");
     const readyIndex = startGame.indexOf("await audio.ready");
     assert.ok(runtimeIndex >= 0 && destroyIndex > runtimeIndex);
@@ -91,7 +91,7 @@ test("ownership relinquishment performs the final save before destructive cleanu
     const saveIndex = release.indexOf("trySave(saveCurrentGameState)");
     const destroyIndex = release.indexOf("destroyGame()");
     assert.ok(saveIndex >= 0 && destroyIndex > saveIndex);
-    const save = mainSource.slice(mainSource.indexOf("function saveCurrentGameState"), mainSource.indexOf("function clearStoredGameState"));
+    const save = mainSource.slice(mainSource.indexOf("function saveCurrentGameState"), mainSource.indexOf("function getGameStateStore"));
     assert.match(save, /ownership/);
     assert.match(save, /persistence\.canSave\(mainGame\)/);
     assert.doesNotMatch(save, /canReadStored|inspectStored|hasValidSave/);

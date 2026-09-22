@@ -19,7 +19,9 @@ const styles = read("pwa/src/app/styles.css");
 
 test("fullscreen is a browser preference, not game state", () => {
     assert.match(preferences, /DEFAULT_FULLSCREEN_PREFERENCE\s*=\s*true/);
-    assert.match(preferences, /public fullscreen = this\.readFullscreen\(\)/);
+    assert.match(preferences, /public fullscreen = DEFAULT_FULLSCREEN_PREFERENCE/);
+    assert.match(preferences, /constructor\(loadStored = true\)[\s\S]*?if \(loadStored\) this\.reload\(\)/);
+    assert.match(preferences, /public reload\(\): void \{[\s\S]*?this\.fullscreen = this\.readFullscreen\(\)/);
     assert.match(preferences, /setFullscreen\(value: boolean, isAuthorized: \(\) => boolean\)/);
     assert.match(webApp, /preferences\.setFullscreen\(!preferences\.fullscreen, currentPreferenceWriteAuthorized\)/);
     assert.match(storageKeys, /readonly fullscreen: string/);

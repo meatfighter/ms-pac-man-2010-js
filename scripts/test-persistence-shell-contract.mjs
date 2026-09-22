@@ -56,6 +56,9 @@ function fixture() {
         getGameStateStore() {
             return store;
         },
+        hasPotentialSavedGameState() {
+            return true;
+        },
         runtimeLoader: {
             preparedRuntime: prepared,
             prepared,

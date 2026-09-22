@@ -86,7 +86,7 @@ test("persistence uses public Slick random, Music, and Sound snapshot APIs", () 
 
 test("extended audio-policy qualification reads the stable deployment slot", () => {
     assert.doesNotMatch(audioPolicyQualification, /Object\.entries\(localStorage\)|game-state-v/);
-    assert.match(audioPolicyQualification, /encodeURIComponent\(new URL\("\.", location\.href\)\.pathname\)/);
+    assert.match(audioPolicyQualification, /encodeURIComponent\(new URL\("\.", globalThis\.location\.href\)\.pathname\)/);
     assert.match(audioPolicyQualification, /localStorage\.getItem\(key\)/);
     assert.match(audioPolicyQualification, /Number\.isInteger\(snapshot\.version\)/);
 });
