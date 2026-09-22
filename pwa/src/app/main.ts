@@ -88,13 +88,10 @@ function startApplication(): void {
     const ownership = new GameSessionOwnership(app, startPwaMenu, () => releaseOwnedSession());
     setGameAudioInterruptionHandler(requestPwaMenu);
     document.addEventListener("keydown", handleBrowserReservedKey, true);
-    window.__msPacManResourcesPrepared = false;
-    {
-        setupGlobalErrorHandlers();
-        setupPageLifecycleHandlers();
-        void registerServiceWorker();
-        ownership.start();
-    }
+    setupGlobalErrorHandlers();
+    setupPageLifecycleHandlers();
+    void registerServiceWorker();
+    ownership.start();
 
     function canActivateFromMenu(): boolean {
         return (
@@ -140,7 +137,6 @@ function startApplication(): void {
                 if (request !== menuRequestSerial || !ownership.isCurrent(epoch) || pwaSessionState !== "booting") {
                     return;
                 }
-                window.__msPacManResourcesPrepared = true;
                 pwaSessionState = "menu";
                 renderMenuUi(app, hasPotentialSavedGameState(), "", false);
             })
@@ -580,6 +576,13 @@ function startApplication(): void {
                     () => candidateGame?.invalidateBrowserLifetime()
                 );
                 if (!sessionCleanup.safe) showCleanupFailure();
+            } else if (!sessionCleanup.safe) {
+                if (container === candidateContainer) {
+                    destroyGame();
+                } else {
+                    sessionCleanup.run(() => candidateContainer?.destroy());
+                    showCleanupFailure();
+                }
             }
         }
     }
@@ -618,7 +621,6 @@ function startApplication(): void {
         if (!ownership.owned || pwaSessionState !== "booting") {
             return;
         }
-        window.__msPacManResourcesPrepared = runtimeLoader.progress >= 1;
         if (app.querySelector("[data-boot-progress='true']") !== null) {
             renderBoot(runtimeLoader.progress);
         }

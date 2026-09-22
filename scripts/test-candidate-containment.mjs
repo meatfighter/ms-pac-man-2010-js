@@ -7,7 +7,7 @@ const jackal = name === "jackal-js";
 const pac = name === "ms-pac-man-2010-js";
 const file = jackal ? "pwa/src/app/JackalWebApp.ts" : pac ? "pwa/src/app/main.ts" : "pwa/src/main.ts";
 const method = pac ? "mountGame" : "launchPreparedGame";
-for (const fault of ["constructor", "setter", "stale", "unsafe"]) {
+for (const fault of ["constructor", "setter", "stale", "unsafe", "published-timeout"]) {
     test("unpublished candidate containment: " + fault, async () => {
         const events = [];
         let current = true;
@@ -31,7 +31,7 @@ for (const fault of ["constructor", "setter", "stale", "unsafe"]) {
             container: replacementContainer,
             sessionCleanup: cleanup,
             isStartingGameSession: () => current,
-            viewport: { gameHost: {}, getResponsiveDisplayMode: () => ({ width: 800, height: 600 }) },
+            viewport: { attach() {}, gameHost: {}, getResponsiveDisplayMode: () => ({ width: 800, height: 600 }) },
             sessionMapping: {},
             preferences: {},
             preferredHardMode: false,
@@ -44,12 +44,23 @@ for (const fault of ["constructor", "setter", "stale", "unsafe"]) {
             applyDisplayModePreference() {},
             getRumbleManager: () => ({}),
             handleGamePauseStateChanged() {},
+            destroyGame() {
+                const state = jackal ? this : env;
+                state.container.destroy();
+                if (jackal) state.game.disposeBrowserRuntime();
+                if (pac) state.game.invalidateBrowserLifetime();
+                state.container = null;
+                state.game = null;
+                events.push("terminal");
+            },
             showCleanupFailure() {
                 events.push("terminal");
             }
         };
         class Main {
             buttonMapping = { copyFrom() {} };
+            setInputMappingChangedHandler() {}
+            setDifficultyChangedHandler() {}
             reserveBrowserRuntime() {
                 events.push("reserve");
             }
@@ -74,9 +85,13 @@ for (const fault of ["constructor", "setter", "stale", "unsafe"]) {
             }
             setHighDpiEnabled() {
                 if (fault === "stale") current = false;
-                else throw new Error("setter failed");
+                else if (fault !== "published-timeout") throw new Error("setter failed");
             }
             setMaxDevicePixelRatio() {}
+            setGraphicsLifecycleHandler() {
+                cleanup.safe = false;
+                throw new Error("initialization failed");
+            }
             destroy() {
                 events.push("container-dispose");
                 if (fault === "unsafe") throw new Error("destroy failed");
@@ -93,10 +108,10 @@ for (const fault of ["constructor", "setter", "stale", "unsafe"]) {
         if (fault === "stale") await pending;
         else await assert.rejects(pending, /failed/);
         const state = jackal ? subject : env;
-        assert.equal(state.game, replacementGame);
-        assert.equal(state.container, replacementContainer);
+        assert.equal(state.game, fault === "published-timeout" ? null : replacementGame);
+        assert.equal(state.container, fault === "published-timeout" ? null : replacementContainer);
         assert.equal(events.filter((event) => event === "container-dispose").length, fault === "constructor" ? 0 : 1);
         assert.equal(events.filter((event) => event === "main-dispose").length, jackal || pac ? 1 : 0);
-        assert.equal(events.includes("terminal"), fault === "unsafe");
+        assert.equal(events.includes("terminal"), fault === "unsafe" || fault === "published-timeout");
     });
 }
