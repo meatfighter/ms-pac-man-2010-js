@@ -179,4 +179,3 @@ test("oversized stored data is rejected on read but cannot block an authorized c
     assert.equal(JSON.parse(stored).version, 9);
     assert.notEqual(stored, text);
 });
-

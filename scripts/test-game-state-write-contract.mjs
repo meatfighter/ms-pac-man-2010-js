@@ -104,7 +104,10 @@ test("real store clear rechecks authority at the final storage boundary", () => 
             }
         });
         s.clearCalls();
-        assert.equal(store.clear(() => authorized), false);
+        assert.equal(
+            store.clear(() => authorized),
+            false
+        );
         assert.equal(s.values.get(key), previous);
         assert.deepEqual(s.calls.get, []);
         assert.deepEqual(s.calls.set, []);
@@ -113,7 +116,10 @@ test("real store clear rechecks authority at the final storage boundary", () => 
         install();
         authorized = true;
         s.clearCalls();
-        assert.equal(store.clear(() => authorized), true);
+        assert.equal(
+            store.clear(() => authorized),
+            true
+        );
         assert.deepEqual(s.calls.get, []);
         assert.deepEqual(s.calls.set, []);
         assert.deepEqual(s.calls.remove, [key]);
