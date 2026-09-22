@@ -3,6 +3,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, resolve, sep } from "node:path";
 import { chromium } from "playwright";
+import { disableFullscreenPreference } from "./fullscreen-test-utils.mjs";
 const GAME = "pac";
 const root = resolve(process.env.PWA_ROOT ?? "dist/pwa");
 assert(existsSync(resolve(root, "index.html")), `Missing built PWA: ${root}`);
@@ -60,7 +61,7 @@ try {
     await page.waitForFunction(() => navigator.serviceWorker.controller !== null, undefined, { timeout: 120_000 });
     await page.reload();
     await menuReady(page);
-    await disableFullscreen(page);
+    await disableFullscreenPreference(page);
     await page.locator(newSelector).first().click();
     await running(page);
     await page.locator(menuSelector).first().click();
@@ -152,7 +153,7 @@ try {
     }
     await quiet(page);
     await disarm(page);
-    await disableFullscreen(page);
+    await disableFullscreenPreference(page);
 
     // Reset is an explicit operation: one result notice, no resurrected Continue,
     // and no reload of failed-to-remove values into the new runtime.
@@ -164,7 +165,7 @@ try {
     assert.equal(await page.locator(continueSelector).first().isEnabled(), false);
     assert.equal((await faultInfo(page)).raw, validText);
     await disarm(page);
-    await disableFullscreen(page);
+    await disableFullscreenPreference(page);
     const retiredControl = await page.locator("#fullscreen-switch-button").first().elementHandle();
     await page.locator(newSelector).first().click();
     await running(page);
@@ -192,10 +193,6 @@ async function running(page) {
     await page.locator("canvas").waitFor({ state: "visible" });
     await page.locator(menuSelector).first().waitFor({ state: "visible" });
     assert.equal(await page.locator("canvas").count(), 1);
-}
-async function disableFullscreen(page) {
-    const control = page.locator("#fullscreen-switch-button").first();
-    if ((await control.isEnabled()) && (await control.getAttribute("aria-pressed")) === "true") await control.click();
 }
 async function quiet(page) {
     assert.equal(await page.getByText(/Progress could not be saved|Unable to restore the saved game|Unable to save settings in this browser/).count(), 0);
