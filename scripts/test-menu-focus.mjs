@@ -306,6 +306,7 @@ for (const reused of [false, true]) {
             assert.equal(f.state.sessionCleanup.safe, !unsafe);
             assert.equal(f.calls.recovery, failure === "none" || unsafe ? 0 : 1);
             if (unsafe) {
+                assert.equal(f.calls.severe, 1, "severe recovery must not recurse");
                 assert.throws(() => f.state.sessionCleanup.assertSafe());
                 f.state.sessionCleanup.run(() => {});
                 assert.equal(f.state.sessionCleanup.safe, false);

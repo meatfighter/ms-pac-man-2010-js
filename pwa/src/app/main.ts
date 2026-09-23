@@ -1245,6 +1245,11 @@ function startApplication(): void {
             try {
                 stopped = destroyGame();
             } catch (teardownError) {
+                if (!sessionCleanup.safe) {
+                    // Teardown already latched its real failure; do not retry a failed severe screen.
+                    console.error("Unable to display live-menu cleanup recovery.", teardownError);
+                    return;
+                }
                 sessionCleanup.run(() => {
                     throw teardownError;
                 });
