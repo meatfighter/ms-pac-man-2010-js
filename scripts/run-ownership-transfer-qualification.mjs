@@ -1,3 +1,4 @@
+/* global HTMLElement */
 /* global window, document */
 import assert from "node:assert/strict";
 import { createReadStream, existsSync, statSync } from "node:fs";
@@ -88,9 +89,32 @@ try {
     assert.equal(await first.locator("canvas").count(), 0, "old tab restarted gameplay after stale pageshow");
     await waitForRunning(second, "second tab after stale first-tab pageshow");
 
+    // A UI-only failure must not permanently retain the native writer lock.
+    await second.bringToFront();
+    await second.evaluate(() => {
+        const original = HTMLElement.prototype.focus;
+        HTMLElement.prototype.focus = function (...args) {
+            if (this.closest(".menu-overlay")) {
+                HTMLElement.prototype.focus = original;
+                throw new Error("Injected live-overlay focus failure");
+            }
+            return original.apply(this, args);
+        };
+    });
+    await second.locator(menuButtonSelector).first().click();
+    await second.getByRole("button", { name: "Reload", exact: true }).waitFor({ state: "visible" });
+    assert.equal(await second.locator("canvas").count(), 0, "UI recovery did not retire the real game");
+    await first.bringToFront();
+    await first.getByRole("button", { name: "Continue Here" }).click();
+    const recoveredContinue = first.locator(continueSelector).first();
+    await recoveredContinue.waitFor({ state: "visible" });
+    assert.equal(await recoveredContinue.isEnabled(), true, "UI-only failure poisoned final-save/lock release");
+    await recoveredContinue.click();
+    await waitForRunning(first, "new owner after old owner's presentation failure");
+
     assert.deepEqual(errors, [], "ownership-transfer qualification produced uncaught browser errors");
     console.log(
-        "Ownership-transfer qualification passed: final save/disposal precedes lock transfer, new owner cold-continues explicitly, stale old-tab wake cannot reclaim gameplay."
+        "Ownership-transfer qualification passed: final save/disposal precedes lock transfer, new owner cold-continues explicitly, stale old-tab wake cannot reclaim gameplay; UI-only live-menu failure permits later safe transfer."
     );
     await context.close();
 } finally {

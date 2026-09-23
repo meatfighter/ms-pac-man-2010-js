@@ -1,3 +1,4 @@
+import { sourceMember } from "./persistence-test-loader.mjs";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -76,9 +77,11 @@ test("live-menu presentation exits fullscreen before publishing a quiet retained
     const liveMenu = mainSource.slice(mainSource.indexOf("function showLiveMenuOverlay"), mainSource.indexOf("async function resumeLiveGameFromMenu"));
     assert.match(liveMenu, /trySave\(saveCurrentGameState\)/);
     assert.doesNotMatch(liveMenu, /Progress could not be saved|const saved =/);
-    const exitIndex = liveMenu.indexOf("await viewport.exitFullscreenForMenu()");
-    const renderIndex = liveMenu.indexOf("menuOverlay =");
-    const publishIndex = liveMenu.indexOf('pwaSessionState = "menu";');
+    assert.match(liveMenu, /await finishLiveMenuPresentation\(session, null\)/);
+    const presenter = sourceMember("pwa/src/app/main.ts", "finishLiveMenuPresentation");
+    const exitIndex = presenter.indexOf("await viewport.exitFullscreenForMenu()");
+    const renderIndex = presenter.indexOf("menuOverlay = overlay;");
+    const publishIndex = presenter.indexOf('pwaSessionState = "menu";');
     assert.ok(exitIndex >= 0 && renderIndex > exitIndex && publishIndex > renderIndex);
 });
 
