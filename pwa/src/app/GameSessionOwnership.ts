@@ -1,4 +1,7 @@
 /** One writer per deployment, including across save-schema versions. */
+const OWNERSHIP_ATTEMPT_WINDOW_MS = 5000;
+const NATIVE_ACQUISITION_TIMEOUT_MS = 5000;
+
 export class GameSessionOwnership {
     private acquisitionFailed = false;
     private nativeAcquisitionPending = false;
@@ -220,7 +223,7 @@ export class GameSessionOwnership {
         return !this.disposed && !this.disposing && !this.sleeping && !this.cleanupFailed && !this.releasing && attempt === this.attemptSerial;
     }
 
-    private tryAcquire(attempt: number, budget: number): Promise<boolean> {
+    private tryAcquire(attempt: number, acquisitionDeadline: number): Promise<boolean> {
         this.nativeAcquisitionPending = true;
         return new Promise<boolean>((resolve, reject) => {
             let eligible = true;
@@ -230,13 +233,19 @@ export class GameSessionOwnership {
                 this.acquisitionFailed = true;
                 if (!this.sleeping && !this.disposed) this.showMessage("Ownership acquisition did not settle. Reload this tab.", false);
                 reject(new Error("Native ownership acquisition timed out. Reload this tab."));
-            }, budget);
+            }, NATIVE_ACQUISITION_TIMEOUT_MS);
             void Promise.resolve()
                 .then(() =>
                     navigator.locks.request(this.name, { ifAvailable: true }, async (lock) => {
                         this.nativeAcquisitionPending = false;
                         clearTimeout(timer);
-                        if (!eligible || lock === null || !this.isAttemptCurrent(attempt) || document.visibilityState === "hidden") {
+                        if (
+                            !eligible ||
+                            lock === null ||
+                            !this.isAttemptCurrent(attempt) ||
+                            document.visibilityState === "hidden" ||
+                            performance.now() >= acquisitionDeadline
+                        ) {
                             resolve(false);
                             return;
                         }
@@ -287,12 +296,13 @@ export class GameSessionOwnership {
         this.pendingAttempt = attempt;
         try {
             this.openChannel();
-            const deadline = performance.now() + 5000;
+            const deadline = performance.now() + OWNERSHIP_ATTEMPT_WINDOW_MS;
             do {
-                if (await this.tryAcquire(attempt, Math.max(1, deadline - performance.now()))) {
+                if (performance.now() >= deadline) break;
+                if (await this.tryAcquire(attempt, deadline)) {
                     return;
                 }
-                if (!this.isAttemptCurrent(attempt) || !takeover) {
+                if (!this.isAttemptCurrent(attempt) || !takeover || performance.now() >= deadline) {
                     break;
                 }
                 this.channel?.postMessage("takeover");

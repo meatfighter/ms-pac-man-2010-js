@@ -331,10 +331,10 @@ for (const stale of [false, true]) {
             }
             throw new Error("menu binding failed");
         };
-        Object.assign(env, { renderMenu: render, renderRootMenu: render, renderMenuUi: render });
+        Object.assign(env, { renderMenu: render, renderMenuForParent: render, renderMenuUi: render, activeMenu: {} });
         const path = jackal ? "pwa/src/app/JackalWebApp.ts" : stickvania ? "pwa/src/main.ts" : "pwa/src/app/main.ts";
         const method = jackal ? "showMenu" : "startPwaMenu";
-        subject = shellSubject(path, [method], env, jackal ? "JackalWebApp" : null);
+        subject = shellSubject(path, [method, stickvania ? "renderRootMenu" : "publishRootMenu"], env, jackal ? "JackalWebApp" : null);
         subject[method]();
         await flush();
         assert.equal(renders, 1);
@@ -349,7 +349,7 @@ if (jackal)
         const owner = { epoch: 1, isCurrent: (epoch) => epoch === owner.epoch };
         const subject = shellSubject(
             "pwa/src/app/JackalWebApp.ts",
-            ["showMenu"],
+            ["showMenu", "publishRootMenu"],
             {
                 getOwnership: () => owner,
                 refreshOwnedSettings() {},
@@ -366,6 +366,7 @@ if (jackal)
                 },
                 hasPotentialSavedGameState: () => false,
                 root: {},
+                sessionCleanup: { safe: true },
                 isRuntimePreparationAbort: (error) => error.name === "AbortError",
                 ReloadRequiredError: f.helper.ReloadRequiredError,
                 showLoadError() {

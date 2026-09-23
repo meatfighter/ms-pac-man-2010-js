@@ -300,3 +300,28 @@ test("retained resume contains a policy failure before allocating audio", async 
     assert.equal(env.events.includes("save"), false);
     assert.equal(env.events.filter((event) => event === "cancel").length, 1);
 });
+
+test("rejected durable launch reaches owned root recovery without saving or replaying Reset", async () => {
+    const env = fixture();
+    const jackal = owner !== null;
+    const stick = path === "pwa/src/main.ts";
+    env.activeMenu = {};
+    env.refreshOwnedSettings = () => {};
+    env.hasPotentialSavedGameState = () => env.persistence.canReadStored();
+    env.launchPreparedGame = async (_runtime, _restore, _session, _audio, attempt) => attempt.reject();
+    env.mountGame = env.launchPreparedGame;
+    const fail = () => {
+        throw new Error("root binding failed after rejected restore");
+    };
+    if (jackal) env.renderMenu = fail;
+    else if (stick) env.renderMenuForParent = fail;
+    else env.renderMenuUi = fail;
+    const names = ["startGame", jackal || stick ? "showMenu" : "renderMenu", stick ? "renderRootMenu" : "publishRootMenu"];
+    const methods = shellSubject(path, names, env, owner);
+    await methods.startGame(true);
+    assert.equal(env.persistence.canReadStored(), false);
+    assert.equal(env.events.filter((event) => event === "fatal").length, 1);
+    assert.equal(env.events.includes("save"), false);
+    assert.equal((jackal ? methods : env).activeMenu, null);
+    assert.equal(env.sessionCleanup.safe, true);
+});

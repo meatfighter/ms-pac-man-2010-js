@@ -552,3 +552,87 @@ test("ownership timeout while sleeping displays Reload on wake", async () => {
     assert.equal(w.requests.length, 1);
     tab.owner.dispose();
 });
+
+for (const grant of [false, true]) {
+    test("final probe responding five ms later is retryable, never a native stall; grant=" + grant, async () => {
+        const w = world();
+        const name = "game-session:/game/";
+        w.locks.set(name, {});
+        let acquired = 0,
+            broadcasts = 0;
+        const tab = w.tab({ acquired: () => acquired++ });
+        tab.env.post = () => broadcasts++;
+        tab.owner.start();
+        await flush();
+        tab.button().click();
+        await flush();
+        assert.equal(broadcasts, 1);
+        tab.env.manualRequests = true;
+        await w.advance(4999);
+        assert.equal(w.pending.length, 1);
+        const requests = w.requests.length;
+        await w.advance(5);
+        assert.equal(tab.owner.acquisitionFailed, false);
+        assert.equal(w.requests.length, requests);
+        if (grant) w.locks.delete(name);
+        w.pending.shift()();
+        await flush();
+        assert.equal(acquired, 0);
+        assert.equal(tab.owner.owned, false);
+        assert.equal(tab.owner.acquisitionFailed, false);
+        assert.equal(broadcasts, 1);
+        assert.equal(w.timers.size, 0);
+        assert.match(tab.text(), /has not released/);
+        assert.equal(tab.button().textContent, "Continue Here");
+        if (grant) assert.equal(w.locks.size, 0);
+        tab.owner.dispose();
+    });
+}
+test("final probe gets its full watchdog: attempt window plus probe can approach ten seconds", async () => {
+    const w = world();
+    const name = "game-session:/game/";
+    w.locks.set(name, {});
+    const tab = w.tab();
+    tab.owner.start();
+    await flush();
+    tab.button().click();
+    await flush();
+    tab.env.manualRequests = true;
+    await w.advance(4999);
+    assert.equal(w.pending.length, 1);
+    await w.advance(4999);
+    assert.equal(tab.owner.acquisitionFailed, false);
+    await w.advance(1);
+    assert.equal(tab.owner.acquisitionFailed, true);
+    assert.match(tab.text(), /Reload/);
+    w.locks.delete(name);
+    w.pending.shift()();
+    await flush();
+    assert.equal(tab.owner.owned, false);
+    assert.equal(w.locks.size, 0);
+    tab.owner.dispose();
+});
+test("last-window grant accepted before expiry retains a held lock beyond callback watchdog", async () => {
+    const w = world();
+    const name = "game-session:/game/";
+    w.locks.set(name, {});
+    let acquired = 0;
+    const tab = w.tab({ acquired: () => acquired++ });
+    tab.owner.start();
+    await flush();
+    tab.button().click();
+    await flush();
+    tab.env.manualRequests = true;
+    await w.advance(4999);
+    w.locks.delete(name);
+    w.pending.shift()();
+    await flush();
+    assert.equal(acquired, 1);
+    assert.equal(tab.owner.owned, true);
+    await w.advance(10000);
+    assert.equal(tab.owner.owned, true);
+    assert.equal(tab.owner.acquisitionFailed, false);
+    tab.owner.dispose();
+    await flush();
+    assert.equal(w.locks.size, 0);
+});

@@ -137,14 +137,7 @@ function startApplication(): void {
                 if (request !== menuRequestSerial || !ownership.isCurrent(epoch) || pwaSessionState !== "booting") {
                     return;
                 }
-                try {
-                    pwaSessionState = "menu";
-                    renderMenuUi(app, hasPotentialSavedGameState(), "", false);
-                } catch (error) {
-                    if (request !== menuRequestSerial || !ownership.isCurrent(epoch)) return;
-                    console.error("Unable to display the game menu.", error);
-                    renderLoadError(new ReloadRequiredError(error, "The menu could not be displayed. Reload this tab."));
-                }
+                publishRootMenu();
             })
             .catch((error) => {
                 if (request !== menuRequestSerial || !ownership.isCurrent(epoch) || pwaSessionState !== "booting") {
@@ -163,8 +156,30 @@ function startApplication(): void {
         if (!destroyGame()) {
             return;
         }
-        pwaSessionState = "menu";
-        renderMenuUi(app, hasPotentialSavedGameState(), errorText, false);
+        publishRootMenu(errorText);
+    }
+
+    function publishRootMenu(errorText = "", readCanContinue: () => boolean = hasPotentialSavedGameState): void {
+        const epoch = ownership.epoch;
+        const request = menuRequestSerial;
+        const isCurrent = (): boolean => sessionCleanup.safe && ownership.isCurrent(epoch) && request === menuRequestSerial;
+        if (!isCurrent()) return;
+
+        try {
+            pwaSessionState = "menu";
+            const canContinue = readCanContinue();
+            if (!isCurrent() || pwaSessionState !== "menu") return;
+            renderMenuUi(app, canContinue, errorText, false);
+        } catch (error) {
+            if (!isCurrent()) return;
+            activeMenu = null;
+            console.error("Unable to display the game menu.", error);
+            try {
+                renderLoadError(new ReloadRequiredError(error, "The menu could not be displayed. Reload this tab."));
+            } catch (recoveryError) {
+                console.error("Unable to display menu recovery.", recoveryError);
+            }
+        }
     }
 
     function renderMenuUi(parent: HTMLElement, canContinue: boolean, errorText: string, overlay: boolean): HTMLElement {
@@ -219,6 +234,20 @@ function startApplication(): void {
         const newGameButton = menuRoot.querySelector<HTMLButtonElement>("#newGameButton");
         const continueButton = menuRoot.querySelector<HTMLButtonElement>("#continueButton");
         const resetButton = menuRoot.querySelector<HTMLButtonElement>("#resetButton");
+        if (
+            volumeInput === null ||
+            volumeValue === null ||
+            fullscreenSwitch === null ||
+            scalingPicker === null ||
+            scalingButton === null ||
+            scalingPopup === null ||
+            scalingList === null ||
+            newGameButton === null ||
+            continueButton === null ||
+            resetButton === null
+        ) {
+            throw new Error("Ms. Pac-Man menu is missing required controls.");
+        }
 
         fullscreenSwitch?.addEventListener("click", () => {
             if (fullscreenSwitch.disabled) {
@@ -974,8 +1003,7 @@ function startApplication(): void {
         volume = preferences.volume;
         scalingPreference = preferences.scaling;
         applyApplicationAudioPreferences();
-        pwaSessionState = "menu";
-        renderMenuUi(app, false, cleared ? "" : "Some settings could not be reset.", false);
+        publishRootMenu(cleared ? "" : "Some settings could not be reset.", () => false);
     }
 
     function hasLiveSuspendedGame(): boolean {
