@@ -18,6 +18,25 @@ let browser = null;
 try {
     await waitForHttpServer(server, browserVerificationUrl);
     browser = await launchBrowser(browserVerificationUrl, rootDir, "ms-pac-man-2010-browser-");
+    // Each terminal arena uses committed native playback. Grant activation
+    // through the browser gesture path, never by disabling autoplay policy.
+    while (true) {
+        const state = await waitForExpression(
+            browser.page,
+            `(() => {
+            const result = document.querySelector("#result");
+            if (result?.dataset.status === "failed") throw new Error(result.textContent);
+            if (result?.dataset.status === "passed") return "done";
+            return document.querySelector("#terminal-audio") ? "audio" : false;
+        })()`,
+            60_000
+        );
+        if (state === "done") break;
+        await browser.page.call("Runtime.evaluate", {
+            expression: 'document.querySelector("#terminal-audio").click()',
+            userGesture: true
+        });
+    }
     const output = await waitForExpression(
         browser.page,
         '(() => { const element = document.querySelector("#result"); if (element?.dataset.status === "failed") throw new Error(element.textContent || "Browser verification failed."); return element?.dataset.status === "passed" ? element.textContent : false; })()'

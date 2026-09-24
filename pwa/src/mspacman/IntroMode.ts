@@ -55,6 +55,7 @@ export class IntroMode implements IMode {
                 this.fadeIndex++;
             } else {
                 this.main.setMode(Main.playingMode, gc);
+                return;
             }
             this.mspacmanX += 2.1388174807197943;
         } else {

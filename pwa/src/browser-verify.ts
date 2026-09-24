@@ -1,3 +1,10 @@
+import { Sys } from "slick2d-ts";
+import { PlayingMode } from "./mspacman/PlayingMode.js";
+import {
+    MsPacManGameStateSerializer,
+    isValidMsPacManGameStateSnapshot,
+    isValidSnapshotForLoadedResources
+} from "./mspacman/persistence/MsPacManGameStateSerializer.js";
 import { createBrowserStorageKeys } from "./app/BrowserStorageKeys.js";
 import { verifyAuthoritativeSave } from "./PersistenceContractVerification.js";
 import { AppGameContainer, Display, ResourceLoader, SoundStore, type SoundPlaybackSnapshot } from "slick2d-ts";
@@ -122,9 +129,7 @@ async function verify(): Promise<void> {
     assertSoundState(second.main.speaking[1][7].capturePlaybackState(), speech, "speech");
     assertSoundState(second.main.atePellotSound.capturePlaybackState(), overlappingPellets, "overlapping pellet voices");
     assert(second.main.extraLifeSound.capturePlaybackState().voices.length === 0, "Unlisted Sound state should restore empty.");
-    second.main.invalidateBrowserLifetime();
-    second.container.destroy();
-    Display.setParent(null);
+    await verifyTerminalGameplay(second);
     assert(
         store.clear(() => true),
         "Real browser save-state cleanup failed."
@@ -167,3 +172,220 @@ void verify().then(
         result.textContent = error instanceof Error ? (error.stack ?? error.message) : String(error);
     }
 );
+
+/** Real actors, original maze geometry, terminal save and fresh-runtime continuation. */
+async function verifyTerminalGameplay(initial: Awaited<ReturnType<typeof mountMain>>): Promise<void> {
+    let mounted: Awaited<ReturnType<typeof mountMain>> | null = initial;
+    const serializer = new MsPacManGameStateSerializer();
+    const store = new MsPacManGameStateStore("terminal-browser");
+    const originalClock = Object.getOwnPropertyDescriptor(Sys, "getTime");
+    assert(originalClock !== undefined, "Missing runtime clock descriptor");
+    let now = Sys.getTime();
+    const release = (): void => {
+        document.querySelector("canvas")?.dispatchEvent(new KeyboardEvent("keyup", { code: "ArrowRight", key: "ArrowRight", bubbles: true }));
+    };
+    const destroy = (): void => {
+        if (mounted === null) return;
+        release();
+        mounted.main.stopAllSounds();
+        mounted.main.invalidateBrowserLifetime();
+        mounted.container.destroy();
+        Display.setParent(null);
+        mounted = null;
+    };
+    const step = (): void => {
+        assert(mounted !== null, "Missing terminal runtime");
+        mounted.container.getInput().poll(1000, 750);
+        now += 11;
+        mounted.main.nextFrameTime = now - 1;
+        mounted.main.update(mounted.container, 11);
+    };
+    try {
+        Object.defineProperty(Sys, "getTime", { configurable: true, value: () => now });
+        for (const scenario of ["pellet", "energizer", "death", "reserve"] as const) {
+            if (mounted === null) mounted = await mountMain(null);
+            const { main, container } = mounted;
+            await new Promise<void>((resolve, reject) => {
+                const button = document.createElement("button");
+                button.id = "terminal-audio";
+                button.textContent = "Run terminal audio case";
+                button.onclick = () => {
+                    button.remove();
+                    void SoundStore.get()
+                        .beginPlaybackGenerationFromUserGesture()
+                        .then((ok) => {
+                            if (ok) resolve();
+                            else reject(new Error("Terminal fixture needs committed audio playback"));
+                        }, reject);
+                };
+                document.body.append(button);
+            });
+            container.setLoopSuspended(true);
+            container.getInput().resume();
+            main.setBrowserSuspended(false);
+            main.demoMode = false;
+            main.stageIndex = 7;
+            main.worldIndex = 0;
+            main.score = scenario === "energizer" || scenario === "death" ? 9950 : 0;
+            main.lives = scenario === "reserve" ? 1 : 0;
+            const world = main.getPlayingModeForState();
+            main.setMode(world, container);
+            world.fadeState = PlayingMode.FADE_NONE;
+            world.readyTimer = 0;
+            world.exitIndex = 4;
+            world.chaseMode = true;
+            const player = world.mspacman;
+            const completion = scenario === "pellet" || scenario === "energizer";
+            if (completion) {
+                const type = scenario === "energizer" ? PlayingMode.TYPE_ENERGIZER : PlayingMode.TYPE_PELLOT;
+                let selected = false;
+                for (let y = 0; y < 31; y++)
+                    for (let x = 0; x < 28; x++) {
+                        const cell = world.typeMap[y][x];
+                        if (cell === type && !selected) {
+                            player.x = x * 16;
+                            player.y = y * 16;
+                            selected = true;
+                        } else if (cell === PlayingMode.TYPE_PELLOT || cell === PlayingMode.TYPE_ENERGIZER) {
+                            world.typeMap[y][x] = PlayingMode.TYPE_EMPTY;
+                            world.tileMap[y][x] = 47;
+                        }
+                    }
+                assert(selected, "No real consumable arena tile");
+                world.pelletsRemaining = 1;
+                player.speedBoost = true;
+            } else {
+                player.x = 216;
+                player.y = 368;
+                const tile = player.getType(player.x + 8, player.y + 8);
+                if (tile === PlayingMode.TYPE_PELLOT || tile === PlayingMode.TYPE_ENERGIZER) {
+                    player.setType(player.x + 8, player.y + 8, PlayingMode.TYPE_EMPTY);
+                    player.setTile(player.x + 8, player.y + 8, 47);
+                    world.pelletsRemaining--;
+                }
+                world.redEnergizerPresent = true;
+            }
+            player.direction = Main.RIGHT;
+            player.speedRemainder = Math.fround(0.9);
+            world.regionCounts.fill(0);
+            for (const ghost of world.ghosts) {
+                if (ghost.ghostIndex === Main.RED) {
+                    ghost.x = player.x + 1;
+                    ghost.y = player.y;
+                    ghost.direction = Main.LEFT;
+                    ghost.inHome = false;
+                    ghost.exitingHome = false;
+                    ghost.blue = false;
+                    ghost.eyeBalls = false;
+                }
+                ghost.speedRemainder = Math.fround(0.9);
+                world.incrementRegionCount(ghost);
+            }
+            const ghostCalls = [0, 0, 0, 0];
+            const restores: Array<() => void> = [];
+            let playerBoundary: string | null = null;
+            const playerState = (): string =>
+                JSON.stringify([player.x, player.y, player.direction, player.spriteIndex, player.spriteIndexIncrementor, player.pellotDampensSpeed]);
+            const ate = world.atePellot;
+            world.atePellot = (...args: Parameters<PlayingMode["atePellot"]>): void => {
+                ate.apply(world, args);
+                if (world.finished) playerBoundary = playerState();
+            };
+            restores.push(() => {
+                world.atePellot = ate;
+            });
+            for (const ghost of world.ghosts) {
+                const update = ghost.update;
+                ghost.update = (gc): void => {
+                    ghostCalls[ghost.ghostIndex]++;
+                    update.call(ghost, gc);
+                };
+                restores.push(() => {
+                    ghost.update = update;
+                });
+            }
+            try {
+                const canvas = document.querySelector("canvas");
+                assert(canvas !== null, "Missing canvas");
+                canvas.focus();
+                canvas.dispatchEvent(new KeyboardEvent("keydown", { code: "ArrowRight", key: "ArrowRight", bubbles: true }));
+                step();
+                if (completion) {
+                    assert(world.finished && !world.playerKilledFlag, scenario + ": completion followed by death");
+                    assert(playerState() === playerBoundary, scenario + ": player work after completion");
+                    assert(
+                        ghostCalls.every((v) => v === 0),
+                        scenario + ": ghost tail after completion"
+                    );
+                    assert(main.score === (scenario === "energizer" ? 10010 : 10), scenario + ": lost tile points");
+                    assert(main.lives === (scenario === "energizer" ? 1 : 0), "Final energizer reserve credit");
+                    assert(main.clappingSound.capturePlaybackState().voices.length > 0, "Applause canceled");
+                    for (const sound of [main.atePellotSound, main.ateEnergizerSound, main.blueGhostsSound])
+                        assert(sound.capturePlaybackState().voices.length === 0, "Post-completion cue");
+                } else {
+                    assert(world.playerKilledFlag && !world.finished, "Contact did not cause death");
+                    assert(
+                        main.score === (scenario === "death" ? 9950 : 0) && main.lives === (scenario === "reserve" ? 1 : 0),
+                        "Post-death bonus/reserve award"
+                    );
+                    assert(world.redEnergizerPresent && world.energizerTimer === 0, "Post-death red bonus tail");
+                    assert(ghostCalls[0] === 1 && ghostCalls.slice(1).every((v) => v === 0), "Post-death ghost tail");
+                }
+                for (const actor of [player, ...world.ghosts])
+                    assert(actor.speedRemainder >= 0 && actor.speedRemainder < 1, "Invalid terminal motion fraction");
+                const snapshot = serializer.createSnapshot(main, "terminal-browser");
+                assert(isValidMsPacManGameStateSnapshot(snapshot) && isValidSnapshotForLoadedResources(main, snapshot), "Terminal snapshot rejected");
+                assert(store.save(main, () => true).saved, "Terminal store save failed");
+            } finally {
+                for (const restore of restores.reverse()) restore();
+                release();
+            }
+            destroy();
+            let observed = false;
+            mounted = await mountMain((fresh, gc) => {
+                const restored = store.restore(fresh, gc);
+                if (restored) {
+                    gc.setLoopSuspended(true);
+                    observed = true;
+                }
+                return restored;
+            });
+            assert(observed, "Terminal restore callback missing");
+            mounted.container.setLoopSuspended(true);
+            const resumed = mounted.main.getPlayingModeForState();
+            assert(completion ? resumed.finished : resumed.playerKilledFlag, "Restored terminal ownership lost");
+            assert(mounted.main !== main && mounted.container !== container, "Restore reused the old runtime");
+            // Complete the logical one-shot in the fixture. Continuation must not
+            // request clapping again just because its saved mode remains finished.
+            mounted.main.clappingSound.restorePlaybackState({ voices: [], activeVoiceIndex: null });
+            if (completion) {
+                for (let i = 0; i < 599; i++) step();
+                assert(resumed.finishedTimer === 599 && resumed.fadeState === PlayingMode.FADE_NONE, "Completion timer drift");
+                step();
+                assert(Number(resumed.finishedTimer) === 600 && Number(resumed.fadeState) === PlayingMode.FADE_OUT, "600-tick completion lost");
+                assert(mounted.main.clappingSound.capturePlaybackState().voices.length === 0, "Completed applause replayed");
+                for (let i = 0; i < 24; i++) step();
+                assert(mounted.main.stageIndex === 8, "Completion failed to advance the same restored stage");
+            } else {
+                for (let i = 0; i < 91; i++) step();
+                assert(resumed.playerSpiraling && resumed.musicFadeOutTimer === 91 && resumed.spiralTimer === 0, "Death music timing changed");
+                for (let i = 0; i < 182; i++) step();
+                assert(Number(resumed.spiralTimer) === 182 && !resumed.gameOver, "Death spiral timing changed");
+                step();
+                if (scenario === "death")
+                    assert(resumed.gameOver && mounted.main.lives === 0 && mounted.main.score === 9950, "Spurious reserve prevented game over");
+                else {
+                    assert(!resumed.gameOver && Number(resumed.fadeState) === PlayingMode.FADE_OUT, "Reserve did not request respawn");
+                    for (let i = 0; i < 24; i++) step();
+                    assert(!resumed.playerKilledFlag && mounted.main.lives === 0 && resumed.readyTimer > 0, "Ordinary reserve respawn changed");
+                }
+            }
+            destroy();
+        }
+    } finally {
+        destroy();
+        store.clear(() => true);
+        document.querySelector("#terminal-audio")?.remove();
+        Object.defineProperty(Sys, "getTime", originalClock);
+    }
+}

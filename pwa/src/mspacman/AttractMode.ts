@@ -94,6 +94,7 @@ export class AttractMode implements IMode {
                     this.main.demoMode = true;
                     this.main.setMode(Main.playingMode, gc);
                 }
+                return;
             }
         } else if (this.ticks++ === 3386) {
             this.fadeState = AttractMode.FADE_OUT;

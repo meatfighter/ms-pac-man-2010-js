@@ -90,10 +90,13 @@ public class MsPacMan extends Thing {
           || type == PlayingMode.TYPE_ENERGIZER) {
         setType(x + 8, y + 8, PlayingMode.TYPE_EMPTY);
         setTile(x + 8, y + 8, 47);
-        playingMode.atePellot();
-        if (type == PlayingMode.TYPE_ENERGIZER) {
-          playingMode.ateEnergizer();
-        } else {
+        playingMode.atePellot(type == PlayingMode.TYPE_ENERGIZER);
+        if (playingMode.finished) {
+          // Cancel remaining whole-pixel work, retaining the fractional remainder.
+          speedRemainder %= 1f;
+          return;
+        }
+        if (type == PlayingMode.TYPE_PELLOT) {
           main.playSound(main.atePellotSound);
           pellotDampensSpeed = true;
           pellotDampensSpeedCount = 10;

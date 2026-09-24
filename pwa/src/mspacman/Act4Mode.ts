@@ -94,6 +94,7 @@ export class Act4Mode implements IMode {
                     this.fadeIndex++;
                 } else {
                     this.main.setMode(Main.playingMode, gc);
+                    return;
                 }
             }
             if (this.timer === Act4Mode.PAUSE_CENTERED) {

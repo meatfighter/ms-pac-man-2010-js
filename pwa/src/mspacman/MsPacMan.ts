@@ -91,10 +91,13 @@ export class MsPacMan extends Thing {
             if (type === TYPE_PELLOT || type === TYPE_ENERGIZER) {
                 this.setType(this.x + 8, this.y + 8, TYPE_EMPTY);
                 this.setTile(this.x + 8, this.y + 8, 47);
-                this.playingMode.atePellot();
-                if (type === TYPE_ENERGIZER) {
-                    this.playingMode.ateEnergizer();
-                } else {
+                this.playingMode.atePellot(type === TYPE_ENERGIZER);
+                if (this.playingMode.finished) {
+                    // Cancel remaining whole-pixel work, retaining a valid snapshot fraction.
+                    this.speedRemainder = toFloat(this.speedRemainder % 1);
+                    return;
+                }
+                if (type === TYPE_PELLOT) {
                     this.main.playSound(this.main.atePellotSound);
                     this.pellotDampensSpeed = true;
                     this.pellotDampensSpeedCount = 10;

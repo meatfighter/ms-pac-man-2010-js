@@ -223,6 +223,9 @@ export class PlayingMode implements IMode {
     }
 
     public playerKilled(): void {
+        if (this.finished || this.playerKilledFlag) {
+            return;
+        }
         this.playerKilledFlag = true;
         this.musicFadeOutTimer = 0;
         this.playerSpiraling = false;
@@ -254,13 +257,17 @@ export class PlayingMode implements IMode {
         this.main.playSound(this.main.ateGhostSound);
     }
 
-    public atePellot(): void {
+    public atePellot(energizer: boolean = false): void {
         this.addPoints(10);
-        if (--this.pelletsRemaining === 0) {
-            this.main.stopAllSounds();
-            this.main.playSound(this.main.clappingSound);
+        const completed = --this.pelletsRemaining === 0;
+        if (energizer) {
+            this.ateEnergizer();
+        }
+        if (completed) {
             this.finished = true;
             this.finishedTimer = 0;
+            this.main.stopAllSounds();
+            this.main.playSound(this.main.clappingSound);
         }
     }
 
@@ -501,11 +508,17 @@ export class PlayingMode implements IMode {
         }
 
         this.mspacman.update(gc);
+        if (this.finished || this.playerKilledFlag) {
+            return;
+        }
 
-        this.ghosts[Main.RED].update(gc);
-        this.ghosts[Main.PINK].update(gc);
-        this.ghosts[Main.CYAN].update(gc);
-        this.ghosts[Main.ORANGE].update(gc);
+        // Main's indices are RED=0, PINK=1, CYAN=2, ORANGE=3.
+        for (let i = 0; i < 4; i++) {
+            this.ghosts[i].update(gc);
+            if (this.finished || this.playerKilledFlag) {
+                return;
+            }
+        }
 
         if (this.redEnergizerPresent) {
             if (++this.energizerTimer === 7 * 91) {

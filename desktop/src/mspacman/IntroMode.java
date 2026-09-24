@@ -56,6 +56,7 @@ public class IntroMode implements IMode {
         fadeIndex++;
       } else {
         main.setMode(Main.playingMode, gc);
+        return;
       }
       mspacmanX += 2.1388174807197943444730077120823f;
     } else {

@@ -209,6 +209,9 @@ public class PlayingMode implements IMode {
   }
 
   public void playerKilled() {
+    if (finished || playerKilled) {
+      return;
+    }
 
     playerKilled = true;
     musicFadeOutTimer = 0;
@@ -242,12 +245,20 @@ public class PlayingMode implements IMode {
   }
 
   public void atePellot() {
+    atePellot(false);
+  }
+
+  public void atePellot(boolean energizer) {
     addPoints(10);
-    if (--pelletsRemaining == 0) {
-      main.stopAllSounds();
-      main.playSound(main.clappingSound);
+    boolean completed = --pelletsRemaining == 0;
+    if (energizer) {
+      ateEnergizer();
+    }
+    if (completed) {
       finished = true;
       finishedTimer = 0;
+      main.stopAllSounds();
+      main.playSound(main.clappingSound);
     }
   }
 
@@ -529,11 +540,16 @@ public class PlayingMode implements IMode {
     }
     
     mspacman.update(gc);
+    if (finished || playerKilled) {
+      return;
+    }
 
-    ghosts[Main.RED].update(gc);
-    ghosts[Main.PINK].update(gc);
-    ghosts[Main.CYAN].update(gc);
-    ghosts[Main.ORANGE].update(gc);
+    for (int i = 0; i < 4; i++) {
+      ghosts[i].update(gc);
+      if (finished || playerKilled) {
+        return;
+      }
+    }
 
     if (redEnergizerPresent) {
       if (++energizerTimer == 7 * 91) {

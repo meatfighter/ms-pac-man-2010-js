@@ -55,6 +55,7 @@ export class HallOfFameMode implements IMode {
                 } else {
                     this.main.setMode(Main.attractMode, gc);
                 }
+                return;
             }
         } else if (this.ticks++ === 91 * 10) {
             this.fadeState = HallOfFameMode.FADE_OUT;

@@ -113,6 +113,11 @@ public abstract class Ghost extends Thing {
       }
 
       playingMode.incrementRegionCount(this);
+      if (playingMode.playerKilled) {
+        // Wrapping and region bookkeeping for the killing step are now complete.
+        speedRemainder %= 1f;
+        return;
+      }
     }
   }
 

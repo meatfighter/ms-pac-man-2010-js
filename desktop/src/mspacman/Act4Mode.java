@@ -95,6 +95,7 @@ public class Act4Mode implements IMode {
           fadeIndex++;
         } else {
           main.setMode(Main.playingMode, gc);
+          return;
         }
       }
       if (timer == PAUSE_CENTERED) {

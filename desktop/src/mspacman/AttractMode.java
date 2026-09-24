@@ -96,6 +96,7 @@ public class AttractMode implements IMode {
           main.demoMode = true;
           main.setMode(Main.playingMode, gc);
         }
+        return;
       }
     } else if (ticks++ == 3386) {
       fadeState = FADE_OUT;

@@ -102,6 +102,11 @@ export abstract class Ghost extends Thing {
             }
 
             this.playingMode.incrementRegionCount(this);
+            if (this.playingMode.playerKilledFlag) {
+                // Wrapping and region bookkeeping for the killing step are now complete.
+                this.speedRemainder = toFloat(this.speedRemainder % 1);
+                return;
+            }
         }
     }
 
