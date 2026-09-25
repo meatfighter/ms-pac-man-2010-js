@@ -1,3 +1,4 @@
+import { EnterInitialsMode } from "./mspacman/EnterInitialsMode.js";
 import { Sys } from "slick2d-ts";
 import { PlayingMode } from "./mspacman/PlayingMode.js";
 import {
@@ -129,6 +130,7 @@ async function verify(): Promise<void> {
     assertSoundState(second.main.speaking[1][7].capturePlaybackState(), speech, "speech");
     assertSoundState(second.main.atePellotSound.capturePlaybackState(), overlappingPellets, "overlapping pellet voices");
     assert(second.main.extraLifeSound.capturePlaybackState().voices.length === 0, "Unlisted Sound state should restore empty.");
+    verifyInitialsEdges(second);
     await verifyTerminalGameplay(second);
     assert(
         store.clear(() => true),
@@ -387,5 +389,76 @@ async function verifyTerminalGameplay(initial: Awaited<ReturnType<typeof mountMa
         store.clear(() => true);
         document.querySelector("#terminal-audio")?.remove();
         Object.defineProperty(Sys, "getTime", originalClock);
+    }
+}
+
+function verifyInitialsEdges(mounted: Awaited<ReturnType<typeof mountMain>>): void {
+    const { main, container } = mounted;
+    const input = container.getInput();
+    const canvas = host.querySelector("canvas");
+    assert(canvas !== null, "Initials canvas");
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, "getGamepads");
+    const pad = {
+        id: "initials-edge-pad",
+        index: 0,
+        connected: true,
+        mapping: "standard",
+        timestamp: 1,
+        axes: [0, 0],
+        buttons: Array.from({ length: 17 }, () => ({ pressed: false, touched: false, value: 0 }))
+    };
+    container.setLoopSuspended(true);
+    canvas.focus();
+    const poll = (): void => {
+        pad.timestamp++;
+        input.poll(800, 600);
+    };
+    const key = (type: string, code: string): void => {
+        canvas.dispatchEvent(new KeyboardEvent(type, { code, key: code, bubbles: true }));
+    };
+    try {
+        Object.defineProperty(navigator, "getGamepads", { configurable: true, value: () => [pad] });
+        poll();
+        for (const controller of [false, true]) {
+            const mode = new EnterInitialsMode();
+            mode.init(main, container);
+            Reflect.set(mode, "editingIndex", 1);
+            if (controller) {
+                pad.axes = [-1, 1];
+            } else {
+                key("keydown", "ArrowLeft");
+                key("keydown", "ArrowDown");
+            }
+            poll();
+            mode.update(container);
+            mode.update(container);
+            assert(Reflect.get(mode, "editingIndex") === 0 && Reflect.get(mode, "initials") === "AAA", "Real Input poll queued losing initials edge");
+            mode.update(container);
+            assert(Reflect.get(mode, "initials") === "AAA", "Held initials input repeated");
+            pad.axes = [0, 0];
+            key("keyup", "ArrowLeft");
+            key("keyup", "ArrowDown");
+            poll();
+            mode.update(container);
+            if (controller) pad.axes = [0, 1];
+            else key("keydown", "ArrowDown");
+            poll();
+            mode.update(container);
+            assert(Reflect.get(mode, "initials") === "BAA", "First fresh initials Down lost");
+            pad.axes = [0, 0];
+            key("keyup", "ArrowDown");
+            poll();
+            mode.update(container);
+        }
+    } finally {
+        pad.axes = [0, 0];
+        key("keyup", "ArrowLeft");
+        key("keyup", "ArrowDown");
+        poll();
+        input.clearKeyPressedRecord();
+        input.clearControlPressedRecord();
+        if (descriptor) Object.defineProperty(navigator, "getGamepads", descriptor);
+        else Reflect.deleteProperty(navigator, "getGamepads");
+        container.setLoopSuspended(false);
     }
 }

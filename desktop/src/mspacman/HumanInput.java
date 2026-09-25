@@ -18,10 +18,6 @@ public class HumanInput implements IInput {
   private static final float AXIS_THRESHOLD = 0.5f;
   private static final float AXIS_RECENTER_THRESHOLD = 0.05f;
   private static final Object POLL_LOG_FILTER_LOCK = new Object();
-  private static final int STANDARD_DPAD_UP = 12;
-  private static final int STANDARD_DPAD_DOWN = 13;
-  private static final int STANDARD_DPAD_LEFT = 14;
-  private static final int STANDARD_DPAD_RIGHT = 15;
   private static boolean jinputReflectionInitialized = false;
   private static Field jinputAxesField;
   private static Field jinputButtonsField;
@@ -416,7 +412,7 @@ public class HumanInput implements IInput {
       if (lwjglController == null) {
         continue;
       }
-      int buttonCount = Math.min(lwjglController.getButtonCount(),
+      int buttonCount = Math.min(safeButtonCount(lwjglController),
           GAMEPAD_BUTTON_INDEX_LIMIT);
       for(int button = 0; button < buttonCount; button++) {
         if (!isDirectionalButton(button, lwjglController)
@@ -858,7 +854,7 @@ public class HumanInput implements IInput {
 
   private boolean isControllerButtonDown(
       int button, Controller controller) {
-    if (button < 0 || button >= controller.getButtonCount()
+    if (button < 0 || button >= safeButtonCount(controller)
         || button >= GAMEPAD_BUTTON_INDEX_LIMIT) {
       return false;
     }
@@ -875,7 +871,7 @@ public class HumanInput implements IInput {
 
   private boolean isDirectionalButtonDown(
       int direction, Controller controller) {
-    int buttonCount = Math.min(controller.getButtonCount(),
+    int buttonCount = Math.min(safeButtonCount(controller),
         GAMEPAD_BUTTON_INDEX_LIMIT);
     for(int button = 0; button < buttonCount; button++) {
       if (isDirectionalButton(button, controller, direction)
@@ -887,101 +883,29 @@ public class HumanInput implements IInput {
   }
 
   private boolean isDirectionalButton(int button, Controller controller) {
-    if (getButtonDirection(button, controller) != -1) {
-      return true;
-    }
-    return button >= STANDARD_DPAD_UP && button <= STANDARD_DPAD_RIGHT;
+    return getButtonDirection(button, controller) != -1;
   }
 
   private boolean isDirectionalButton(
       int button, Controller controller, int direction) {
-    int namedDirection = getButtonDirection(button, controller);
-    if (namedDirection != -1) {
-      return namedDirection == direction;
-    }
-
-    switch(direction) {
-      case Main.UP:
-        if (button == STANDARD_DPAD_UP) {
-          return true;
-        }
-        break;
-      case Main.DOWN:
-        if (button == STANDARD_DPAD_DOWN) {
-          return true;
-        }
-        break;
-      case Main.LEFT:
-        if (button == STANDARD_DPAD_LEFT) {
-          return true;
-        }
-        break;
-      case Main.RIGHT:
-        if (button == STANDARD_DPAD_RIGHT) {
-          return true;
-        }
-        break;
-      default:
-        return false;
-    }
     return getButtonDirection(button, controller) == direction;
   }
 
   private int getButtonDirection(int button, Controller controller) {
+    if (button < 0 || button >= GAMEPAD_BUTTON_INDEX_LIMIT
+        || button >= safeButtonCount(controller)) return -1;
+    String name = null;
     try {
-      String name = controller.getButtonName(button);
-      if (name == null) {
-        return -1;
-      }
-      return getDirectionFromButtonName(name);
-    } catch(RuntimeException e) {
-      return -1;
+      name = controller.getButtonName(button);
+    } catch (RuntimeException e) {
     }
-  }
-
-  private int getDirectionFromButtonName(String name) {
-    String lower = name.toLowerCase();
-    boolean directionalGroup = lower.indexOf("pov") != -1
-        || lower.indexOf("hat") != -1
-        || lower.indexOf("d-pad") != -1
-        || lower.indexOf("dpad") != -1
-        || lower.indexOf("direction") != -1
-        || lower.indexOf("dir") != -1;
-
-    if (containsDirectionWord(lower, "up")
-        || containsDirectionWord(lower, "north")) {
-      return Main.UP;
+    switch (NativeDpadPolicy.direction(button, name)) {
+      case NativeDpadPolicy.UP: return Main.UP;
+      case NativeDpadPolicy.DOWN: return Main.DOWN;
+      case NativeDpadPolicy.LEFT: return Main.LEFT;
+      case NativeDpadPolicy.RIGHT: return Main.RIGHT;
+      default: return -1;
     }
-    if (containsDirectionWord(lower, "down")
-        || containsDirectionWord(lower, "south")) {
-      return Main.DOWN;
-    }
-    if (containsDirectionWord(lower, "left")
-        || containsDirectionWord(lower, "west")) {
-      return Main.LEFT;
-    }
-    if (containsDirectionWord(lower, "right")
-        || containsDirectionWord(lower, "east")) {
-      return Main.RIGHT;
-    }
-
-    if (directionalGroup && (lower.indexOf("y-") != -1
-        || lower.indexOf("-y") != -1)) {
-      return Main.UP;
-    }
-    if (directionalGroup && (lower.indexOf("y+") != -1
-        || lower.indexOf("+y") != -1)) {
-      return Main.DOWN;
-    }
-    if (directionalGroup && (lower.indexOf("x-") != -1
-        || lower.indexOf("-x") != -1)) {
-      return Main.LEFT;
-    }
-    if (directionalGroup && (lower.indexOf("x+") != -1
-        || lower.indexOf("+x") != -1)) {
-      return Main.RIGHT;
-    }
-    return -1;
   }
 
   private boolean containsDirectionWord(String text, String word) {
@@ -1150,31 +1074,27 @@ public class HumanInput implements IInput {
   }
 
   private void ensureControllersCreated() {
-    if (isControllerInputUnavailable()
-        || Controllers.isCreated() || controllersCreateAttempted) {
-      return;
-    }
-
+    if (isControllerInputUnavailable() || controllersCreateAttempted) return;
     controllersCreateAttempted = true;
     try {
-      Controllers.create();
-    } catch(Exception e) {
+      if (!Controllers.isCreated()) Controllers.create();
+    } catch (Exception e) {
+      controllersUnavailable = true;
+    } catch (LinkageError e) {
       controllersUnavailable = true;
     }
   }
 
   private void pollControllers() {
-    if (isControllerInputUnavailable()) {
-      return;
-    }
-
+    if (isControllerInputUnavailable()) return;
     try {
       if (Controllers.isCreated()) {
         Controllers.poll();
-        // This input layer reads state, not LWJGL's queued controller events.
         Controllers.clearEvents();
       }
-    } catch(Exception e) {
+    } catch (Exception e) {
+      controllersUnavailable = true;
+    } catch (LinkageError e) {
       controllersUnavailable = true;
     }
   }

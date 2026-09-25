@@ -37,7 +37,19 @@ run("java", ["-Djava.awt.headless=true", "-cp", `${testClassesDir}${process.plat
 });
 
 // Each scenario gets a fresh JVM because legacy JInput discovery is process-wide.
-for (const scenario of ["empty", "connected", "poll-failure", "reported-failure", "initialization-failure"]) {
+for (const scenario of [
+    "empty",
+    "connected",
+    "poll-failure",
+    "reported-failure",
+    "initialization-failure",
+    "legacy-buttons",
+    "named-ordinary-buttons",
+    "named-direction-buttons",
+    "pov-only",
+    "initialization-linkage-failure",
+    "poll-linkage-failure"
+]) {
     run("java", [
         "-Djava.awt.headless=true",
         "-cp",
@@ -46,6 +58,10 @@ for (const scenario of ["empty", "connected", "poll-failure", "reported-failure"
         scenario
     ]);
 }
+
+run("java", ["-cp", `${testClassesDir}${process.platform === "win32" ? ";" : ":"}${classpath}`, "mspacman.NativeDpadPolicyTest"]);
+
+run("java", ["-Djava.awt.headless=true", "-cp", `${testClassesDir}${process.platform === "win32" ? ";" : ":"}${classpath}`, "mspacman.EnterInitialsEdgeTest"]);
 
 function commandExists(command) {
     const finder = process.platform === "win32" ? "where.exe" : "which";

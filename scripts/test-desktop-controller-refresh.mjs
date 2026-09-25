@@ -13,3 +13,6 @@ assert.doesNotMatch(mainSource, /setControllerRefreshEnabled|updateControllerRef
 assert.match(mainSource, /public void update\(GameContainer gc, int delta\) throws SlickException \{\s*\(\(HumanInput\)input\)\.beginFrame\(\);/);
 assert.doesNotMatch(humanInputSource, /runWithFilteredJInputPollErrors/);
 console.log("ok - desktop controller discovery stays startup-only");
+
+assert.doesNotMatch(humanInputSource, /Math\.min\((?:lwjglController|controller)\.getButtonCount\(\)/);
+assert.doesNotMatch(humanInputSource, /button >= controller\.getButtonCount\(\)/);

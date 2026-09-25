@@ -72,24 +72,28 @@ public class EnterInitialsMode implements IMode {
     }
 
     boolean start = input.isConfirmPressed();
+    boolean leftPressed = input.isLeftPressed();
+    boolean rightPressed = input.isRightPressed();
+    boolean downPressed = input.isDownPressed();
+    boolean upPressed = input.isUpPressed();
     if (enterPressed) {
       if (fadeState == FADE_NONE && main.uploadComplete) {
         fadeState = FADE_OUT;
         fadeIndex = 0;
       }
-    } else if (input.isLeftPressed()) {
+    } else if (leftPressed) {
       if (editingIndex > 0) {
         editingIndex--;
         updateStrings();
         main.playSound(main.ateEnergizerSound);
       }
-    } else if (input.isRightPressed() || (editingIndex != 2 && start)) {
+    } else if (rightPressed || (editingIndex != 2 && start)) {
       if (editingIndex < 2) {
         editingIndex++;
         updateStrings();
         main.playSound(main.ateEnergizerSound);
       }
-    } else if (input.isDownPressed()) {
+    } else if (downPressed) {
       char c = initials.charAt(editingIndex);
       if (c == 'Z') {
         c = ' ';
@@ -99,7 +103,7 @@ public class EnterInitialsMode implements IMode {
         c++;
       }
       setChar(c);
-    } else if (input.isUpPressed()) {
+    } else if (upPressed) {
       char c = initials.charAt(editingIndex);
       if (c == 'A') {
         c = ' ';

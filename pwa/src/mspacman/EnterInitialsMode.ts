@@ -79,24 +79,28 @@ export class EnterInitialsMode implements IMode {
         }
 
         const start = this.input.isConfirmPressed();
+        const leftPressed = this.input.isLeftPressed();
+        const rightPressed = this.input.isRightPressed();
+        const downPressed = this.input.isDownPressed();
+        const upPressed = this.input.isUpPressed();
         if (this.enterPressed) {
             if (this.fadeState === EnterInitialsMode.FADE_NONE && this.main.uploadComplete) {
                 this.fadeState = EnterInitialsMode.FADE_OUT;
                 this.fadeIndex = 0;
             }
-        } else if (this.input.isLeftPressed()) {
+        } else if (leftPressed) {
             if (this.editingIndex > 0) {
                 this.editingIndex--;
                 this.updateStrings();
                 this.main.playSound(this.main.ateEnergizerSound);
             }
-        } else if (this.input.isRightPressed() || (this.editingIndex !== 2 && start)) {
+        } else if (rightPressed || (this.editingIndex !== 2 && start)) {
             if (this.editingIndex < 2) {
                 this.editingIndex++;
                 this.updateStrings();
                 this.main.playSound(this.main.ateEnergizerSound);
             }
-        } else if (this.input.isDownPressed()) {
+        } else if (downPressed) {
             let c = this.initials.charCodeAt(this.editingIndex);
             if (c === 90) {
                 c = 32;
@@ -106,7 +110,7 @@ export class EnterInitialsMode implements IMode {
                 c++;
             }
             this.setChar(String.fromCharCode(c));
-        } else if (this.input.isUpPressed()) {
+        } else if (upPressed) {
             let c = this.initials.charCodeAt(this.editingIndex);
             if (c === 65) {
                 c = 32;
