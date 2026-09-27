@@ -281,6 +281,7 @@ function isValidPlayingModeFieldState(fields: Record<string, unknown>): boolean 
         typeof fields.ghostsBlue === "boolean" &&
         (fields.ghostsBlueOffset === 0 || fields.ghostsBlueOffset === 2) &&
         isIntegerInRange(fields.ghostsBlueTimer, 0, 100_000) &&
+        (!fields.ghostsBlue || fields.ghostsBlueTimer > 0) &&
         typeof fields.showGhostPoints === "boolean" &&
         isIntegerInRange(fields.showGhostPointsTimer, 0, 91) &&
         isIntegerInRange(fields.ghostPointsIndex, -1, 3) &&
@@ -291,11 +292,12 @@ function isValidPlayingModeFieldState(fields: Record<string, unknown>): boolean 
         typeof fields.finishedWhite === "boolean" &&
         isIntegerInRange(fields.finishedBlinkTimer, 0, 22) &&
         typeof fields.fruitTargetPresent === "boolean" &&
-        isIntegerInRange(fields.fruitTargetTimer, 0, 10 * 91) &&
+        isIntegerInRange(fields.fruitTargetTimer, 0, 10 * 91 - 1) &&
         typeof fields.redEnergizerPresent === "boolean" &&
         typeof fields.greenEnergizerPresent === "boolean" &&
         spawnFlags <= 1 &&
         isIntegerInRange(fields.energizerTimer, 0, 7 * 91) &&
+        (!(fields.redEnergizerPresent || fields.greenEnergizerPresent) || fields.energizerTimer < 7 * 91) &&
         typeof fields.playerKilledFlag === "boolean" &&
         isIntegerInRange(fields.musicFadeOutTimer, 0, 91) &&
         typeof fields.playerSpiraling === "boolean" &&
@@ -307,6 +309,7 @@ function isValidPlayingModeFieldState(fields: Record<string, unknown>): boolean 
         isFiniteNumberInRange(fields.redPelletOdds, 0, 1) &&
         fields.redPelletOdds <= fields.fruitOdds &&
         isIntegerInRange(fields.exitDelayTarget, 1, 3 * 91) &&
+        (fields.exitIndex === 4 || fields.exitDelay < fields.exitDelayTarget) &&
         isIntegerInRange(fields.fadeIndex, 0, 22) &&
         isIntegerInRange(fields.fadeState, 0, 2) &&
         isIntegerInRange(fields.fadeReason, 0, 2) &&
@@ -350,10 +353,13 @@ function isValidThingFieldState(fields: unknown, kind: "mspacman" | "ghost" | "f
             isIntegerInRange(record.spriteIndexIncrementor, 0, 5) &&
             typeof record.pellotDampensSpeed === "boolean" &&
             isIntegerInRange(record.pellotDampensSpeedCount, 0, 10) &&
+            (!record.pellotDampensSpeed || record.pellotDampensSpeedCount > 0) &&
             typeof record.corneringEnhancesSpeed === "boolean" &&
             isIntegerInRange(record.corneringEnhancesSpeedCount, 0, 10) &&
+            (!record.corneringEnhancesSpeed || record.corneringEnhancesSpeedCount > 0) &&
             typeof record.speedBoost === "boolean" &&
-            isIntegerInRange(record.speedBoostTimer, 0, 7 * 91)
+            isIntegerInRange(record.speedBoostTimer, 0, 7 * 91) &&
+            (!record.speedBoost || record.speedBoostTimer < 7 * 91)
         );
     }
     if (kind === "ghost") {

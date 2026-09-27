@@ -32,7 +32,10 @@ export async function verifyCounterParity(mount: Mount): Promise<void> {
     const times: number[] = [];
     const mode = () => current().main.getModeForStateRestore(current().main.getCurrentModeIdForState());
     const tick = (count = 1): void => {
-        for (let i = 0; i < count; i++) mode().update(current().container);
+        for (let i = 0; i < count; i++) {
+            if (current().main.paused) current().main.update(current().container, 11);
+            else mode().update(current().container);
+        }
     };
     const field = (name: string): number => Number(Reflect.get(mode(), name));
     const render = (): void => mode().render(current().container, current().container.getGraphics());
@@ -101,6 +104,216 @@ export async function verifyCounterParity(mount: Mount): Promise<void> {
         }
         assert(store.save(current().main, () => true).saved, `${name}: authorized overwrite after rejection`);
         cases.push(`reject:${name}`);
+    };
+    const verifyActiveTimers = async (): Promise<void> => {
+        const prepare = (): PlayingMode => {
+            current().main.paused = false;
+            enter("playing", 0);
+            const w = current().main.getPlayingModeForState();
+            w.fadeState = PlayingMode.FADE_NONE;
+            w.readyTimer = 0;
+            w.exitIndex = 4;
+            // Boundary fixture: hold the player away from the central timed bonus.
+            // Loaded sprites, real timers and actual ghosts/serializer remain active.
+            w.mspacman.x = 80;
+            w.mspacman.y = 80;
+            w.mspacman.speed = 0;
+            w.mspacman.speedRemainder = 0;
+            return w;
+        };
+        const keyEvent = (code: string, down: boolean): void => {
+            const canvas = document.querySelector("canvas");
+            assert(canvas, "Timer input canvas");
+            canvas.focus();
+            const input = current().container.getInput();
+            input.resume();
+            canvas.dispatchEvent(new KeyboardEvent(down ? "keydown" : "keyup", { code, key: code === "KeyP" ? "p" : code, bubbles: true }));
+            input.poll(800, 600);
+        };
+        {
+            const w = prepare(),
+                p = w.mspacman;
+            let found = false;
+            for (let y = 1; y < 30 && !found; y++)
+                for (let x = 1; x < 27 && !found; x++)
+                    if (w.typeMap[y][x] === PlayingMode.TYPE_PELLOT) {
+                        p.x = x * 16;
+                        p.y = y * 16;
+                        p.speed = 1;
+                        p.speedRemainder = 0;
+                        found = true;
+                    }
+            assert(found, "Loaded pellet acquisition location");
+            tick();
+            assert(p.pellotDampensSpeed && p.pellotDampensSpeedCount === 10, "Actual tile collision enables pellet modifier");
+            p.speed = 0;
+            p.speedRemainder = 0;
+            await roundtrip("acquire:pellet");
+        }
+        {
+            const w = prepare(),
+                p = w.mspacman;
+            let found = false;
+            for (let y = 2; y < 29 && !found; y++)
+                for (let x = 1; x < 27 && !found; x++)
+                    if (w.typeMap[y][x] !== PlayingMode.TYPE_WALL && w.typeMap[y - 1][x] !== PlayingMode.TYPE_WALL) {
+                        p.x = x * 16;
+                        p.y = y * 16;
+                        p.direction = Main.RIGHT;
+                        p.speed = 1;
+                        p.speedRemainder = 0;
+                        found = true;
+                    }
+            assert(found, "Loaded turning location");
+            try {
+                keyEvent("ArrowUp", true);
+                tick();
+            } finally {
+                keyEvent("ArrowUp", false);
+            }
+            assert(p.direction === Main.UP && p.corneringEnhancesSpeed && p.corneringEnhancesSpeedCount === 10, "Actual input turn enables corner modifier");
+            p.speed = 0;
+            p.speedRemainder = 0;
+            await roundtrip("acquire:corner");
+        }
+        for (const color of ["Red", "Green"]) {
+            const w = prepare();
+            if (color === "Red") w.ateEnergizer();
+            const before = w.ghostsBlueTimer;
+            (Reflect.get(w, `create${color}Energizer`) as () => void).call(w);
+            w.mspacman.x = 16 * 13 + 8;
+            w.mspacman.y = 16 * 23;
+            tick();
+            assert(!w.redEnergizerPresent && !w.greenEnergizerPresent, "Actual bonus collision removes pickup");
+            if (color === "Red") assert(w.ghostsBlueTimer === before - 1 + 182, "Actual red pickup extends fright");
+            else assert(w.mspacman.speedBoost && w.mspacman.speedBoostTimer === 0, "Actual green pickup starts boost at0");
+            await roundtrip(`acquire:${color}`);
+        }
+        for (const branch of ["pause", "overlay", "ready", "fade", "death", "finished"]) {
+            const w = prepare();
+            w.mspacman.boostSpeed();
+            w.ateEnergizer();
+            if (branch === "pause") {
+                keyEvent("KeyP", true);
+                current().main.update(current().container, 11);
+                keyEvent("KeyP", false);
+                assert(current().main.paused, "Real input pauses Main");
+            }
+            if (branch === "overlay") w.ghostEaten(w.ghosts[0]);
+            if (branch === "ready") w.readyTimer = 10;
+            if (branch === "fade") {
+                w.fadeState = PlayingMode.FADE_IN;
+                w.fadeIndex = 10;
+            }
+            if (branch === "death") w.playerKilled();
+            if (branch === "finished") {
+                for (let y = 0; y < 31; y++)
+                    for (let x = 0; x < 28; x++)
+                        if (w.typeMap[y][x] === PlayingMode.TYPE_PELLOT || w.typeMap[y][x] === PlayingMode.TYPE_ENERGIZER) {
+                            w.typeMap[y][x] = PlayingMode.TYPE_EMPTY;
+                            w.tileMap[y][x] = 47;
+                        }
+                w.pelletsRemaining = 1;
+                w.atePellot();
+            }
+            tick();
+            assert(w.mspacman.speedBoostTimer === 0 && w.ghostsBlueTimer > 0, `Suspended consumers ${branch}`);
+            await roundtrip(`active:suspended:${branch}`);
+            if (branch === "pause") {
+                keyEvent("KeyP", true);
+                current().main.update(current().container, 11);
+                keyEvent("KeyP", false);
+                assert(!current().main.paused, "Real input resumes Main");
+            }
+        }
+        for (const [flag, counter] of [
+            ["pellotDampensSpeed", "pellotDampensSpeedCount"],
+            ["corneringEnhancesSpeed", "corneringEnhancesSpeedCount"]
+        ] as const) {
+            const w = prepare();
+            w.mspacman[flag] = true;
+            w.mspacman[counter] = 1;
+            await roundtrip(`active:${flag}:last-step`);
+            reject(`active:${flag}:zero`, (s) => {
+                assert(s.mode.id === "playing", "Playing snapshot");
+                s.mode.mspacman.fields[counter] = 0;
+            });
+            tick();
+            const p = current().main.getPlayingModeForState().mspacman;
+            assert(!p[flag] && p[counter] === 0, `${flag}: actual expiry`);
+            check(`active:${flag}:expired`);
+        }
+        {
+            const w = prepare();
+            w.mspacman.boostSpeed();
+            w.mspacman.speedBoostTimer = 636;
+            await roundtrip("active:speedBoost:636");
+            reject("active:speedBoost:637", (s) => {
+                assert(s.mode.id === "playing", "Playing snapshot");
+                s.mode.mspacman.fields.speedBoostTimer = 637;
+            });
+            tick();
+            const p = current().main.getPlayingModeForState().mspacman;
+            assert(!p.speedBoost && p.speedBoostTimer === 0, "Actual boost expiry");
+            check("active:speedBoost:expired");
+        }
+        {
+            const w = prepare();
+            w.ateEnergizer();
+            w.ghostsBlueTimer = 1;
+            await roundtrip("active:ghostsBlue:1");
+            reject("active:ghostsBlue:0", (s) => {
+                s.mode.fields.ghostsBlueTimer = 0;
+            });
+            tick();
+            const next = current().main.getPlayingModeForState();
+            assert(!next.ghostsBlue && next.ghostsBlueTimer === 0, "Actual fright expiry");
+            check("active:ghostsBlue:expired");
+        }
+        for (const name of ["Red", "Green"] as const) {
+            const w = prepare();
+            const spawn = Reflect.get(w, `create${name}Energizer`) as () => void;
+            spawn.call(w);
+            w.energizerTimer = 636;
+            await roundtrip(`active:${name}:636`);
+            reject(`active:${name}:dormant-spawn910`, (s) => {
+                s.mode.fields.fruitTargetTimer = 910;
+            });
+            reject(`active:${name}:637`, (s) => {
+                s.mode.fields.energizerTimer = 637;
+            });
+            tick();
+            const next = current().main.getPlayingModeForState();
+            assert(!next.redEnergizerPresent && !next.greenEnergizerPresent && next.energizerTimer === 637, "Expired bonus keeps637");
+            await roundtrip(`active:${name}:expired637`);
+        }
+        for (const exitIndex of [1, 2, 3]) {
+            const w = prepare();
+            w.exitIndex = exitIndex;
+            const target = w.exitDelayTarget;
+            w.exitDelay = target - 1;
+            await roundtrip(`active:exit:${exitIndex}:before`);
+            reject(`active:exit:${exitIndex}:at-target`, (s) => {
+                s.mode.fields.exitDelay = target;
+            });
+            tick();
+            const next = current().main.getPlayingModeForState();
+            assert(next.exitIndex === exitIndex + 1 && next.exitDelay === 0, "Exit publishes/reset atomically");
+            await roundtrip(`active:exit:${exitIndex}:after`);
+        }
+        {
+            const w = prepare();
+            w.fruitTargetTimer = 909;
+            await roundtrip("active:spawn:909");
+            reject("active:spawn:910", (s) => {
+                s.mode.fields.fruitTargetTimer = 910;
+            });
+            tick();
+            const next = current().main.getPlayingModeForState();
+            assert(next.fruitTargetTimer === 0, "Actual spawn timer resets");
+            assert([next.fruitTargetPresent, next.redEnergizerPresent, next.greenEnergizerPresent].filter(Boolean).length === 1, "Exactly one bonus spawns");
+            await roundtrip("active:spawn:after");
+        }
     };
     try {
         current().main.score = 1_234_567;
@@ -262,7 +475,28 @@ export async function verifyCounterParity(mount: Mount): Promise<void> {
         world.addPoints(10000);
         assert(current().main.lives === 6, "Lives cap six");
         check("score:life-cap-six");
-        Reflect.set(window, "counterParityEvidence", { cases, validationMilliseconds: times, schema: capture().version });
+        await verifyActiveTimers();
+        const required = [
+            "acquire:pellet",
+            "acquire:corner",
+            "acquire:Red",
+            "acquire:Green",
+            "active:speedBoost:636",
+            "active:speedBoost:expired",
+            "active:ghostsBlue:1",
+            "active:ghostsBlue:expired",
+            "active:spawn:909",
+            "active:spawn:after",
+            "reject:active:spawn:910"
+        ];
+        for (const branch of ["pause", "overlay", "ready", "fade", "death", "finished"]) required.push(`active:suspended:${branch}`);
+        for (const flag of ["pellotDampensSpeed", "corneringEnhancesSpeed"])
+            required.push(`active:${flag}:last-step`, `active:${flag}:expired`, `reject:active:${flag}:zero`);
+        for (const color of ["Red", "Green"])
+            required.push(`active:${color}:636`, `active:${color}:expired637`, `reject:active:${color}:dormant-spawn910`, `reject:active:${color}:637`);
+        for (const index of [1, 2, 3]) required.push(`active:exit:${index}:before`, `active:exit:${index}:after`, `reject:active:exit:${index}:at-target`);
+        for (const label of required) assert(cases.includes(label), `Missing timer case ${label}`);
+        Reflect.set(window, "counterParityEvidence", { cases, required, validationMilliseconds: times, schema: capture().version });
     } finally {
         destroy();
         store.clear(() => true);

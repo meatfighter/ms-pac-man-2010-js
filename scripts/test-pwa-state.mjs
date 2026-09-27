@@ -1011,6 +1011,86 @@ try {
         assert.equal(target.mode.dotsOffset, -32);
         assert.equal(storage.getItem(key), bytes);
     });
+    await runTest("active timer malformed records preserve bytes and publication through repeated store reads", () => {
+        const storage = installMemoryLocalStorage();
+        setTestLocation(STAGE_URL);
+        const serializer = new MsPacManGameStateSerializer(),
+            store = new MsPacManGameStateStore(APP_VERSION);
+        const source = createFakeMain("playing", "source"),
+            control = serializer.createSnapshot(source, APP_VERSION),
+            key = createBrowserStorageKeys().gameState;
+        assert.equal(isValidMsPacManGameStateSnapshot(control), true);
+        const cases = [
+            [
+                "pellet",
+                (s) => Object.assign(s.mode.mspacman.fields, { pellotDampensSpeed: true, pellotDampensSpeedCount: 1 }),
+                (s) => (s.mode.mspacman.fields.pellotDampensSpeedCount = 0)
+            ],
+            [
+                "corner",
+                (s) => Object.assign(s.mode.mspacman.fields, { corneringEnhancesSpeed: true, corneringEnhancesSpeedCount: 1 }),
+                (s) => (s.mode.mspacman.fields.corneringEnhancesSpeedCount = 0)
+            ],
+            [
+                "boost",
+                (s) => Object.assign(s.mode.mspacman.fields, { speedBoost: true, speedBoostTimer: 636 }),
+                (s) => (s.mode.mspacman.fields.speedBoostTimer = 637)
+            ],
+            ["blue", (s) => Object.assign(s.mode.fields, { ghostsBlue: true, ghostsBlueTimer: 1 }), (s) => (s.mode.fields.ghostsBlueTimer = 0)],
+            [
+                "red",
+                (s) =>
+                    Object.assign(s.mode.fields, { fruitTargetPresent: false, redEnergizerPresent: true, greenEnergizerPresent: false, energizerTimer: 636 }),
+                (s) => (s.mode.fields.energizerTimer = 637)
+            ],
+            [
+                "green",
+                (s) =>
+                    Object.assign(s.mode.fields, { fruitTargetPresent: false, redEnergizerPresent: false, greenEnergizerPresent: true, energizerTimer: 636 }),
+                (s) => (s.mode.fields.energizerTimer = 637)
+            ],
+            ["exit", (s) => Object.assign(s.mode.fields, { exitIndex: 1, exitDelay: 0 }), (s) => (s.mode.fields.exitDelay = s.mode.fields.exitDelayTarget)],
+            ["spawn", (s) => (s.mode.fields.fruitTargetTimer = 909), (s) => (s.mode.fields.fruitTargetTimer = 910)]
+        ];
+        for (const [label, prepare, mutate] of cases) {
+            const positive = structuredClone(control);
+            prepare(positive);
+            assert.equal(isValidMsPacManGameStateSnapshot(positive), true, label + " positive");
+            const bad = structuredClone(positive);
+            mutate(bad);
+            assert.equal(isValidMsPacManGameStateSnapshot(bad), false, label + " malformed");
+            const raw = JSON.stringify(bad);
+            storage.setItem(key, raw);
+            const target = createFakeMain("playing", "target");
+            const before = serializer.createSnapshot(target, APP_VERSION),
+                input = target.input;
+            for (let i = 0; i < 2; i++) {
+                assert.equal(store.hasValidSave(), false);
+                assert.equal(store.restore(target, createGameContainer()), false);
+                assert.equal(storage.getItem(key), raw);
+                const after = serializer.createSnapshot(target, APP_VERSION);
+                after.savedAt = before.savedAt;
+                assert.deepEqual(after, before);
+                assert.equal(target.input, input);
+            }
+            const read = storage.getItem.bind(storage),
+                remove = storage.removeItem.bind(storage);
+            storage.getItem = () => {
+                throw new Error("Overwrite read old slot");
+            };
+            storage.removeItem = () => {
+                throw new Error("Overwrite predeleted slot");
+            };
+            try {
+                assert.equal(store.save(source, () => true).saved, true);
+            } finally {
+                storage.getItem = read;
+                storage.removeItem = remove;
+            }
+            assert.equal(store.hasValidSave(), true);
+            assert.equal(store.restore(target, createGameContainer()), true);
+        }
+    });
 } finally {
     restoreEnv("MSPACMAN_SCORE_API_URL", originalApiUrl);
     restoreEnv("MSPACMAN_CACHE_VERSION", originalCacheVersion);
