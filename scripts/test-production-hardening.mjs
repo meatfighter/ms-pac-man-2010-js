@@ -94,6 +94,8 @@ test("failed import siblings remain observed until settlement", async () => {
 });
 
 test("oversized stored data is rejected on read but cannot block an authorized current save", () => {
+    const { GAME_STATE_VERSION } = load("pwa/src/mspacman/persistence/GameStateSnapshot.ts", {});
+    const valuePolicy = load("pwa/src/mspacman/persistence/SnapshotValuePolicy.ts", {});
     const text = JSON.stringify({ version: 999, payload: "x".repeat(1_000_001) });
     let stored = text;
     const context = {
@@ -108,6 +110,7 @@ test("oversized stored data is rejected on read but cannot block an authorized c
             }
         },
         require(name) {
+            if (name.includes("SnapshotValuePolicy")) return valuePolicy;
             if (name.includes("BrowserPersistence"))
                 return {
                     captureAndWriteSnapshot(_label, key, capture, validate, maxTextLength, isAuthorized) {
@@ -136,10 +139,10 @@ test("oversized stored data is rejected on read but cannot block an authorized c
                 return {
                     MsPacManGameStateSerializer: class {
                         createSnapshot() {
-                            return { version: 9, supported: true, marker: "current" };
+                            return { version: GAME_STATE_VERSION, supported: true, marker: "current" };
                         }
                         isSupportedSnapshot(snapshot) {
-                            return snapshot?.version === 9 && snapshot?.supported === true;
+                            return snapshot?.version === GAME_STATE_VERSION && snapshot?.supported === true;
                         }
                     }
                 };
@@ -154,6 +157,6 @@ test("oversized stored data is rejected on read but cannot block an authorized c
         store.save({ isStateSaveReady: () => true }, () => true),
         { saved: true }
     );
-    assert.equal(JSON.parse(stored).version, 9);
+    assert.equal(JSON.parse(stored).version, GAME_STATE_VERSION);
     assert.notEqual(stored, text);
 });

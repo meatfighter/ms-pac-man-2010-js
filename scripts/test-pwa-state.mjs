@@ -967,6 +967,50 @@ try {
         assert.deepEqual(target.submittedScore, { world: 1, score: 12340, initials: "CAT" });
         assert.equal(target.uploadComplete, true, "dead browser submission lifetime must be completed after restore");
     });
+    await runTest("active ghost points require a usable sprite and nonzero countdown", () => {
+        const serializer = new MsPacManGameStateSerializer();
+        const source = createFakeMain("playing", "source");
+        const control = serializer.createSnapshot(source, APP_VERSION);
+        assert.equal(isValidMsPacManGameStateSnapshot(control), true);
+        assert.equal(control.mode.fields.showGhostPoints, true);
+        for (const [field, values] of [
+            ["ghostPointsIndex", [-1, 4, 0.5]],
+            ["showGhostPointsTimer", [0, -1, 92]]
+        ]) {
+            for (const value of values) {
+                const s = structuredClone(control);
+                s.mode.fields[field] = value;
+                assert.equal(isValidMsPacManGameStateSnapshot(s), false, `${field}=${value}`);
+            }
+        }
+        const inactive = structuredClone(control);
+        inactive.mode.fields.showGhostPoints = false;
+        inactive.mode.fields.showGhostPointsTimer = 0;
+        inactive.mode.fields.ghostPointsIndex = -1;
+        inactive.mode.eatenGhostIndex = null;
+        assert.equal(isValidMsPacManGameStateSnapshot(inactive), true, "hidden sentinels remain valid");
+    });
+
+    await runTest("long-lived initials counter passes the actual store and restores unchanged", () => {
+        const storage = installMemoryLocalStorage();
+        setTestLocation(STAGE_URL);
+        const store = new MsPacManGameStateStore(APP_VERSION);
+        const source = createFakeMain("enterInitials", "source", { enterPressed: false });
+        source.mode.redOffset = 100001;
+        source.mode.dotsOffset = -32;
+        assert.deepEqual(
+            store.save(source, () => true),
+            { saved: true }
+        );
+        const key = createBrowserStorageKeys().gameState;
+        const bytes = storage.getItem(key);
+        assert.equal(store.hasValidSave(), true);
+        const target = createFakeMain("enterInitials", "target", { enterPressed: false });
+        assert.equal(store.restore(target, createGameContainer()), true);
+        assert.equal(target.mode.redOffset, 100001);
+        assert.equal(target.mode.dotsOffset, -32);
+        assert.equal(storage.getItem(key), bytes);
+    });
 } finally {
     restoreEnv("MSPACMAN_SCORE_API_URL", originalApiUrl);
     restoreEnv("MSPACMAN_CACHE_VERSION", originalCacheVersion);
@@ -1154,7 +1198,7 @@ function createMode(id, variant, options = {}) {
         Object.assign(mode, {
             fadeIndex: alternate ? 2 : 1,
             fadeState: 0,
-            dotsOffset: alternate ? 4 : 3,
+            dotsOffset: alternate ? -4 : -3,
             redOffset: alternate ? 6 : 5,
             editingIndex: alternate ? 1 : 2,
             initials,

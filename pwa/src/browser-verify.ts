@@ -1,3 +1,4 @@
+import { verifyCounterParity } from "./CounterParityVerification.js";
 import { EnterInitialsMode } from "./mspacman/EnterInitialsMode.js";
 import { Sys } from "slick2d-ts";
 import { PlayingMode } from "./mspacman/PlayingMode.js";
@@ -69,6 +70,7 @@ async function mountMain(restore: ((main: Main, container: AppGameContainer) => 
     main.appGameContainer = container;
     if (restore !== null) {
         main.loadingCompleteHandler = () => {
+            container.setLoopSuspended(true);
             assert(restore(main, container), "Saved state restore failed; default startup must not count as restoration.");
             return true;
         };
@@ -85,6 +87,10 @@ async function verify(): Promise<void> {
     localStorage.clear();
     await preloadRuntimeResources();
 
+    if (new URLSearchParams(location.search).get("suite") === "counter-parity") {
+        await verifyCounterParity(mountMain);
+        return;
+    }
     const store = new MsPacManGameStateStore("browser-verify");
     const first = await mountMain(null);
     verifyAuthoritativeSave(createBrowserStorageKeys().gameState, first.main, (main) => store.save(main, () => true));
@@ -132,6 +138,7 @@ async function verify(): Promise<void> {
     assert(second.main.extraLifeSound.capturePlaybackState().voices.length === 0, "Unlisted Sound state should restore empty.");
     verifyInitialsEdges(second);
     await verifyTerminalGameplay(second);
+    await verifyCounterParity(mountMain);
     assert(
         store.clear(() => true),
         "Real browser save-state cleanup failed."

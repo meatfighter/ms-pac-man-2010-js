@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { dirname, resolve } from "node:path";
@@ -7,7 +8,7 @@ import { cleanupBrowser, findBrowser, launchBrowser, stopChild, waitForExpressio
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const port = 5199;
-const browserVerificationUrl = `http://127.0.0.1:${port}/browser-verify.html`;
+const browserVerificationUrl = `http://127.0.0.1:${port}/browser-verify.html${process.env.PAC_BROWSER_SUITE === "counter-parity" ? "?suite=counter-parity" : ""}`;
 const appUrl = `http://127.0.0.1:${port}/`;
 const viteBin = resolve(rootDir, "node_modules", "vite", "bin", "vite.js");
 const server = spawn(process.execPath, [viteBin, "--config", "pwa/vite.config.ts", "--host", "127.0.0.1", "--port", String(port), "--strictPort"], {
@@ -42,6 +43,10 @@ try {
         '(() => { const element = document.querySelector("#result"); if (element?.dataset.status === "failed") throw new Error(element.textContent || "Browser verification failed."); return element?.dataset.status === "passed" ? element.textContent : false; })()'
     );
     console.log(output);
+    if (process.env.QUALIFICATION_EVIDENCE_DIR) {
+        const evidence = await browser.page.call("Runtime.evaluate", { expression: "JSON.stringify(window.counterParityEvidence)", returnByValue: true });
+        writeFileSync(resolve(process.env.QUALIFICATION_EVIDENCE_DIR, "pac-counter-browser.json"), evidence.result.value ?? "null");
+    }
     await verifySessionOwnership(appUrl, "Ms. Pac-Man 2010");
 } finally {
     await cleanupBrowser(browser);

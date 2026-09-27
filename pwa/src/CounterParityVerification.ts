@@ -1,0 +1,270 @@
+import { type AppGameContainer, Display } from "slick2d-ts";
+import { Main } from "./mspacman/Main.js";
+import { PlayingMode } from "./mspacman/PlayingMode.js";
+import { type ScalableGame2 } from "./mspacman/ScalableGame2.js";
+import { type ModeId } from "./mspacman/persistence/GameStateSnapshot.js";
+import {
+    MsPacManGameStateSerializer,
+    isValidMsPacManGameStateSnapshot,
+    isValidSnapshotForLoadedResources
+} from "./mspacman/persistence/MsPacManGameStateSerializer.js";
+import { MsPacManGameStateStore } from "./mspacman/persistence/MsPacManGameStateStore.js";
+import { createBrowserStorageKeys } from "./app/BrowserStorageKeys.js";
+
+type Mounted = { main: Main; container: AppGameContainer; buffered: ScalableGame2 };
+type Mount = (restore: ((main: Main, container: AppGameContainer) => boolean) | null) => Promise<Mounted>;
+function assert(value: unknown, label: string): asserts value {
+    if (!value) throw new Error(label);
+}
+
+/** Actual initialized singleton modes; retire each Main before mounting its replacement. */
+export async function verifyCounterParity(mount: Mount): Promise<void> {
+    const serializer = new MsPacManGameStateSerializer();
+    const store = new MsPacManGameStateStore("counter-parity");
+    const key = createBrowserStorageKeys().gameState;
+    let mounted: Mounted | null = await mount(null);
+    const current = (): Mounted => {
+        assert(mounted, "Counter runtime");
+        return mounted;
+    };
+    current().container.setLoopSuspended(true);
+    const cases: string[] = [];
+    const times: number[] = [];
+    const mode = () => current().main.getModeForStateRestore(current().main.getCurrentModeIdForState());
+    const tick = (count = 1): void => {
+        for (let i = 0; i < count; i++) mode().update(current().container);
+    };
+    const field = (name: string): number => Number(Reflect.get(mode(), name));
+    const render = (): void => mode().render(current().container, current().container.getGraphics());
+    const capture = () => serializer.createSnapshot(current().main, "counter-parity");
+    const comparable = (): string => {
+        const s = capture();
+        delete s.mainFields.nextFrameTime;
+        return JSON.stringify({ main: s.mainFields, mode: s.mode, random: s.random, robots: s.robotInputs });
+    };
+    const destroy = (): void => {
+        if (!mounted) return;
+        mounted.main.stopAllSounds();
+        mounted.main.invalidateBrowserLifetime();
+        mounted.container.destroy();
+        Display.setParent(null);
+        mounted = null;
+    };
+    const check = (label: string): void => {
+        const s = capture();
+        const started = performance.now();
+        assert(
+            isValidMsPacManGameStateSnapshot(s) && isValidSnapshotForLoadedResources(current().main, s),
+            `${label}: integrated validation ${JSON.stringify(s.mode.fields)}`
+        );
+        times.push(performance.now() - started);
+        assert(store.save(current().main, () => true).saved && store.hasValidSave(), `${label}: store save`);
+        render();
+        cases.push(label);
+    };
+    const roundtrip = async (label: string): Promise<void> => {
+        check(label);
+        const saved = localStorage.getItem(key)!;
+        const before = comparable();
+        tick(2);
+        const after = comparable();
+        destroy();
+        mounted = await mount((main, gc) => store.restore(main, gc));
+        current().container.setLoopSuspended(true);
+        assert(comparable() === before, `${label}: fresh restore differs`);
+        render();
+        assert(comparable() === before, `${label}: first loaded render mutates state`);
+        tick(2);
+        assert(comparable() === after, `${label}: fresh continuation differs`);
+        localStorage.setItem(key, saved);
+        assert(store.restore(current().main, current().container), `${label}: checkpoint`);
+    };
+    const enter = (id: ModeId, stage = 0): void => {
+        const m = current();
+        m.main.stageIndex = stage;
+        m.main.demoMode = false;
+        m.main.setMode(m.main.getModeForStateRestore(id), m.container);
+    };
+    const reject = (name: string, mutate: (snapshot: ReturnType<typeof capture>) => void): void => {
+        const s = capture();
+        mutate(s);
+        const text = JSON.stringify(s);
+        localStorage.setItem(key, text);
+        const before = comparable(),
+            mapping = current().main.input;
+        for (let i = 0; i < 2; i++) {
+            assert(!store.hasValidSave() && !store.restore(current().main, current().container), `${name}: malformed accepted`);
+            assert(
+                localStorage.getItem(key) === text && comparable() === before && current().main.input === mapping,
+                `${name}: rejection changed storage/live state`
+            );
+        }
+        assert(store.save(current().main, () => true).saved, `${name}: authorized overwrite after rejection`);
+        cases.push(`reject:${name}`);
+    };
+    try {
+        current().main.score = 1_234_567;
+        enter("enterInitials");
+        // Seed the far boundary, then let the actual byte-scroll writer cross it.
+        Reflect.set(mode(), "redOffset", 100000);
+        Reflect.set(mode(), "dotsOffset", -32);
+        await roundtrip("initials:100000:-32");
+        tick();
+        assert(field("redOffset") === 100001 && field("dotsOffset") === -3, "Actual initials accumulator wrap");
+        await roundtrip("initials:100001:-3");
+        assert(Reflect.get(mode(), "newScoreOf") === "YOU ACHIEVED A SCORE OF 1234567.", "Initials full logical score");
+        for (const n of [-1, 0.5, 2147483648])
+            reject(`red:${n}`, (s) => {
+                s.mode.fields.redOffset = n;
+            });
+        for (const n of [-33, 1, 0.5])
+            reject(`dots:${n}`, (s) => {
+                s.mode.fields.dotsOffset = n;
+            });
+        // Fresh input after a restore still edits once and does not submit a score.
+        const canvas = document.querySelector("canvas");
+        assert(canvas, "Counter canvas");
+        canvas.focus();
+        current().container.getInput().resume();
+        canvas.dispatchEvent(new KeyboardEvent("keydown", { code: "ArrowDown", key: "ArrowDown", bubbles: true }));
+        current().container.getInput().poll(800, 600);
+        tick();
+        assert(Reflect.get(mode(), "initials") === "BAA", "Fresh restored initials input");
+        canvas.dispatchEvent(new KeyboardEvent("keyup", { code: "ArrowDown", key: "ArrowDown", bubbles: true }));
+        current().container.getInput().poll(800, 600);
+        assert(!Reflect.get(mode(), "enterPressed") && current().main.submittedScore === null, "Restore/input must not submit");
+        enter("selectWorld");
+        Reflect.set(mode(), "angleOffset", 100000);
+        tick();
+        assert(field("angleOffset") > 100000, "Actual SelectWorld accumulator crosses budget");
+        await roundtrip("selectWorld:large-angle");
+        reject("negative-angle", (s) => {
+            s.mode.fields.angleOffset = -0.01;
+        });
+        for (const id of ["act1", "act3", "act4"] as const) {
+            enter(id, Number(id.slice(3)));
+            const seen = new Set<number>();
+            const fades = new Set<number>();
+            const sprites = new Set<number>();
+            let deferred = false,
+                wrap = false,
+                prior = -1;
+            await roundtrip(`${id}:init`);
+            for (let i = 0; i < 3500 && current().main.getCurrentModeIdForState() === id; i++) {
+                tick();
+                if (current().main.getCurrentModeIdForState() !== id) break;
+                const state = field("state"),
+                    fade = field("fadeState");
+                if (!seen.has(state)) {
+                    seen.add(state);
+                    await roundtrip(`${id}:state:${state}`);
+                }
+                if (!fades.has(fade)) {
+                    fades.add(fade);
+                    check(`${id}:fade:${fade}`);
+                }
+                if (id === "act1" && field("nextState") !== state && !deferred) {
+                    deferred = true;
+                    await roundtrip("act1:deferred-state");
+                }
+                if (id !== "act1") {
+                    const index = field("storkSpriteIndex"),
+                        increment = field("storkSpriteIndexIncrementor");
+                    sprites.add(index);
+                    if (prior === 11 && increment === 0 && !wrap) {
+                        wrap = true;
+                        await roundtrip(`${id}:stork-wrap`);
+                    }
+                    prior = increment;
+                }
+            }
+            assert(seen.has(0) && seen.has(1), `${id}: actual clapper transition`);
+            if (id === "act1") assert(deferred && seen.has(2), "Act1 deferred head-on transition");
+            else assert(wrap && sprites.has(0) && sprites.has(1), `${id}: both stork images and 11->0 wrap`);
+            assert(fades.has(1) && fades.has(2), `${id}: both fades`);
+            enter(id, Number(id.slice(3)));
+            if (id === "act1")
+                reject("act1-next3", (s) => {
+                    s.mode.fields.nextState = 3;
+                });
+            else {
+                reject(`${id}-stork2`, (s) => {
+                    s.mode.fields.storkSpriteIndex = 2;
+                });
+                reject(`${id}-increment12`, (s) => {
+                    s.mode.fields.storkSpriteIndexIncrementor = 12;
+                });
+            }
+        }
+        enter("playing");
+        let world = current().main.getPlayingModeForState();
+        world.fadeState = PlayingMode.FADE_NONE;
+        world.readyTimer = 0;
+        world.exitIndex = 4;
+        world.ateEnergizer();
+        for (let chain = 0; chain < 4; chain++) {
+            world = current().main.getPlayingModeForState();
+            world.ghostEaten(world.ghosts[chain]);
+            assert(world.ghostPointsIndex === chain && world.showGhostPointsTimer === 91, "Actual ghost award");
+            await roundtrip(`ghost:${chain}:91`);
+            if (chain === 0) {
+                const checkpoint = localStorage.getItem(key)!;
+                current().main.paused = true;
+                current().main.update(current().container, 11);
+                assert(current().main.getPlayingModeForState().showGhostPointsTimer === 91, "Paused Main freezes ghost display timer");
+                current().main.paused = false;
+                current().main.getPlayingModeForState().playerKilled();
+                tick();
+                assert(current().main.getPlayingModeForState().showGhostPointsTimer === 91, "Death branch freezes ghost display timer");
+                await roundtrip("ghost:death-retains-points");
+                localStorage.setItem(key, checkpoint);
+                assert(store.restore(current().main, current().container), "Restore ghost checkpoint");
+                const terminal = current().main.getPlayingModeForState();
+                // Boundary seed a last-pellet award; this checks retained overlay ordering,
+                // while verifyTerminalGameplay independently drives the real tile collision.
+                for (let y = 0; y < 31; y++)
+                    for (let x = 0; x < 28; x++)
+                        if (terminal.typeMap[y][x] === PlayingMode.TYPE_PELLOT || terminal.typeMap[y][x] === PlayingMode.TYPE_ENERGIZER) {
+                            terminal.typeMap[y][x] = PlayingMode.TYPE_EMPTY;
+                            terminal.tileMap[y][x] = 47;
+                        }
+                terminal.pelletsRemaining = 1;
+                terminal.atePellot();
+                tick();
+                assert(terminal.finished && terminal.showGhostPointsTimer === 91, "Finished branch freezes ghost display timer");
+                await roundtrip("ghost:finished-retains-points");
+                localStorage.setItem(key, checkpoint);
+                assert(store.restore(current().main, current().container), "Restore ghost chain checkpoint");
+            }
+            reject(`ghost:${chain}:active-index-1`, (s) => {
+                s.mode.fields.ghostPointsIndex = -1;
+            });
+            reject(`ghost:${chain}:active-timer0`, (s) => {
+                s.mode.fields.showGhostPointsTimer = 0;
+            });
+            tick(89);
+            assert(current().main.getPlayingModeForState().showGhostPointsTimer === 2, "Ghost timer 2");
+            await roundtrip(`ghost:${chain}:2`);
+            tick();
+            await roundtrip(`ghost:${chain}:1`);
+            tick();
+            assert(
+                !current().main.getPlayingModeForState().showGhostPoints && current().main.getPlayingModeForState().eatenGhost === null,
+                "Ghost timer 0 retires reference"
+            );
+            check(`ghost:${chain}:0`);
+        }
+        world = current().main.getPlayingModeForState();
+        current().main.score = 9990;
+        current().main.lives = 5;
+        world.addPoints(10);
+        assert(current().main.score === 10000 && current().main.lives === 6, "Sixth life threshold");
+        world.addPoints(10000);
+        assert(current().main.lives === 6, "Lives cap six");
+        check("score:life-cap-six");
+        Reflect.set(window, "counterParityEvidence", { cases, validationMilliseconds: times, schema: capture().version });
+    } finally {
+        destroy();
+        store.clear(() => true);
+    }
+}

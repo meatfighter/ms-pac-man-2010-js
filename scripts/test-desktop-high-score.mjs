@@ -63,6 +63,8 @@ run("java", ["-cp", `${testClassesDir}${process.platform === "win32" ? ";" : ":"
 
 run("java", ["-Djava.awt.headless=true", "-cp", `${testClassesDir}${process.platform === "win32" ? ";" : ":"}${classpath}`, "mspacman.EnterInitialsEdgeTest"]);
 
+run("java", ["-Djava.awt.headless=true", "-cp", `${testClassesDir}${process.platform === "win32" ? ";" : ":"}${classpath}`, "mspacman.CounterParityTest"]);
+
 function commandExists(command) {
     const finder = process.platform === "win32" ? "where.exe" : "which";
     const result = spawnSync(finder, [command], { stdio: "ignore", windowsHide: true });

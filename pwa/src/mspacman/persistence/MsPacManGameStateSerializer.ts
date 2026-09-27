@@ -198,6 +198,8 @@ function isValidEnterInitialsState(fields: Record<string, unknown>): boolean {
     const blinkTimer = fields.blinkTimer;
     const enterPressed = fields.enterPressed;
     return (
+        isIntegerInRange(fields.dotsOffset, -32, 0) &&
+        isIntegerInRange(fields.redOffset, 0, 2_147_483_647) &&
         typeof initials === "string" &&
         initials.length === 3 &&
         /^[A-Z ]{3}$/.test(initials) &&
@@ -315,6 +317,9 @@ function isValidPlayingModeFieldState(fields: Record<string, unknown>): boolean 
 
 function isValidPlayingObjectRelationships(snapshot: PlayingModeSnapshot): boolean {
     const showGhostPoints = snapshot.fields.showGhostPoints === true;
+    if (showGhostPoints && (!isIntegerInRange(snapshot.fields.ghostPointsIndex, 0, 3) || !isIntegerInRange(snapshot.fields.showGhostPointsTimer, 1, 91))) {
+        return false;
+    }
     if ((snapshot.eatenGhostIndex !== null) !== showGhostPoints) {
         return false;
     }
@@ -379,6 +384,10 @@ function isValidThingFieldState(fields: unknown, kind: "mspacman" | "ghost" | "f
 }
 
 function isValidStandaloneModeFieldState(id: Exclude<ModeId, "playing">, fields: Record<string, unknown>): boolean {
+    if (id === "act1" && !isIntegerInRange(fields.nextState, 0, 2)) return false;
+    if ((id === "act3" || id === "act4") && (!isIntegerInRange(fields.storkSpriteIndex, 0, 1) || !isIntegerInRange(fields.storkSpriteIndexIncrementor, 0, 11)))
+        return false;
+    if (id === "selectWorld" && (!isFiniteNumber(fields.angleOffset) || fields.angleOffset < 0)) return false;
     if (Object.hasOwn(fields, "fadeIndex") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;
     if (Object.hasOwn(fields, "fadeState") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;
     if (Object.hasOwn(fields, "fadeIndex2") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;
