@@ -28,6 +28,8 @@ function fixture() {
         }
     };
     const env = {
+        retireHighScoreSync() {},
+        startHighScoreSync() {},
         events,
         game,
         container,

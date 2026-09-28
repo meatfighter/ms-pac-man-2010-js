@@ -1,4 +1,6 @@
 import {
+    SCORE_DURABILITY_HEADER,
+    SCORE_DURABILITY_VALUE,
     HMAC_KEY_PATTERN,
     PROTOCOL_VERSION,
     type RemoteHighScore,
@@ -16,16 +18,22 @@ const REQUEST_TIMEOUT_MS = 5000;
 let hmacKeyPromise: Promise<CryptoKey | null> | null = null;
 
 export interface HighScoreRequestContext {
+    readonly onRetryAfter?: (delayMs: number) => void;
     readonly signal?: AbortSignal;
     readonly isCurrent?: () => boolean;
 }
 
 interface ActiveRequestScope {
+    readonly onRetryAfter: ((delayMs: number) => void) | undefined;
     readonly signal: AbortSignal;
     isCurrent(): boolean;
 }
 
 export class HighScoreService {
+    public static getEndpointId(): string {
+        return new URL(HIGH_SCORE_URL, location.href).href;
+    }
+
     public static async downloadScores(context: HighScoreRequestContext = {}): Promise<RemoteHighScore[] | null> {
         return runScoreOperation(context, (scope) => requestScores("GET", undefined, scope));
     }
@@ -87,6 +95,7 @@ async function runScoreOperation(
     const timeout = window.setTimeout(() => controller.abort(new DOMException("High-score request timed out.", "TimeoutError")), REQUEST_TIMEOUT_MS);
     const scope: ActiveRequestScope = {
         signal: controller.signal,
+        onRetryAfter: context.onRetryAfter,
         isCurrent: () => !controller.signal.aborted && (context.isCurrent?.() ?? true)
     };
 
@@ -134,7 +143,29 @@ async function requestScores(method: "GET" | "POST", body: unknown, scope: Activ
         discardResponse(response);
         return null;
     }
+    if (response.status === 429 || response.status === 503) {
+        const value = response.headers.get("Retry-After");
+        let delay: number | null = null;
+        if (value !== null) {
+            if (/^\d+$/.test(value.trim())) delay = Number(value.trim()) * 1000;
+            else {
+                const at = Date.parse(value);
+                if (Number.isFinite(at)) delay = Math.max(0, at - Date.now());
+            }
+        }
+        if (delay !== null && Number.isFinite(delay)) {
+            try {
+                scope.onRetryAfter?.(Math.min(3_600_000, Math.max(0, delay)));
+            } catch {
+                /* Retry metadata must not prevent response-body disposal. */
+            }
+        }
+    }
     if (response.status !== 200 || response.headers.get("MsPacMan-Protocol-Version") !== String(PROTOCOL_VERSION)) {
+        discardResponse(response);
+        return null;
+    }
+    if (method === "POST" && response.headers.get(SCORE_DURABILITY_HEADER) !== SCORE_DURABILITY_VALUE) {
         discardResponse(response);
         return null;
     }

@@ -26,6 +26,7 @@ export const STATE_FIELD_REGISTRY = {
             "fadeMusicFlag",
             "uploadComplete",
             "scoresDownloadComplete",
+            "highScoreClient",
             "submittedScore",
             "robotInputs",
             "demoIndex",
@@ -109,6 +110,7 @@ export const STATE_FIELD_REGISTRY = {
             "scoresDownloadComplete",
             "uploadComplete",
             "submittedScore",
+            "highScoreClient",
             "robotInputs",
             "browserSuspended",
             "startupLoadingComplete",
@@ -762,9 +764,21 @@ export const STATE_FIELD_REGISTRY = {
             "blinkTimer",
             "input",
             "enterPressed",
+            "submissionFailed",
             "newScoreOf"
         ],
-        persisted: ["fadeIndex", "fadeState", "dotsOffset", "redOffset", "editingIndex", "initials", "editVisible", "blinkTimer", "enterPressed"],
+        persisted: [
+            "fadeIndex",
+            "fadeState",
+            "dotsOffset",
+            "redOffset",
+            "editingIndex",
+            "initials",
+            "editVisible",
+            "blinkTimer",
+            "enterPressed",
+            "submissionFailed"
+        ],
         runtime: ["main", "whiteEnergizer", "input", "blinkingInitials", "newScoreOf"]
     },
     HallOfFameMode: {

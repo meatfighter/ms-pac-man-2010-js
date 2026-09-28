@@ -757,7 +757,7 @@ try {
         assert.equal(storage.getItem(storageKey), savedSnapshot);
     });
 
-    await runTest("real store accepts the full cutoff domain with no-read schema-10 overwrite", () => {
+    await runTest("real store accepts the full cutoff domain with no-read schema-11 overwrite", () => {
         const storage = installMemoryLocalStorage();
         const store = new MsPacManGameStateStore(APP_VERSION);
         setTestLocation(STAGE_URL);
@@ -765,7 +765,7 @@ try {
         const read = storage.getItem.bind(storage);
         for (const cutoff of [100000, 100001, 250000, 2147483647]) {
             const source = createFakeMain("playing", "source", { highScoreQualificationCutoff: cutoff });
-            for (const old of ["{", JSON.stringify({ version: 9 }), JSON.stringify({ version: 11 })]) {
+            for (const old of ["{", JSON.stringify({ version: 10 }), JSON.stringify({ version: 12 })]) {
                 storage.setItem(key, old);
                 let reads = 0;
                 storage.getItem = () => {
@@ -781,7 +781,7 @@ try {
                 } finally {
                     storage.getItem = read;
                 }
-                assert.equal(JSON.parse(read(key)).version, 10);
+                assert.equal(JSON.parse(read(key)).version, 11);
                 assert.equal(store.hasValidSave(), true);
                 const target = createFakeMain("playing", "target");
                 assert.equal(store.restore(target, createGameContainer()), true);
@@ -1010,6 +1010,18 @@ try {
         assert.equal(target.mode.redOffset, 100001);
         assert.equal(target.mode.dotsOffset, -32);
         assert.equal(storage.getItem(key), bytes);
+    });
+    await runTest("schema 11 submission failure is durable and contradictory accepted/failure flags are rejected", () => {
+        const serializer = new MsPacManGameStateSerializer();
+        for (const failed of [false, true]) {
+            const state = serializer.createSnapshot(createFakeMain("enterInitials", "source", { enterPressed: false, submissionFailed: failed }), APP_VERSION);
+            assert.equal(state.version, 11);
+            assert.equal(isValidMsPacManGameStateSnapshot(state), true);
+            state.mode.fields.enterPressed = true;
+            if (failed) assert.equal(isValidMsPacManGameStateSnapshot(state), false);
+            state.version = 10;
+            assert.equal(isValidMsPacManGameStateSnapshot(state), false);
+        }
     });
     await runTest("active timer malformed records preserve bytes and publication through repeated store reads", () => {
         const storage = installMemoryLocalStorage();
@@ -1286,6 +1298,7 @@ function createMode(id, variant, options = {}) {
             editVisible: !alternate,
             blinkTimer: alternate ? 8 : 7,
             enterPressed: options.enterPressed ?? !alternate,
+            submissionFailed: options.submissionFailed ?? false,
             newScoreOf: "YOU ACHIEVED A SCORE OF 12340."
         });
         return mode;

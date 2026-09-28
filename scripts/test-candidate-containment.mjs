@@ -27,6 +27,9 @@ for (const fault of ["constructor", "setter", "stale", "unsafe", "published-time
             }
         };
         const env = {
+            highScoreSync: null,
+            retireHighScoreSync() {},
+            startHighScoreSync() {},
             game: replacementGame,
             container: replacementContainer,
             sessionCleanup: cleanup,

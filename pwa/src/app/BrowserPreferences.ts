@@ -41,6 +41,7 @@ export class BrowserPreferences {
         let success = true;
         for (const [key, label] of [
             [keys.gameState, "saved game"],
+            [keys.highScoreOutbox, "pending high scores"],
             [keys.volume, "volume"],
             [keys.scaling, "scaling preference"],
             [keys.fullscreen, "fullscreen preference"]

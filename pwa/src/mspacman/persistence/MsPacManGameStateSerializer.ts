@@ -52,6 +52,7 @@ const MAX_SOUND_SNAPSHOTS = 30;
 const MAX_SOUND_VOICES = 62;
 const EMPTY_SOUND_PLAYBACK: SoundPlaybackSnapshot = Object.freeze({ voices: Object.freeze([]), activeVoiceIndex: null });
 const BOOLEAN_FIELD_NAMES = new Set<string>([
+    "submissionFailed",
     "paused",
     "fadeMusicFlag",
     "demoMode",
@@ -206,6 +207,8 @@ function isValidEnterInitialsState(fields: Record<string, unknown>): boolean {
         isIntegerInRange(editingIndex, 0, 2) &&
         isIntegerInRange(blinkTimer, 0, 44) &&
         typeof enterPressed === "boolean" &&
+        typeof fields.submissionFailed === "boolean" &&
+        !(enterPressed && fields.submissionFailed) &&
         (!enterPressed || editingIndex === 2)
     );
 }
@@ -839,6 +842,7 @@ export class MsPacManGameStateSerializer {
         this.setField(thing, "main", mode.main);
     }
 
+    // The separate application outbox owns replay; restoring this snapshot performs no queue or network I/O.
     private restoreSubmittedInitials(main: Main, snapshot: ModeSnapshot): void {
         const enterPressed = snapshot.fields.enterPressed;
         const initials = snapshot.fields.initials;

@@ -96,7 +96,7 @@ test("partial Reset still installs coherent in-memory defaults and attempts the 
         true
     );
     const keys = [...fake.calls.remove];
-    assert.equal(keys.length, 4);
+    assert.equal(keys.length, 5);
     assert.equal(new Set(keys).size, keys.length, "Reset allowlist must not contain duplicate keys.");
 
     const seed = () => {

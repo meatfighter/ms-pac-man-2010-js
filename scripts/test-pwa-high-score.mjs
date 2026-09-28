@@ -32,10 +32,12 @@ const server = await createServer({
     }
 });
 
+let scoreService;
 try {
     const { HighScoreService, calculateScoreChecksumForTesting, resetHighScoreServiceForTesting } =
         await server.ssrLoadModule("/src/mspacman/HighScoreService.ts");
     const { PROTOCOL_VERSION } = await server.ssrLoadModule("/src/mspacman/HighScoreProtocol.ts");
+    scoreService = HighScoreService;
     const { Main } = await server.ssrLoadModule("/src/mspacman/Main.ts");
     const { HighScore } = await server.ssrLoadModule("/src/mspacman/HighScore.ts");
 
@@ -82,6 +84,31 @@ try {
         }
     });
 
+    await runTest("POST requires complete validation plus exact durable marker; Retry-After is bounded", async () => {
+        for (const marker of [null, "0", "true", "1"]) {
+            installFetch(() => {
+                const r = jsonResponse([], 1);
+                if (marker === null) r.headers.delete("MsPacMan-Score-Durable");
+                else r.headers.set("MsPacMan-Score-Durable", marker);
+                return r;
+            });
+            assert.deepEqual(await HighScoreService.submitScore(0, 100, "AAA"), marker === "1" ? [] : null);
+        }
+        const now = Date.now();
+        for (const status of [429, 503])
+            for (const [value, min, max] of [
+                ["60", 60000, 60000],
+                ["999999", 3600000, 3600000],
+                [new Date(now + 120000).toUTCString(), 118000, 120000],
+                ["garbage", null, null]
+            ]) {
+                let observed = null;
+                installFetch(() => new Response("", { status, headers: { "Retry-After": value } }));
+                assert.equal(await HighScoreService.submitScore(0, 100, "AAA", { onRetryAfter: (d) => (observed = d) }), null);
+                if (min === null) assert.equal(observed, null);
+                else assert.ok(observed >= min && observed <= max, String(observed));
+            }
+    });
     await runTest("HMAC checksum matches the cross-language vector", async () => {
         const checksum = await calculateScoreChecksumForTesting(KEY_HEX, {
             world: 0,
@@ -411,7 +438,7 @@ try {
         }
     });
 
-    await runTest("async non-qualifying score completes synchronously without POST", () => {
+    await runTest("explicit below-local-cutoff score still reaches the application client", async () => {
         let submitCount = 0;
         const originalSubmit = HighScoreService.submitScore;
         HighScoreService.submitScore = () => {
@@ -438,8 +465,10 @@ try {
                 { score: 10000, initials: "EEE" }
             ]);
             assert.equal(main.submittedScore, null);
+            assert.equal(main.uploadComplete, false);
+            assert.equal(submitCount, 1);
+            await tick();
             assert.equal(main.uploadComplete, true);
-            assert.equal(submitCount, 0);
         } finally {
             HighScoreService.submitScore = originalSubmit;
         }
@@ -634,7 +663,7 @@ function jsonResponse(scores, protocolVersion, status = 200) {
               });
     return new Response(body, {
         status,
-        headers: protocolHeaders("application/json")
+        headers: { ...protocolHeaders("application/json"), ...(status === 200 ? { "MsPacMan-Score-Durable": "1" } : {}) }
     });
 }
 
@@ -647,6 +676,19 @@ function protocolHeaders(contentType) {
 
 function createMain(Main, HighScore, worldRows = []) {
     const main = new Main();
+    // UI-wait double. The real application coordinator is exercised in test-high-score-sync.
+    let candidate = null;
+    main.highScoreClient = {
+        enqueueScore(value) {
+            candidate = value;
+            return true;
+        },
+        requestScores(context) {
+            const pending = candidate;
+            candidate = null;
+            return pending === null ? scoreService.downloadScores(context) : scoreService.submitScore(pending.world, pending.score, pending.initials, context);
+        }
+    };
     main.highScores = Array.from({ length: 4 }, () => Array.from({ length: 5 }, () => makeHighScore(HighScore, 0, "AAA")));
     for (let world = 0; world < worldRows.length; world++) {
         const rows = worldRows[world];

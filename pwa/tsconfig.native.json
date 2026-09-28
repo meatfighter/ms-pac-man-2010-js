@@ -17,7 +17,10 @@
         "src/app/ServiceWorkerRegistrar.ts",
         "src/app/SessionGeneration.ts",
         "src/mspacman/HighScoreProtocol.ts",
-        "src/mspacman/HighScoreService.ts"
+        "src/mspacman/HighScoreService.ts",
+        "src/app/HighScoreOutbox.ts",
+        "src/app/HighScoreSync.ts",
+        "src/mspacman/HighScoreClient.ts"
     ],
     "include": []
 }

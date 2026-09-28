@@ -22,6 +22,7 @@ export class EnterInitialsMode implements IMode {
     private blinkTimer = 0;
     private input: IInput;
     private enterPressed = false;
+    private submissionFailed = false;
     private newScoreOf = "";
 
     public init(main: Main, gc: GameContainer): void {
@@ -39,6 +40,7 @@ export class EnterInitialsMode implements IMode {
         this.blinkTimer = 0;
         this.newScoreOf = `YOU ACHIEVED A SCORE OF ${main.score}.`;
         this.enterPressed = false;
+        this.submissionFailed = false;
 
         // Upload completion describes an in-flight browser request, not durable game
         // state. A restored initials screen must never wait for a request that died
@@ -121,9 +123,12 @@ export class EnterInitialsMode implements IMode {
             }
             this.setChar(String.fromCharCode(c));
         } else if (start) {
-            this.enterPressed = true;
-            this.main.playSound(this.main.pressedEnterSound);
-            this.main.accessScoresDatabaseAsync(true, this.main.worldIndex, this.main.score, this.initials);
+            const queued = this.main.accessScoresDatabaseAsync(true, this.main.worldIndex, this.main.score, this.initials);
+            this.submissionFailed = !queued;
+            if (queued) {
+                this.enterPressed = true;
+                this.main.playSound(this.main.pressedEnterSound);
+            }
         }
     }
 
@@ -134,7 +139,7 @@ export class EnterInitialsMode implements IMode {
 
     public render(gc: GameContainer, g: Graphics): void {
         if (this.enterPressed) {
-            this.main.drawString("UPLOADING HIGH SCORE...", 292, Main.YELLOW);
+            this.main.drawString(this.main.uploadComplete ? "INITIALS ACCEPTED" : "UPLOADING HIGH SCORE...", 292, Main.YELLOW);
         } else {
             this.main.drawString("WELCOME TO THE HALL OF FAME", 48, Main.YELLOW);
             this.main.drawString(this.newScoreOf, 96, Main.WHITE);
@@ -142,6 +147,9 @@ export class EnterInitialsMode implements IMode {
             this.main.drawString("PRESS START TO SUBMIT.", 176, Main.WHITE);
 
             this.main.drawString(this.editVisible ? this.initials : this.blinkingInitials, 304, 268, Main.ORANGE, 4);
+            if (this.submissionFailed) {
+                this.main.drawString("NOT QUEUED. PRESS START TO RETRY.", 368, Main.YELLOW);
+            }
         }
 
         let y = this.dotsOffset;

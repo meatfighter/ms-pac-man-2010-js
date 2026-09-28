@@ -78,7 +78,7 @@ test("persistence uses public Slick random, Music, and Sound snapshot APIs", () 
     assert.match(serializer, /registeredSounds\(main\)/);
     assert.doesNotMatch(serializer, /getField\(music,\s*["'](?:looped|paused|playbackRate|buffer|positionOffset|fadeState)["']/);
     assert.doesNotMatch(serializer, /(?:getField|setField|numberField)\(main\.random/);
-    assert.match(snapshot, /GAME_STATE_VERSION = 10/);
+    assert.match(snapshot, /GAME_STATE_VERSION = 11/);
     assert.match(snapshot, /soundEffects: SoundSnapshot\[\]/);
     assert.doesNotMatch(snapshot, /FIRST_PUBLIC_GAME_STATE_VERSION/);
     assert.match(browserStorageKeys, /createStorageKey\(deploymentId, "game-state"\)/);

@@ -134,6 +134,7 @@ function createMain(input) {
         accessScoresDatabaseAsync() {
             this.submitCalls++;
             this.uploadComplete = false;
+            return true;
         },
         setMode() {
             throw new Error("test should not finish the fade-out");

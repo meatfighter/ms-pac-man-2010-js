@@ -30,8 +30,16 @@ import { EndingMode } from "./EndingMode";
 import { EnterInitialsMode } from "./EnterInitialsMode";
 import { HallOfFameMode } from "./HallOfFameMode";
 import { HighScore } from "./HighScore";
-import { ROWS_PER_WORLD, type RemoteHighScore, isAllowedInitials, isPlausibleScore, isWorld, normalizeHighScoreInitials } from "./HighScoreProtocol";
-import { HighScoreService } from "./HighScoreService";
+import {
+    ROWS_PER_WORLD,
+    type RemoteHighScore,
+    isValidSubmittedScoreTuple,
+    isAllowedInitials,
+    isPlausibleScore,
+    isWorld,
+    normalizeHighScoreInitials
+} from "./HighScoreProtocol";
+import type { HighScoreClient } from "./HighScoreClient.js";
 import { HumanInput } from "./HumanInput";
 import type { IInput } from "./IInput";
 import type { IMode } from "./IMode";
@@ -242,6 +250,7 @@ export class Main extends BasicGame {
     public fadeMusicFlag = false;
     public uploadComplete = false;
     public scoresDownloadComplete = true;
+    public highScoreClient: HighScoreClient | null = null;
     public submittedScore: RemoteHighScore | null = null;
     public robotInputs: RobotInput[] = new Array<RobotInput>(4);
     public demoIndex = 0;
@@ -521,6 +530,7 @@ export class Main extends BasicGame {
     public invalidateBrowserLifetime(): void {
         this.browserLifetimeGeneration++;
         retireScoreOperations(this);
+        this.highScoreClient = null;
     }
 
     public captureBrowserLifetimeGeneration(): number {
@@ -650,30 +660,32 @@ export class Main extends BasicGame {
         void this.runScoreDownload(revision, operation);
     }
 
-    public accessScoresDatabaseAsync(update: boolean, world: number, score: number, initials: string): void {
+    public accessScoresDatabaseAsync(update: boolean, world: number, score: number, initials: string): boolean {
         this.uploadComplete = false;
         const lifetime = this.captureBrowserLifetimeGeneration();
         const operation = beginScoreOperation(this, "upload", lifetime);
-        const normalizedInitials = this.normalizeHighScoreInitials(initials);
-        const submittedScore = this.accessScoresDatabase(update, world, score, normalizedInitials);
-        if (submittedScore === null) {
+        const client = this.highScoreClient;
+        const candidate = { world, score, initials: this.normalizeHighScoreInitials(initials) };
+        if (!update || !operation.isCurrent() || client === null || !isValidSubmittedScoreTuple(candidate) || !client.enqueueScore(candidate)) {
             if (operation.isCurrent()) {
                 this.uploadComplete = true;
                 operation.finish();
             }
-            return;
+            return false;
         }
-
+        // Do not let a stale/local top-five preview veto a valid explicitly submitted tuple.
+        this.accessScoresDatabase(true, world, score, candidate.initials);
         const revision = this.leaderboardRevision;
-        void this.runScoreSubmission(submittedScore, revision, operation);
+        void this.runScoreSubmission(client, revision, operation);
+        return true;
     }
 
     private async runScoreDownload(revision: number, operation: ScoreOperation): Promise<void> {
         try {
-            const scores = await HighScoreService.downloadScores({
+            const scores = await (this.highScoreClient?.requestScores({
                 signal: operation.controller.signal,
                 isCurrent: operation.isCurrent
-            });
+            }) ?? Promise.resolve(null));
             if (operation.isCurrent() && scores !== null) {
                 this.applyRemoteScoresIfCurrent(scores, revision);
             }
@@ -687,23 +699,28 @@ export class Main extends BasicGame {
         }
     }
 
-    private async runScoreSubmission(submittedScore: RemoteHighScore, revision: number, operation: ScoreOperation): Promise<void> {
+    private async runScoreSubmission(client: HighScoreClient, revision: number, operation: ScoreOperation): Promise<void> {
         try {
-            const scores = await HighScoreService.submitScore(submittedScore.world, submittedScore.score, submittedScore.initials, {
+            const scores = await client.requestScores({
                 signal: operation.controller.signal,
                 isCurrent: operation.isCurrent
             });
-            if (operation.isCurrent() && scores !== null) {
-                this.applyRemoteScoresIfCurrent(scores, revision);
-            }
+            if (operation.isCurrent() && scores !== null) this.applyRemoteScoresIfCurrent(scores, revision);
         } catch {
-            // High-score networking is best-effort; liveness and completion are handled below.
+            // The outbox owns delivery; this Main only owns a bounded presentation wait.
         } finally {
             if (operation.isCurrent()) {
                 this.uploadComplete = true;
                 operation.finish();
             }
         }
+    }
+
+    public acceptHighScoreTable(scores: readonly RemoteHighScore[]): void {
+        this.applyRemoteScores(scores);
+        this.submittedScore = null;
+        this.leaderboardRevision++;
+        this.scoresDownloadComplete = true;
     }
 
     public accessScoresDatabase(update: boolean, world: number, score: number, initials: string): RemoteHighScore | null {
@@ -804,9 +821,7 @@ export class Main extends BasicGame {
         if (revision !== this.leaderboardRevision) {
             return;
         }
-        // A current server response is canonical. This intentionally replaces any
-        // best-effort local score reconstructed from a restored submitted-initials
-        // screen; restoration never retries the POST.
+        // Canonical application result; the independent outbox owns pending delivery.
         this.applyRemoteScores(scores);
         this.submittedScore = null;
         this.leaderboardRevision++;

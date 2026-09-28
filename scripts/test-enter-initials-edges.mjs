@@ -1,4 +1,4 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 const server = await createServer({
@@ -35,6 +35,7 @@ try {
                     playSound() {},
                     accessScoresDatabaseAsync() {
                         uploads++;
+                        return true;
                     },
                     setMode() {
                         handoffs++;
@@ -80,6 +81,58 @@ try {
                 assert.equal(handoffs, 1);
                 assert.deepEqual(calls, []);
             }
+    // Explicit failure is editable, silent, and only retries on a fresh Start edge.
+    {
+        const edges = new Set();
+        let attempts = 0,
+            sounds = 0;
+        const labels = [];
+        const input = {
+            clearKeyPressedRecord() {
+                edges.clear();
+            }
+        };
+        for (const name of names) input[`is${name}Pressed`] = () => edges.delete(name);
+        const main = {
+            input,
+            tiles: [Array(50).fill({ draw() {} })],
+            redEnergizerSprite: { draw() {} },
+            score: 100,
+            worldIndex: 0,
+            drawString(text) {
+                labels.push(text);
+            },
+            playSound() {
+                sounds++;
+            },
+            accessScoresDatabaseAsync() {
+                return ++attempts > 1;
+            }
+        };
+        const mode = new EnterInitialsMode();
+        mode.init(main, null);
+        mode.fadeState = 0;
+        mode.editingIndex = 2;
+        edges.add("Confirm");
+        mode.update(null);
+        assert.equal(mode.enterPressed, false);
+        assert.equal(mode.submissionFailed, true);
+        assert.equal(sounds, 0);
+        mode.render(null, {});
+        assert.ok(labels.includes("NOT QUEUED. PRESS START TO RETRY."));
+        mode.update(null);
+        assert.equal(attempts, 1);
+        edges.add("Confirm");
+        mode.update(null);
+        assert.equal(attempts, 2);
+        assert.equal(mode.enterPressed, true);
+        assert.equal(mode.submissionFailed, false);
+        assert.equal(sounds, 1);
+        main.uploadComplete = true;
+        labels.length = 0;
+        mode.render(null, {});
+        assert.ok(labels.includes("INITIALS ACCEPTED"));
+    }
     const { HumanInput } = await server.ssrLoadModule("/src/mspacman/HumanInput.ts");
     for (const pair of [
         [0, 3],

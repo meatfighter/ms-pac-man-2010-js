@@ -1,3 +1,7 @@
+import { createBrowserStorageKeys } from "./BrowserStorageKeys.js";
+import { HighScoreOutbox } from "./HighScoreOutbox.js";
+import { HighScoreSync } from "./HighScoreSync.js";
+import { HighScoreService } from "../mspacman/HighScoreService.js";
 import { focusOwnedPanel } from "./FocusOwnership.js";
 import { initializeWithDeadline, ReloadRequiredError } from "./PreparationDeadline.js";
 import { PersistenceSession, RestoreAttempt } from "./PersistenceSession.js";
@@ -73,6 +77,7 @@ function startApplication(): void {
     const runtimeLoader = new RuntimeLoader(refreshVisibleBootProgress);
     const screenWakeLock = new ScreenWakeLockManager();
     const sessionCleanup = new SessionCleanup();
+    let highScoreSync: HighScoreSync | null = null;
     let gameStateStore: MsPacManGameStateStore | null = null;
     let volume = preferences.volume;
     let scalingPreference: ScalingPreference = preferences.scaling;
@@ -499,6 +504,7 @@ function startApplication(): void {
         let publishedToShell = false;
         try {
             const mainGame = (candidateGame = new runtime.Main());
+            mainGame.highScoreClient = highScoreSync;
             const scalableGame = new runtime.ScalableGame2(mainGame, 800, 600, true);
             scalableGame.setScalingPreference(scalingPreference);
             const displayMode = viewport.getResponsiveDisplayMode();
@@ -994,11 +1000,13 @@ function startApplication(): void {
 
     function resetPwaState(): void {
         if (!canActivateFromMenu()) return;
+        retireHighScoreSync();
         const epoch = ownership.epoch;
         persistence.abandonStored();
         if (!destroyGame()) return;
         const cleared = preferences.reset(() => ownership.isCurrent(epoch));
         if (!ownership.isCurrent(epoch)) return;
+        if (cleared) startHighScoreSync();
         gameStateStore = null;
         volume = preferences.volume;
         scalingPreference = preferences.scaling;
@@ -1303,12 +1311,14 @@ function startApplication(): void {
     }
 
     function setupPageLifecycleHandlers(): void {
+        window.addEventListener("online", () => highScoreSync?.wake());
         window.addEventListener("pagehide", () => requestPwaMenu("pagehide"));
         window.addEventListener("blur", () => requestPwaMenu("blur"));
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "hidden") {
                 requestPwaMenu("hidden");
             }
+            highScoreSync?.wake();
         });
     }
 
@@ -1322,6 +1332,7 @@ function startApplication(): void {
     }
 
     function releaseOwnedSession(): void {
+        retireHighScoreSync();
         pwaSessionState = "stopping";
         sessionGeneration.invalidate();
         menuRequestSerial++;
@@ -1335,6 +1346,7 @@ function startApplication(): void {
     }
 
     function showCleanupFailure(): void {
+        retireHighScoreSync();
         pwaSessionState = "error";
         try {
             screenWakeLock.setDesired(false);
@@ -1366,10 +1378,39 @@ function startApplication(): void {
         for (const name of ["click", "input", "change", "keydown", "pointerdown"]) menu.addEventListener(name, guard, true);
     }
 
+    function retireHighScoreSync(): void {
+        const old = highScoreSync;
+        highScoreSync = null;
+        old?.dispose();
+    }
+
+    function startHighScoreSync(): void {
+        retireHighScoreSync();
+        const epoch = ownership.epoch;
+        const authorized = (): boolean => sessionCleanup.safe && ownership.isCurrent(epoch);
+        if (!authorized()) return;
+        const outbox = new HighScoreOutbox(createBrowserStorageKeys().highScoreOutbox, HighScoreService.getEndpointId(), authorized);
+        const next = new HighScoreSync(outbox, authorized, (scores) => {
+            const currentGame = game;
+            if (
+                !authorized() ||
+                highScoreSync !== next ||
+                currentGame === null ||
+                !persistence.canSave(currentGame) ||
+                !isCurrentGameSession(activeSessionGeneration)
+            )
+                return;
+            currentGame.acceptHighScoreTable(scores);
+        });
+        highScoreSync = next;
+        next.start();
+    }
+
     function refreshOwnedSettings(): void {
         if (!persistence.beginOwnership(ownership.epoch)) return;
         preferences.reload();
         volume = preferences.volume;
         scalingPreference = preferences.scaling;
+        startHighScoreSync();
     }
 }

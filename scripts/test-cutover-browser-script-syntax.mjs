@@ -15,7 +15,8 @@ const qualification = [
     ["verify:lifecycle-events", "scripts/run-lifecycle-event-qualification.mjs"],
     ["verify:ownership-transfer", "scripts/run-ownership-transfer-qualification.mjs"],
     ["verify:persistence-failure", "scripts/run-persistence-failure-qualification.mjs"],
-    ["verify:lifecycle-stress", "scripts/run-lifecycle-stress-qualification.mjs"]
+    ["verify:lifecycle-stress", "scripts/run-lifecycle-stress-qualification.mjs"],
+    ["verify:high-score-durability", "scripts/run-high-score-durability-qualification.mjs"]
 ];
 const unrelatedBrowserSuites = qualification.slice(4).map(([, path]) => path);
 const suitePath = "scripts/run-browser-qualification-suite.mjs";

@@ -20,8 +20,10 @@ const server = await createServer({
     server: { middlewareMode: true }
 });
 
+let scoreService;
 try {
     const { HighScoreService } = await server.ssrLoadModule("/src/mspacman/HighScoreService.ts");
+    scoreService = HighScoreService;
     const { Main } = await server.ssrLoadModule("/src/mspacman/Main.ts");
     const { HighScore } = await server.ssrLoadModule("/src/mspacman/HighScore.ts");
 
@@ -129,7 +131,7 @@ try {
             main.accessScoresDatabaseAsync(true, 0, 123450, "AAA");
             main.accessScoresDatabaseAsync(true, 0, 223450, "BBB");
             assert.equal(contexts.length, 2);
-            assert.equal(contexts[0].signal.aborted, true, "superseding a submission must abort its predecessor");
+            assert.equal(contexts[0].signal.aborted, true, "superseding a submission must abort its predecessor UI wait");
             assert.equal(main.uploadComplete, false);
 
             first.resolve([{ world: 0, score: 99990, initials: "OLD" }]);
@@ -146,7 +148,7 @@ try {
         }
     });
 
-    await runTest("browser lifetime retirement aborts current score request contexts", async () => {
+    await runTest("browser lifetime retirement aborts current score UI wait contexts", async () => {
         const pendingDownload = deferred();
         const pendingSubmit = deferred();
         let downloadContext;
@@ -224,6 +226,19 @@ async function runTest(name, fn) {
 
 function createMain(Main, HighScore) {
     const main = new Main();
+    // UI-wait double. The real application coordinator is exercised in test-high-score-sync.
+    let candidate = null;
+    main.highScoreClient = {
+        enqueueScore(value) {
+            candidate = value;
+            return true;
+        },
+        requestScores(context) {
+            const pending = candidate;
+            candidate = null;
+            return pending === null ? scoreService.downloadScores(context) : scoreService.submitScore(pending.world, pending.score, pending.initials, context);
+        }
+    };
     main.highScores = Array.from({ length: 4 }, () => Array.from({ length: 5 }, () => makeHighScore(HighScore, 0, "AAA")));
     return main;
 }

@@ -90,3 +90,24 @@ The embedded HMAC key deters casual tampering; it cannot authenticate legitimate
 - [LICENSE](LICENSE): GPL-3.0-or-later license text for original project source code.
 - [COPYRIGHT.md](COPYRIGHT.md): copyright, licensing, trademark, and third-party-content scope.
 - [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md): third-party software licenses and redistributed components.
+
+## Durable browser high-score submissions
+
+Explicit initials submission first writes a bounded deployment/endpoint-scoped outbox.
+The application owner retries while a visible page is running; delivery survives New Game,
+Main recreation and reload, independently of game save schema 11. Only a fully validated
+POST 200 carrying `MsPacMan-Score-Durable: 1` removes that tuple. GET never acknowledges
+pending work. Server consideration may leave a score outside the top five.
+
+A failed local enqueue stays editable and displays “NOT QUEUED. PRESS START TO RETRY.”
+The queue holds at most 128 tuples/32 KiB and never evicts accepted entries. Retries use
+persisted reservations/backoff and bounded Retry-After; no per-frame retry or Background Sync.
+Full Reset cancels local replay, including stale callbacks, but cannot undo a server commit.
+Partial Reset leaves score synchronization dormant until a later ownership epoch or successful Reset.
+Delivery needs retained storage, a running visible owner, valid configuration, network and server disk space.
+Clearing/evicting/corrupting storage can lose pending work; browser storage success is not hardware fsync.
+
+Deploy the qualified server before this client. An old server without the marker leaves work pending.
+Use `npm run verify:high-score-durability` for the mandatory loopback-only packaged-browser/server suite;
+it also runs in both `qualify:browsers` and `qualify`. The sibling server dist must already be qualified.
+Do not run the production API smoke command for this workflow.

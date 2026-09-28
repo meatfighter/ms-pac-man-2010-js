@@ -33,6 +33,7 @@ export const STATE_FIELD_POLICY = {
             "scoresDownloadComplete",
             "uploadComplete",
             "submittedScore",
+            "highScoreClient",
             "robotInputs",
             "browserSuspended",
             "startupLoadingComplete",
@@ -388,7 +389,18 @@ export const STATE_FIELD_POLICY = {
         runtime: ["main", "whiteEnergizer"]
     },
     EnterInitialsMode: {
-        persisted: ["fadeIndex", "fadeState", "dotsOffset", "redOffset", "editingIndex", "initials", "editVisible", "blinkTimer", "enterPressed"],
+        persisted: [
+            "fadeIndex",
+            "fadeState",
+            "dotsOffset",
+            "redOffset",
+            "editingIndex",
+            "initials",
+            "editVisible",
+            "blinkTimer",
+            "enterPressed",
+            "submissionFailed"
+        ],
         runtime: ["main", "whiteEnergizer", "input", "blinkingInitials", "newScoreOf"]
     },
     HallOfFameMode: {

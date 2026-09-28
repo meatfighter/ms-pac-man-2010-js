@@ -87,6 +87,27 @@ async function verify(): Promise<void> {
     localStorage.clear();
     await preloadRuntimeResources();
 
+    if (new URLSearchParams(location.search).get("suite") === "high-score-seed") {
+        const mounted = await mountMain(null);
+        const { main, container } = mounted;
+        container.setLoopSuspended(true);
+        main.score = 123450;
+        main.worldIndex = 0;
+        main.demoMode = false;
+        main.setMode(Main.enterInitialsMode, container);
+        Reflect.set(Main.enterInitialsMode, "editingIndex", 2);
+        Reflect.set(Main.enterInitialsMode, "fadeState", 0);
+        Reflect.set(Main.enterInitialsMode, "fadeIndex", 0);
+        const serializer = new MsPacManGameStateSerializer();
+        const snapshot = serializer.createSnapshot(main, "durability-seed");
+        assert(isValidMsPacManGameStateSnapshot(snapshot) && isValidSnapshotForLoadedResources(main, snapshot), "Valid loaded initials seed");
+        Reflect.set(window, "scoreDurabilitySeed", JSON.stringify(snapshot));
+        main.invalidateBrowserLifetime();
+        main.stopAllSounds();
+        container.destroy();
+        Display.setParent(null);
+        return;
+    }
     if (new URLSearchParams(location.search).get("suite") === "counter-parity") {
         await verifyCounterParity(mountMain);
         return;

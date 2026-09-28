@@ -72,6 +72,9 @@ for (const route of ["prepared", "reset", "rejected-continue"]) {
                 destroys = 0;
             const owner = { epoch: 1, isCurrent: (epoch) => epoch === owner.epoch };
             const env = {
+                highScoreSync: null,
+                retireHighScoreSync() {},
+                startHighScoreSync() {},
                 ownership: owner,
                 getOwnership: () => owner,
                 menuRequestSerial: 0,
@@ -163,6 +166,9 @@ if (!stick)
     test("missing required controls fail inside the actual menu binding path", () => {
         const menu = { querySelector: () => null, style: {}, dataset: {} };
         const env = {
+            highScoreSync: null,
+            retireHighScoreSync() {},
+            startHighScoreSync() {},
             document: { createElement: () => menu },
             guardMenuEvents() {},
             viewport: { getFullscreenCapability: () => "unavailable" },
@@ -201,6 +207,9 @@ function livePresentationFixture(failure = "none", reused = false) {
         return null;
     };
     const env = {
+        highScoreSync: null,
+        retireHighScoreSync() {},
+        startHighScoreSync() {},
         sessionCleanup: new SessionCleanup(),
         ownership: owner,
         getOwnership: () => owner,

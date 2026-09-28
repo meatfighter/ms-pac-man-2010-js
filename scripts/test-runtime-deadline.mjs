@@ -288,6 +288,9 @@ for (const stale of [false, true]) {
             renders = 0;
         const owner = { epoch: 1, isCurrent: (epoch) => epoch === owner.epoch };
         const env = {
+            highScoreSync: null,
+            retireHighScoreSync() {},
+            startHighScoreSync() {},
             runtimeLoader: f.loader,
             menuRequestSerial: 0,
             pwaSessionState: "menu",
@@ -407,6 +410,9 @@ for (let wait = 1; wait <= (stickvania ? 2 : 3); wait++) {
                 }
             };
             const env = {
+                highScoreSync: null,
+                retireHighScoreSync() {},
+                startHighScoreSync() {},
                 game: null,
                 container: null,
                 activeBufferedGame: null,

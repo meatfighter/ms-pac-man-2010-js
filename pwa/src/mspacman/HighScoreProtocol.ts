@@ -106,3 +106,6 @@ function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): 
     const actual = Object.keys(value);
     return actual.length === keys.length && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
 }
+
+export const SCORE_DURABILITY_HEADER = "MsPacMan-Score-Durable";
+export const SCORE_DURABILITY_VALUE = "1";

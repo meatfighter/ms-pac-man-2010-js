@@ -3,6 +3,7 @@ const DEFAULT_LOCATION_HREF = "https://localhost/";
 
 export interface BrowserStorageKeys {
     readonly deploymentId: string;
+    readonly highScoreOutbox: string;
     readonly gameState: string;
     readonly scaling: string;
     readonly fullscreen: string;
@@ -13,6 +14,7 @@ export function createBrowserStorageKeys(locationHref = getCurrentLocationHref()
     const deploymentId = createDeploymentStorageId(locationHref);
     return {
         deploymentId,
+        highScoreOutbox: createStorageKey(deploymentId, "high-score-outbox"),
         gameState: createStorageKey(deploymentId, "game-state"),
         scaling: createStorageKey(deploymentId, "scaling"),
         fullscreen: createStorageKey(deploymentId, "fullscreen"),
