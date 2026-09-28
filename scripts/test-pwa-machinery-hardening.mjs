@@ -116,7 +116,7 @@ test("high-score network callbacks are fenced by browser lifetime and per-operat
     assert.match(submit, /const lifetime = this\.captureBrowserLifetimeGeneration\(\)/);
     assert.match(submit, /beginScoreOperation\(this, "upload", lifetime\)/);
     assert.match(submit, /operation\.isCurrent\(\)/);
-    assert.match(submit, /this\.runScoreSubmission\(submittedScore, revision, operation\)/);
+    assert.match(submit, /this\.runScoreSubmission\(client, revision, operation\)/);
 
     const downloadRunner = gameMainSource.slice(
         gameMainSource.indexOf("private async runScoreDownload"),

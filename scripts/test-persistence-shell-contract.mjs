@@ -328,3 +328,55 @@ test("rejected durable launch reaches owned root recovery without saving or repl
     assert.equal((jackal ? methods : env).activeMenu, null);
     assert.equal(env.sessionCleanup.safe, true);
 });
+
+test("score application captures one epoch and publishes only to the accepted current Main", () => {
+    const clients = [],
+        boxes = [],
+        published = [];
+    const env = {
+        highScoreSync: null,
+        ownership: {
+            epoch: 1,
+            isCurrent(epoch) {
+                return this.epoch === epoch;
+            }
+        },
+        sessionCleanup: { safe: true },
+        game: { acceptHighScoreTable: (table) => published.push(table) },
+        persistence: { canSave: () => true },
+        activeSessionGeneration: 1,
+        isCurrentGameSession: () => true,
+        createBrowserStorageKeys: () => ({ highScoreOutbox: "out" }),
+        HighScoreService: { getEndpointId: () => "endpoint" },
+        HighScoreOutbox: class {
+            constructor(_key, _endpoint, authorized) {
+                this.authorized = authorized;
+                boxes.push(this);
+            }
+        },
+        HighScoreSync: class {
+            constructor(_box, authorized, publish) {
+                this.authorized = authorized;
+                this.publish = publish;
+                clients.push(this);
+            }
+            start() {}
+            dispose() {}
+        }
+    };
+    const subject = shellSubject(path, ["retireHighScoreSync", "startHighScoreSync"], env);
+    subject.startHighScoreSync();
+    clients[0].publish([]);
+    assert.equal(published.length, 1);
+    env.ownership.epoch = 2;
+    subject.startHighScoreSync();
+    assert.equal(boxes[0].authorized(), false);
+    assert.equal(clients[0].authorized(), false);
+    clients[0].publish(["stale"]);
+    assert.equal(published.length, 1);
+    clients[1].publish(["current"]);
+    assert.deepEqual(published[1], ["current"]);
+    env.persistence.canSave = () => false;
+    clients[1].publish(["unaccepted"]);
+    assert.equal(published.length, 2);
+});

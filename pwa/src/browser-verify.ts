@@ -102,6 +102,12 @@ async function verify(): Promise<void> {
         const snapshot = serializer.createSnapshot(main, "durability-seed");
         assert(isValidMsPacManGameStateSnapshot(snapshot) && isValidSnapshotForLoadedResources(main, snapshot), "Valid loaded initials seed");
         Reflect.set(window, "scoreDurabilitySeed", JSON.stringify(snapshot));
+        main.setMode(Main.hallOfFameMode, container);
+        Reflect.set(Main.hallOfFameMode, "fadeState", 0);
+        Reflect.set(Main.hallOfFameMode, "fadeIndex", 0);
+        const hallSnapshot = serializer.createSnapshot(main, "durability-hall-seed");
+        assert(isValidMsPacManGameStateSnapshot(hallSnapshot) && isValidSnapshotForLoadedResources(main, hallSnapshot), "Valid loaded Hall of Fame seed");
+        Reflect.set(window, "scoreHallSeed", JSON.stringify(hallSnapshot));
         main.invalidateBrowserLifetime();
         main.stopAllSounds();
         container.destroy();
