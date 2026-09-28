@@ -17,7 +17,8 @@ const original = {
     now: Date.now,
     warn: console.warn
 };
-let now = 1_000_000,
+let now = 1_800_000_000_000,
+    monotonic = 0,
     id = 0,
     timers = new Map(),
     records = new Map(),
@@ -63,15 +64,16 @@ try {
     globalThis.setTimeout = (fn, ms) => {
         assert.ok(Number.isFinite(ms) && ms >= 0 && ms <= 3_600_000);
         const n = ++id;
-        timers.set(n, { fn, at: now + ms });
+        timers.set(n, { fn, at: monotonic + ms });
         return n;
     };
     globalThis.clearTimeout = (n) => timers.delete(n);
     console.warn = () => {};
     const advance = async (ms) => {
         now += ms;
+        monotonic += ms;
         for (let i = 0; i < 100; i++) {
-            const due = [...timers].filter(([, t]) => t.at <= now);
+            const due = [...timers].filter(([, t]) => t.at <= monotonic);
             if (!due.length) return;
             for (const [n, t] of due) {
                 timers.delete(n);
@@ -81,9 +83,20 @@ try {
         }
         throw new Error("timer busy loop");
     };
-    const box = () => new HighScoreOutbox(key, endpoint, () => authorized);
+    const box = () =>
+        new HighScoreOutbox(
+            key,
+            endpoint,
+            () => authorized,
+            () => monotonic
+        );
     const sync = (out, publish = () => {}) => {
-        const c = new HighScoreSync(out, () => authorized, publish);
+        const c = new HighScoreSync(
+            out,
+            () => authorized,
+            publish,
+            () => monotonic
+        );
         clients.push(c);
         return c;
     };
@@ -105,6 +118,180 @@ try {
         await fn();
         console.log("ok - " + name);
     };
+    await run("future timing is repaired once without dropping the pending score", async () => {
+        records.set(
+            key,
+            JSON.stringify({
+                version: 1,
+                endpoint,
+                pending: [a],
+                notBefore: Number.MAX_SAFE_INTEGER,
+                failures: 2
+            })
+        );
+        const out = box();
+        let posts = 0;
+        HighScoreService.submitScore = async () => {
+            posts++;
+            return [];
+        };
+        const c = sync(out);
+        c.start();
+        await flush();
+        assert.equal(posts, 0);
+        assert.equal(writes, 1);
+        const repaired = JSON.parse(records.get(key));
+        assert.deepEqual(repaired.pending, [a]);
+        assert.equal(repaired.failures, 2);
+        assert.equal(repaired.notBefore, now + 3_600_000);
+        for (let i = 0; i < 50; i++) c.wake();
+        await flush();
+        assert.equal(writes, 1);
+        await advance(3_599_999);
+        assert.equal(posts, 0);
+        await advance(1);
+        assert.equal(posts, 1);
+        await flush();
+        assert.equal(out.first(), null);
+    });
+    await run("multi-day deadlines are repaired once and reload preserves elapsed progress", async () => {
+        records.set(key, JSON.stringify({ version: 1, endpoint, pending: [a, b], notBefore: now + 5 * 86400000, failures: 4 }));
+        let posts = 0;
+        HighScoreService.submitScore = async () => {
+            posts++;
+            return [];
+        };
+        let out = box(),
+            c = sync(out);
+        c.start();
+        await flush();
+        assert.equal(writes, 1);
+        assert.equal(out.failureCount, 4);
+        await advance(30000);
+        c.dispose();
+        out = box();
+        c = sync(out);
+        c.start();
+        await flush();
+        assert.equal(writes, 1);
+        assert.equal(out.delay(now), 3570000);
+        await advance(3569999);
+        assert.equal(posts, 0);
+        await advance(1);
+        assert.equal(posts, 1);
+        assert.deepEqual(out.first(), b);
+        await advance(7000);
+        assert.equal(posts, 2);
+        assert.equal(out.first(), null);
+    });
+    for (const jump of [-86400000, 86400000])
+        await run("reservation survives wall jump " + jump, async () => {
+            const out = box();
+            assert.equal(out.enqueue(a), true);
+            assert.equal(out.reserveAttempt(now), true);
+            let posts = 0;
+            HighScoreService.submitScore = async () => {
+                posts++;
+                return [];
+            };
+            const c = sync(out);
+            c.start();
+            await advance(1000);
+            const before = writes;
+            now += jump;
+            c.wake();
+            await flush();
+            assert.equal(writes, before + 1);
+            assert.equal(posts, 0);
+            assert.equal(JSON.parse(records.get(key)).notBefore, now + 124000);
+            for (let i = 0; i < 100; i++) c.wake();
+            await flush();
+            assert.equal(writes, before + 1);
+            await advance(123999);
+            assert.equal(posts, 0);
+            await advance(1);
+            assert.equal(posts, 1);
+            assert.equal(out.first(), null);
+        });
+    await run("failed timing repair preserves bytes and event storms cannot slide local retry", async () => {
+        records.set(key, JSON.stringify({ version: 1, endpoint, pending: [a], notBefore: Number.MAX_SAFE_INTEGER, failures: 3 }));
+        const bytes = records.get(key),
+            out = box();
+        let repairs = 0,
+            posts = 0;
+        const prepare = out.prepareForDelivery.bind(out);
+        out.prepareForDelivery = (at) => {
+            repairs++;
+            return prepare(at);
+        };
+        HighScoreService.submitScore = async () => {
+            posts++;
+            return [];
+        };
+        failWrite = true;
+        const c = sync(out);
+        c.start();
+        await flush();
+        assert.equal(repairs, 1);
+        assert.equal(records.get(key), bytes);
+        now -= 86400000;
+        for (let i = 0; i < 100; i++) c.wake();
+        await flush();
+        assert.equal(repairs, 1);
+        assert.equal(posts, 0);
+        await advance(119999);
+        assert.equal(repairs, 1);
+        failWrite = false;
+        await advance(1);
+        assert.equal(repairs, 2);
+        assert.equal(JSON.parse(records.get(key)).failures, 3);
+        assert.deepEqual(out.first(), a);
+        assert.equal(out.delay(now), 3480000);
+        await advance(3479999);
+        assert.equal(posts, 0);
+        await advance(1);
+        assert.equal(posts, 1);
+    });
+    await run("GET cooldown survives rollback without event-driven extension", async () => {
+        let gets = 0;
+        HighScoreService.downloadScores = async () => {
+            gets++;
+            return null;
+        };
+        const c = sync(box());
+        c.start();
+        await flush();
+        assert.equal(gets, 1);
+        now -= 86400000;
+        for (let i = 0; i < 100; i++) c.wake();
+        await flush();
+        await advance(29999);
+        assert.equal(gets, 1);
+        await advance(1);
+        assert.equal(gets, 2);
+    });
+    await run("timing inspection is non-writing and last-boundary authority fences repair", async () => {
+        records.set(key, JSON.stringify({ version: 1, endpoint, pending: [a], notBefore: Number.MAX_SAFE_INTEGER, failures: 2 }));
+        const bytes = records.get(key),
+            out = box();
+        for (let i = 0; i < 20; i++) {
+            out.first();
+            out.delay(now);
+            assert.equal(out.needsDeadlineRepair(now), true);
+        }
+        assert.equal(writes, 0);
+        assert.equal(records.get(key), bytes);
+        authorized = false;
+        assert.equal(out.prepareForDelivery(now), false);
+        assert.equal(writes, 0);
+        authorized = true;
+        assert.equal(out.prepareForDelivery(now), true);
+        assert.equal(writes, 1);
+        const repaired = records.get(key);
+        authorized = false;
+        assert.equal(out.reserveAttempt(now), false);
+        assert.equal(records.get(key), repaired);
+    });
     await run("enqueue persists before POST, preserves B during A acknowledgement, deduplicates exact tuples", async () => {
         const out = box(),
             pending = deferred();

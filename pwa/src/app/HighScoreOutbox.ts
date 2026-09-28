@@ -1,11 +1,13 @@
 import { readCurrentJson, writeCurrentSnapshot } from "./BrowserPersistence.js";
 import { isValidSubmittedScoreTuple, type RemoteHighScore } from "../mspacman/HighScoreProtocol.js";
+import { RetryDeadline, MAX_RETRY_DELAY_MS } from "./RetryDeadline.js";
 
+export { MAX_RETRY_DELAY_MS } from "./RetryDeadline.js";
 export const MAX_PENDING_SCORES = 128;
 export const MAX_OUTBOX_TEXT_LENGTH = 32_768;
 export const MIN_POST_INTERVAL_MS = 7_000;
 export const UNACKNOWLEDGED_ATTEMPT_DELAY_MS = 125_000;
-export const MAX_RETRY_DELAY_MS = 3_600_000;
+const CLOCK_DRIFT_TOLERANCE_MS = 1_000;
 
 interface OutboxDocument {
     version: 1;
@@ -40,12 +42,15 @@ function validDocument(value: unknown, endpoint: string): value is OutboxDocumen
 /** One in-memory view per held deployment lock. Never share it across ownership epochs. */
 export class HighScoreOutbox {
     private state: OutboxDocument;
+    private readonly retryDeadline: RetryDeadline;
 
     public constructor(
         private readonly key: string,
         private readonly endpoint: string,
-        private readonly authorized: () => boolean
+        private readonly authorized: () => boolean,
+        monotonicNow: () => number = () => performance.now()
     ) {
+        this.retryDeadline = new RetryDeadline(monotonicNow);
         this.state = readCurrentJson(key, MAX_OUTBOX_TEXT_LENGTH, (v): v is OutboxDocument => validDocument(v, endpoint)) ?? {
             version: 1,
             endpoint,
@@ -74,30 +79,61 @@ export class HighScoreOutbox {
         return this.state.failures;
     }
 
+    /** A pure storage read: repeated queries never re-arm or extend this deadline. */
     public delay(now: number): number {
-        return Math.min(MAX_RETRY_DELAY_MS, Math.max(0, this.state.notBefore - now));
+        if (!this.retryDeadline.armed) this.retryDeadline.arm(this.state.notBefore - now);
+        return this.retryDeadline.remaining();
+    }
+
+    /** Pure timing inspection; no storage mutation and no deadline extension. */
+    public needsDeadlineRepair(now: number): boolean {
+        const remaining = Math.ceil(this.delay(now));
+        const storedRemaining = Math.max(0, this.state.notBefore - now);
+        return storedRemaining > MAX_RETRY_DELAY_MS || Math.abs(storedRemaining - remaining) > CLOCK_DRIFT_TOLERANCE_MS;
+    }
+
+    /** An explicit authorized pump write, never called by game-state restore/preflight. */
+    public prepareForDelivery(now: number): boolean {
+        if (!this.authorized()) return false;
+        if (!this.needsDeadlineRepair(now)) return true;
+        // Repair only timing. Preserve tuple order, endpoint, version and failure count.
+        // In particular, do not re-arm the monotonic deadline after this write.
+        return this.commit({ ...this.state, notBefore: now + Math.ceil(this.delay(now)) });
     }
 
     /** Write ahead of every attempt, including repeats, to survive fast reload/takeover loops. */
     public reserveAttempt(now: number): boolean {
-        return this.commit({ ...this.state, notBefore: now + UNACKNOWLEDGED_ATTEMPT_DELAY_MS });
+        if (!this.commit({ ...this.state, notBefore: now + UNACKNOWLEDGED_ATTEMPT_DELAY_MS })) return false;
+        this.retryDeadline.arm(UNACKNOWLEDGED_ATTEMPT_DELAY_MS);
+        return true;
     }
 
     public acknowledge(candidate: RemoteHighScore, now: number): boolean {
-        return this.commit({
-            ...this.state,
-            pending: this.state.pending.filter((entry) => !sameScore(entry, candidate)),
-            failures: 0,
-            notBefore: now + MIN_POST_INTERVAL_MS
-        });
+        if (
+            !this.commit({
+                ...this.state,
+                pending: this.state.pending.filter((entry) => !sameScore(entry, candidate)),
+                failures: 0,
+                notBefore: now + MIN_POST_INTERVAL_MS
+            })
+        )
+            return false;
+        this.retryDeadline.arm(MIN_POST_INTERVAL_MS);
+        return true;
     }
 
     public defer(now: number, delay: number): boolean {
-        return this.commit({
-            ...this.state,
-            failures: Math.min(16, this.state.failures + 1),
-            notBefore: now + Math.min(MAX_RETRY_DELAY_MS, Math.max(MIN_POST_INTERVAL_MS, delay))
-        });
+        const boundedDelay = Math.min(MAX_RETRY_DELAY_MS, Math.max(MIN_POST_INTERVAL_MS, delay));
+        if (
+            !this.commit({
+                ...this.state,
+                failures: Math.min(16, this.state.failures + 1),
+                notBefore: now + boundedDelay
+            })
+        )
+            return false;
+        this.retryDeadline.arm(boundedDelay);
+        return true;
     }
 
     private commit(next: OutboxDocument): boolean {

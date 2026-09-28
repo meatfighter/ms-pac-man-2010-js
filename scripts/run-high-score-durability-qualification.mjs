@@ -194,9 +194,9 @@ try {
                 await guardRequests(c);
                 return c;
             }
-            async function open(c, path = mounts[0], seed = null) {
+            async function open(c, path = mounts[0], seed = null, wallTime = Date.now()) {
                 const p = await c.newPage();
-                await p.clock.install({ time: Date.now() });
+                await p.clock.install({ time: wallTime });
                 if (seed)
                     await p.addInitScript(
                         ({ key, bytes }) => {
@@ -279,6 +279,66 @@ try {
                     mode = "normal";
                     held?.res.destroy();
                     held = null;
+                    await c.close();
+                }
+            }
+            // A real submitted tuple survives anomalous persisted timing, independent wall jumps,
+            // and whole-document replacement, then receives a real local-server durable acknowledgement.
+            {
+                console.log(name + ": monotonic deadline and new-document clock recovery");
+                const c = await context();
+                try {
+                    mode = "refuse";
+                    const submitted = seed();
+                    let p = await open(c, mounts[0], submitted);
+                    await submit(p);
+                    await until(async () => (await queue(p))?.failures > 0, "initial retained queue");
+                    const original = await queue(p);
+                    await p.close();
+                    p = await c.newPage();
+                    await p.goto(origin + "/__durability-setup");
+                    await p.evaluate(
+                        (k) => {
+                            const q = JSON.parse(localStorage.getItem(k));
+                            q.notBefore = Number.MAX_SAFE_INTEGER;
+                            localStorage.setItem(k, JSON.stringify(q));
+                        },
+                        slot(mounts[0], "high-score-outbox")
+                    );
+                    await p.close();
+                    mode = "normal";
+                    const priorPosts = posts;
+                    p = await open(c);
+                    await until(async () => (await queue(p))?.notBefore < Number.MAX_SAFE_INTEGER, "authorized timing repair");
+                    let q = await queue(p);
+                    assert.deepEqual(q.pending, original.pending);
+                    assert.equal(q.failures, original.failures);
+                    const initialWall = await p.evaluate(() => Date.now());
+                    assert.ok(q.notBefore - initialWall <= 3600000 && q.notBefore > initialWall);
+                    await p.clock.setSystemTime(initialWall - 86400000);
+                    await p.evaluate(() => window.dispatchEvent(new Event("online")));
+                    await until(async () => (await queue(p)).notBefore < initialWall, "rollback realignment");
+                    q = await queue(p);
+                    assert.deepEqual(q.pending, original.pending);
+                    assert.equal(posts, priorPosts);
+                    await p.clock.fastForward(30000);
+                    const reloadWall = await p.evaluate(() => Date.now());
+                    const remainingBefore = q.notBefore - reloadWall;
+                    await p.close();
+                    p = await open(c, mounts[0], null, reloadWall);
+                    const afterReload = await queue(p);
+                    assert.equal(afterReload.notBefore, q.notBefore, "reload does not restart an hour");
+                    assert.deepEqual(afterReload.pending, original.pending);
+                    assert.equal(posts, priorPosts);
+                    await p.clock.fastForward(Math.max(1, remainingBefore - 1000));
+                    assert.equal(posts, priorPosts, "no early POST after elapsed recovery");
+                    await p.clock.fastForward(2000);
+                    await until(async () => (await queue(p)).pending.length === 0, "real durable acknowledgement after deadline");
+                    assert.equal(posts, priorPosts + 1);
+                    assert.equal((await disk()).filter((t) => t.score === submitted.mainFields.score).length, 1);
+                    evidence.cases.push(name + ":clock-recovery-new-document-durable-ack");
+                } finally {
+                    mode = "normal";
                     await c.close();
                 }
             }
