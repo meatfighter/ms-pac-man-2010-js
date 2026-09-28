@@ -181,14 +181,17 @@ try {
             const hallTemplate = JSON.parse(await seedPage.evaluate(() => window.scoreHallSeed));
             assert.equal(template.version, 11);
             await seedPage.close();
-            async function context() {
-                const c = await browser.newContext();
-                c.setDefaultTimeout(30000);
+            async function guardRequests(c) {
                 await c.route("**/*", (route) => {
                     const host = new URL(route.request().url()).hostname;
                     if (host !== "127.0.0.1" && host !== "localhost") throw new Error("Non-loopback request forbidden: " + host);
                     return route.continue();
                 });
+            }
+            async function context() {
+                const c = await browser.newContext();
+                c.setDefaultTimeout(30000);
+                await guardRequests(c);
                 return c;
             }
             async function open(c, path = mounts[0], seed = null) {
@@ -378,27 +381,30 @@ try {
                     await menu(p);
                     await p.waitForFunction(() => navigator.serviceWorker.controller !== null);
                     await p.waitForFunction(() => window.__gameResourcesPrepared === true);
+                    // Firefox interception bypasses offline service-worker navigation. Remove it
+                    // only while the entire context is offline; reinstate before networking returns.
                     await c.setOffline(true);
+                    await c.unroute("**/*");
                     await p.locator("#continueButton").click();
                     await p.locator("#continueButton").waitFor({ state: "hidden" });
                     await p.locator("canvas").waitFor();
                     await menu(p);
                     assert.equal((await queue(p)).pending.length, 1);
-                    await p.close();
-                    p = await open(c);
+                    await p.reload();
+                    await p.locator("#newGameButton").waitFor();
                     assert.equal(await p.locator("#continueButton").isDisabled(), false);
                     await p.locator("#continueButton").click();
                     await p.locator("#continueButton").waitFor({ state: "hidden" });
                     await p.locator("canvas").waitFor();
                     assert.equal((await queue(p)).pending.length, 1);
                     mode = "normal";
+                    await guardRequests(c);
                     await c.setOffline(false);
                     await drain(p);
                     assert.equal((await disk()).filter((t) => t.score === s.mainFields.score).length, 1);
                     evidence.cases.push(name + ":offline-retained-and-reload-continue-online-recovery");
                 } finally {
                     mode = "normal";
-                    await c.setOffline(false);
                     await c.close();
                 }
             }
