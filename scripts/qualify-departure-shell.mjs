@@ -190,7 +190,8 @@ export async function qualifyDepartureShell(game) {
                                     expected,
                                     actual: JSON.parse(current),
                                     old: JSON.parse(old),
-                                    cleanupSafe: a.cleanup.safe
+                                    cleanupSafe: a.cleanup.safe,
+                                    failures: a.cleanup.failure?.errors?.map((e) => ({ message: e.message, stack: e.stack }))
                                 };
                             },
                             { fault, key }
@@ -210,10 +211,15 @@ export async function qualifyDepartureShell(game) {
                         }
                         for (const boundary of ["freeze", "game", "input", "audio", "wake", ...(game === "stickvania" ? ["rumble"] : [])])
                             assert(record.events.includes(boundary), `${fault}: still attempts ${boundary}`);
+                        const guardedInputReentry = game === "stickvania" && fault === "input-callback";
+                        if (guardedInputReentry) {
+                            assert.equal(record.failures?.length, 1, "Only the existing controller baseline guard may fail");
+                            assert.match(record.failures[0].message, /controller baseline sampling is not reentrant with poll/);
+                        }
                         assert.equal(
                             record.safe,
-                            !["freeze", "game", "input", "audio", "wake", "rumble", "internal-rumble", "unsafe"].includes(fault),
-                            `${fault}: storage and reentry do not become resource failures`
+                            !guardedInputReentry && !["freeze", "game", "input", "audio", "wake", "rumble", "internal-rumble", "unsafe"].includes(fault),
+                            `${fault}: preserve actual cleanup safety ${JSON.stringify(record.failures)}`
                         );
                         assert.equal(record.schema, record.oldSchema);
                         results.push({ browser: name, ...record });
