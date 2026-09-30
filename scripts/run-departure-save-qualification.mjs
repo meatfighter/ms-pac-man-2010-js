@@ -1,5 +1,6 @@
 /* global window, document */
 import assert from "node:assert/strict";
+import { departureWorld } from "./departure-world.mjs";
 import { qualifyDepartureAudio } from "./qualify-departure-audio.mjs";
 import { loadDepartureSeeds } from "./departure-seeds.mjs";
 import { qualifyDepartureShell } from "./qualify-departure-shell.mjs";
@@ -55,7 +56,7 @@ const continueButton = "#continue-button, #continueButton";
 // requires changed gameplay/presentation state, never a timestamp-only rewrite.
 function material(bytes) {
     const snapshot = JSON.parse(bytes);
-    return JSON.stringify(snapshot, (name, value) => (/^(savedAt|appVersion|buildStamp|nextFrameTime|audio|audioState)$/.test(name) ? undefined : value));
+    return departureWorld(snapshot);
 }
 const read = (page) => page.evaluate((key) => localStorage.getItem(key), key);
 async function menu(page) {

@@ -1,5 +1,6 @@
 /* global window, document, KeyboardEvent */
 import assert from "node:assert/strict";
+import { departureWorld } from "./departure-world.mjs";
 import { createServer } from "vite";
 import { chromium, firefox } from "playwright";
 import { resolve, join } from "node:path";
@@ -200,10 +201,7 @@ export async function qualifyDepartureShell(game) {
                         assert.equal(record.writes, denied ? 0 : 1, `${name}/${fault}: exactly one eligible actual-store write`);
                         if (denied) assert(record.oldUnchanged, `${fault}: keep prior valid bytes`);
                         else {
-                            const material = (snapshot) =>
-                                JSON.stringify(snapshot, (key, value) =>
-                                    /^(savedAt|appVersion|nextFrameTime|audio|audioState|currentSongState)$/.test(key) ? undefined : value
-                                );
+                            const material = departureWorld;
                             assert.equal(material(record.actual), material(record.expected), `${fault}: save contains the actual frozen world`);
                             assert.notEqual(material(record.actual), material(record.old), `${fault}: save advances the older world, not just savedAt`);
                             for (const boundary of ["game", "input", "audio", "wake", ...(game === "stickvania" ? ["rumble"] : [])])
