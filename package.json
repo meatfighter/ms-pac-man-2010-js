@@ -1,6 +1,6 @@
 {
     "name": "ms-pac-man-2010-js",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "private": true,
     "license": "SEE LICENSE IN COPYRIGHT.md",
     "type": "module",
@@ -30,7 +30,7 @@
         "build:web:release": "node scripts/build-release.mjs --target=web --key-source=active",
         "build": "node scripts/build-release.mjs --target=full --key-source=active",
         "release": "npm run verify:dependencies && npm run build",
-        "qualify": "node scripts/assert-clean-git.mjs && npm run format:check && npm run lint && npm test && npm run release && npm run verify:release && npm run verify:browser && npm run verify:offline && npm run verify:high-score-durability && node scripts/assert-clean-git.mjs",
+        "qualify": "node scripts/assert-clean-git.mjs && npm run format:check && npm run lint && npm test && npm run release && npm run verify:release && npm run verify:browser && npm run verify:offline && npm run verify:high-score-durability && npm run verify:departure-save && node scripts/assert-clean-git.mjs",
         "qualify:browsers": "node scripts/run-browser-qualification-suite.mjs",
         "release:provision": "node scripts/release-provision.mjs",
         "release:rotate-hmac": "node scripts/release-rotate-hmac.mjs",
@@ -104,11 +104,13 @@
         "verify:persistence-failure": "node scripts/run-persistence-failure-qualification.mjs",
         "verify:lifecycle-stress": "node scripts/run-lifecycle-stress-qualification.mjs",
         "release:archive": "node scripts/archive-release.mjs",
-        "test:persistence-contract": "node --test scripts/test-persistence-contract.mjs scripts/test-persistence-shell-contract.mjs scripts/test-persistence-settings-contract.mjs scripts/test-game-state-write-contract.mjs",
+        "test:persistence-contract": "node --test scripts/test-persistence-contract.mjs scripts/test-persistence-shell-contract.mjs scripts/test-persistence-settings-contract.mjs scripts/test-game-state-write-contract.mjs && npm run test:durable-suspension",
         "test:enter-initials-edges": "node scripts/test-enter-initials-edges.mjs",
         "test:counter-parity": "node --test scripts/test-counter-presentation-parity.mjs scripts/test-counter-validation-mutations.mjs scripts/test-snapshot-value-policy.mjs scripts/test-active-timer-state.mjs",
         "test:high-score-sync": "node scripts/test-high-score-sync.mjs",
-        "verify:high-score-durability": "node scripts/run-high-score-durability-qualification.mjs"
+        "verify:high-score-durability": "node scripts/run-high-score-durability-qualification.mjs",
+        "test:durable-suspension": "node --test scripts/test-durable-suspension.mjs",
+        "verify:departure-save": "node scripts/run-departure-save-qualification.mjs"
     },
     "dependencies": {
         "slick2d-ts": "https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/9ddb56642258ca1672098d7b0cedd51e5c14f194"

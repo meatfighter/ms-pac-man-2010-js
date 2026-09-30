@@ -29,6 +29,7 @@ export async function verifyCounterParity(mount: Mount): Promise<void> {
     };
     current().container.setLoopSuspended(true);
     const cases: string[] = [];
+    const departureCheckpoints: Array<{ label: string; bytes: string }> = [];
     const times: number[] = [];
     const mode = () => current().main.getModeForStateRestore(current().main.getCurrentModeIdForState());
     const tick = (count = 1): void => {
@@ -62,6 +63,9 @@ export async function verifyCounterParity(mount: Mount): Promise<void> {
         );
         times.push(performance.now() - started);
         assert(store.save(current().main, () => true).saved && store.hasValidSave(), `${label}: store save`);
+        if (["active:ghostsBlue:1", "ghost:death-retains-points", "ghost:finished-retains-points", "initials:100000:-32"].includes(label)) {
+            departureCheckpoints.push({ label, bytes: localStorage.getItem(key)! });
+        }
         render();
         cases.push(label);
     };
@@ -496,7 +500,7 @@ export async function verifyCounterParity(mount: Mount): Promise<void> {
             required.push(`active:${color}:636`, `active:${color}:expired637`, `reject:active:${color}:dormant-spawn910`, `reject:active:${color}:637`);
         for (const index of [1, 2, 3]) required.push(`active:exit:${index}:before`, `active:exit:${index}:after`, `reject:active:exit:${index}:at-target`);
         for (const label of required) assert(cases.includes(label), `Missing timer case ${label}`);
-        Reflect.set(window, "counterParityEvidence", { cases, required, validationMilliseconds: times, schema: capture().version });
+        Reflect.set(window, "counterParityEvidence", { cases, required, validationMilliseconds: times, schema: capture().version, departureCheckpoints });
     } finally {
         destroy();
         store.clear(() => true);

@@ -71,3 +71,19 @@ test("unrelated browser qualifiers explicitly disable the default-on Fullscreen 
         assert.ok(calls.length >= 1, `${path} imports the helper but never calls it before exercising its original non-fullscreen contract`);
     }
 });
+
+test("departure qualification is executable and required by both built-PWA gates", () => {
+    assert.equal(packageJson.scripts["verify:departure-save"], "node scripts/run-departure-save-qualification.mjs");
+    assert.match(packageJson.scripts.qualify, /npm run verify:departure-save && node scripts\/assert-clean-git\.mjs$/);
+    assert.match(readFileSync("scripts/run-browser-qualification-suite.mjs", "utf8"), /"verify:departure-save"/);
+    for (const name of [
+        "run-departure-save-qualification",
+        "qualify-departure-shell",
+        "qualify-departure-audio",
+        "departure-shell-plugin",
+        "departure-seeds"
+    ]) {
+        const result = spawnSync(process.execPath, ["--check", `scripts/${name}.mjs`], { encoding: "utf8" });
+        assert.equal(result.status, 0, result.stderr || result.stdout);
+    }
+});

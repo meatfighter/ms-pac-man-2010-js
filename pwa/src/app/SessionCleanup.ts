@@ -1,6 +1,14 @@
 /** Page-lifetime safety latch. A later no-op cannot erase a failed exit. */
 export class SessionCleanup {
     private error: Error | null = null;
+    private suspensionDepth = 0;
+    private suspensionRevision = 0;
+    private saveRevision: number | null = null;
+    /** A nested departure can retire a pending capture without making cleanup unsafe. */
+
+    public get saveAllowed(): boolean {
+        return this.suspensionDepth === 0 || (this.suspensionDepth === 1 && this.saveRevision === this.suspensionRevision);
+    }
 
     public get safe(): boolean {
         return this.error === null;
@@ -10,7 +18,6 @@ export class SessionCleanup {
         return this.error;
     }
 
-    /** Execute every essential step, even if an earlier step or prior exit failed. */
     public run(...steps: Array<() => void>): boolean {
         const failures: unknown[] = [];
         for (const step of steps) {
@@ -26,20 +33,42 @@ export class SessionCleanup {
         return this.safe;
     }
 
-    /** Storage failure is not permission to skip resource retirement or lose a live game. */
     public trySave(save: () => boolean): boolean {
         try {
             return save();
         } catch (error) {
-            console.warn("Unable to save game state during session transition.", error);
+            try {
+                console.warn("Unable to save game state during session transition.", error);
+            } catch {
+                /* Diagnostic sinks cannot interrupt resource retirement. */
+            }
             return false;
         }
     }
+    /** Freeze first, save once, then attempt every resource cleanup step. */
 
-    /** Relinquish callbacks must call this before the native writer lock is released. */
-    public assertSafe(): void {
-        if (this.error !== null) {
-            throw this.error;
+    public freezeSaveAndRun(freeze: () => void, save: (() => boolean) | null, ...steps: Array<() => void>): boolean {
+        const revision = ++this.suspensionRevision;
+        const outermost = this.suspensionDepth++ === 0;
+        try {
+            const frozenSafely = this.run(freeze);
+            if (outermost && frozenSafely && revision === this.suspensionRevision && save !== null) {
+                this.saveRevision = revision;
+                this.trySave(save);
+            }
+        } finally {
+            if (outermost) this.saveRevision = null;
+            try {
+                this.run(...steps);
+            } finally {
+                this.suspensionDepth--;
+            }
         }
+        // This result describes resource safety, NOT whether storage succeeded.
+        return this.safe;
+    }
+
+    public assertSafe(): void {
+        if (this.error !== null) throw this.error;
     }
 }

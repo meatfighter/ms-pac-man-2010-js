@@ -51,7 +51,10 @@ test("browser lifecycle only enters the PWA menu and never auto-resumes", () => 
     assert.match(mainSource, /document\.visibilityState === "hidden"/);
     assert.doesNotMatch(mainSource, /window\.addEventListener\("focus"/);
     assert.doesNotMatch(mainSource, /window\.addEventListener\("pageshow"/);
-    assert.match(mainSource, /function requestPwaMenu[\s\S]*?pwaSessionState = "stopping";[\s\S]*?suspendGameForMenu\(\)/);
+    assert.match(
+        mainSource,
+        /function requestPwaMenu[\s\S]*?pwaSessionState = "stopping";[\s\S]*?suspendGameForMenu\(retainExistingOverlay \? null : reason\)/
+    );
     assert.match(mainSource, /function suspendGameForMenu[\s\S]*?releaseGameAudio\(\)/);
 });
 
@@ -61,12 +64,12 @@ test("graphics lifecycle is exit-only and restoration never resumes gameplay", (
     assert.doesNotMatch(mount, /state === "restored"[\s\S]*?(?:setLoopSuspended\(false\)|setBrowserSuspended\(false\)|beginGameAudio\(|commitGameAudio\()/);
 });
 
-test("live-menu transition freezes and retires playback before serializing progress", () => {
+test("live-menu transition freezes and saves before playback retirement", () => {
     const liveMenu = mainSource.slice(mainSource.indexOf("function showLiveMenuOverlay"), mainSource.indexOf("async function resumeLiveGameFromMenu"));
-    const suspendIndex = liveMenu.indexOf("suspendGameForMenu()");
-    const saveIndex = liveMenu.indexOf("saveCurrentGameState");
-    assert.ok(suspendIndex >= 0 && saveIndex > suspendIndex);
+    assert.match(liveMenu, /suspendGameForMenu\(reason\)/);
     const suspend = mainSource.slice(mainSource.indexOf("function suspendGameForMenu"), mainSource.indexOf("function showLiveMenuOverlay"));
+    assert.match(suspend, /freezeSaveAndRun/);
+    assert.ok(suspend.indexOf("saveCurrentGameState(saveReason") < suspend.indexOf("setBrowserSuspended(true)"));
     assert.match(suspend, /setLoopSuspended\(true\)/);
     assert.match(suspend, /setBrowserSuspended\(true\)/);
     assert.match(suspend, /getInput\(\)\.pause\(\)/);
@@ -75,7 +78,7 @@ test("live-menu transition freezes and retires playback before serializing progr
 
 test("live-menu presentation exits fullscreen before publishing a quiet retained menu", () => {
     const liveMenu = mainSource.slice(mainSource.indexOf("function showLiveMenuOverlay"), mainSource.indexOf("async function resumeLiveGameFromMenu"));
-    assert.match(liveMenu, /trySave\(saveCurrentGameState\)/);
+    assert.match(liveMenu, /suspendGameForMenu\(reason\)/);
     assert.doesNotMatch(liveMenu, /Progress could not be saved|const saved =/);
     assert.match(liveMenu, /await finishLiveMenuPresentation\(session, null\)/);
     const presenter = sourceMember("pwa/src/app/main.ts", "finishLiveMenuPresentation");
@@ -87,12 +90,12 @@ test("live-menu presentation exits fullscreen before publishing a quiet retained
 
 test("ownership relinquishment performs the final save before destructive cleanup", () => {
     const release = mainSource.slice(mainSource.indexOf("function releaseOwnedSession"), mainSource.indexOf("function showCleanupFailure"));
-    const saveIndex = release.indexOf("trySave(saveCurrentGameState)");
+    const saveIndex = release.indexOf('suspendGameForMenu("ownership-release")');
     const destroyIndex = release.indexOf("destroyGame()");
     assert.ok(saveIndex >= 0 && destroyIndex > saveIndex);
     const save = mainSource.slice(mainSource.indexOf("function saveCurrentGameState"), mainSource.indexOf("function getGameStateStore"));
     assert.match(save, /ownership/);
-    assert.match(save, /persistence\.canSave\(mainGame\)/);
+    assert.match(save, /persistence\.canSave\(expectedGame\)/);
     assert.doesNotMatch(save, /canReadStored|inspectStored|hasValidSave/);
 });
 

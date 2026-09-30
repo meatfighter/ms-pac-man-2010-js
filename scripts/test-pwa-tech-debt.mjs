@@ -148,13 +148,14 @@ test("browser-native responsibilities are decomposed and generation owned", () =
     assert.match(browserMain, /volumeInput\?\.addEventListener\("change"/);
 });
 
-test("live-menu save/Continue keeps logical audio detached through save and reattaches before gameplay resumes", () => {
+test("live-menu save/Continue captures attached logical audio before cleanup and reattaches before gameplay resumes", () => {
     const suspend = sliceBetween(browserMain, "function suspendGameForMenu", "async function showLiveMenuOverlay");
     assert.match(suspend, /releaseGameAudio\(\)/);
     assert.doesNotMatch(suspend, /stopAllSounds|stopAllSoundEffects|destroyGame/);
 
     const showMenu = sliceBetween(browserMain, "async function showLiveMenuOverlay", "async function resumeLiveGameFromMenu");
-    assertBefore(showMenu, "suspendGameForMenu()", "sessionCleanup.trySave(saveCurrentGameState)", "Audio must be retired before the live game is saved.");
+    assert.match(showMenu, /suspendGameForMenu\(reason\)/);
+    assertBefore(suspend, "saveCurrentGameState(saveReason", "releaseGameAudio()", "Save must precede audio retirement.");
 
     const resume = sliceBetween(browserMain, "async function resumeLiveGameFromMenu", "function removeMenuOverlay");
     assertBefore(resume, "commitGameAudio(audio)", "liveGame.setBrowserSuspended(false)", "Audio must commit before the game logical clock resumes.");

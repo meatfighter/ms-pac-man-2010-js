@@ -294,7 +294,14 @@ function livePresentationFixture(failure = "none", reused = false) {
         return overlay;
     };
     env[jackal ? "renderMenu" : stick ? "renderMenuForParent" : "renderMenuUi"] = render;
-    const names = ["showLiveMenuOverlay", "finishLiveMenuPresentation", "restoreExistingLiveMenuAfterInterruptedResume", "destroyGame", "removeMenuOverlay"];
+    const names = [
+        "suspendGameForMenu",
+        "showLiveMenuOverlay",
+        "finishLiveMenuPresentation",
+        "restoreExistingLiveMenuAfterInterruptedResume",
+        "destroyGame",
+        "removeMenuOverlay"
+    ];
     if (jackal) names.push("destroyGameSession");
     const subject = shellSubject(shellPath, names, env, jackal ? "JackalWebApp" : null);
     state = jackal ? subject : env;

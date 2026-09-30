@@ -1,3 +1,4 @@
+import { saveFrozenGame } from "./FrozenGameSave.js";
 import { createBrowserStorageKeys } from "./BrowserStorageKeys.js";
 import { HighScoreOutbox } from "./HighScoreOutbox.js";
 import { HighScoreSync } from "./HighScoreSync.js";
@@ -946,22 +947,26 @@ function startApplication(): void {
         return sessionCleanup.safe;
     }
 
-    function saveCurrentGameState(): boolean {
-        const mainGame = game;
-        if (
-            !sessionCleanup.safe ||
-            !ownership?.owned ||
-            mainGame === null ||
-            !persistence.canSave(mainGame) ||
-            container?.isLoopSuspended() !== true ||
-            !mainGame.isStateSaveReady()
-        )
-            return false;
-        const store = getLoadedGameStateStore();
-        if (store === null) return false;
-        const result = store.save(mainGame, () => ownership.owned && game === mainGame && persistence.canSave(mainGame));
-        if (result.saved) persistence.didSave();
-        return result.saved;
+    function saveCurrentGameState(
+        reason = "departure",
+        expectedGame: MsPacManMain | null = game,
+        expectedContainer: AppGameContainer | null = container
+    ): boolean {
+        return saveFrozenGame({
+            label: "Ms. Pac-Man game state",
+            reason,
+            game: expectedGame,
+            container: expectedContainer,
+            sameTarget: () => game === expectedGame && container === expectedContainer,
+            accepted: () => expectedGame !== null && persistence.canSave(expectedGame) && sessionCleanup.saveAllowed,
+            owned: () => ownership?.owned === true,
+            cleanupSafe: () => sessionCleanup.safe,
+            write: (authorized) => {
+                const store = getLoadedGameStateStore();
+                return expectedGame === null || store === null ? null : store.save(expectedGame, authorized);
+            },
+            didSave: () => persistence.didSave()
+        });
     }
 
     function getGameStateStore(runtime: PreparedRuntime): MsPacManGameStateStore {
@@ -1026,24 +1031,27 @@ function startApplication(): void {
         );
     }
 
-    function suspendGameForMenu(): boolean {
-        return sessionCleanup.run(
-            () => container?.setLoopSuspended(true),
-            () => game?.setBrowserSuspended(true),
-            () => container?.getInput().pause(),
-            () => releaseGameAudio()
+    function suspendGameForMenu(saveReason: string | null = null): boolean {
+        const mainGame = game;
+        const appContainer = container;
+        return sessionCleanup.freezeSaveAndRun(
+            () => appContainer?.setLoopSuspended(true),
+            saveReason === null ? null : () => saveCurrentGameState(saveReason, mainGame, appContainer),
+            () => mainGame?.setBrowserSuspended(true),
+            () => appContainer?.getInput().pause(),
+            () => releaseGameAudio(),
+            () => syncScreenWakeLock()
         );
     }
 
-    async function showLiveMenuOverlay(): Promise<void> {
+    async function showLiveMenuOverlay(reason = "hamburger"): Promise<void> {
         if (pwaSessionState !== "running" || game === null || container === null || viewport.gameShell === null) {
             return;
         }
         const session = activeSessionGeneration;
         pwaSessionState = "stopping";
         liveMenuOpen = true;
-        sessionCleanup.run(() => syncScreenWakeLock());
-        if (suspendGameForMenu()) sessionCleanup.trySave(saveCurrentGameState);
+        suspendGameForMenu(reason);
         sessionCleanup.run(
             () => viewport.stopHamburgerVisibilityMonitor(),
             () => viewport.hideHamburger(),
@@ -1171,7 +1179,7 @@ function startApplication(): void {
         requestPwaMenu("hamburger");
     }
 
-    function requestPwaMenu(_reason: string): void {
+    function requestPwaMenu(reason: string): void {
         if (pwaSessionState === "booting" || pwaSessionState === "menu" || pwaSessionState === "stopping" || pwaSessionState === "error") {
             return;
         }
@@ -1183,15 +1191,13 @@ function startApplication(): void {
             !game.isLoadingScreenActive() &&
             !container.isDestroyed()
         ) {
-            void showLiveMenuOverlay();
+            void showLiveMenuOverlay(reason);
             return;
         }
         const retainExistingOverlay = liveMenuOpen && menuOverlay !== null && game !== null && container !== null;
         const session = activeSessionGeneration;
         pwaSessionState = "stopping";
-        sessionCleanup.run(() => syncScreenWakeLock());
-        const suspended = suspendGameForMenu();
-        if (suspended && !retainExistingOverlay) sessionCleanup.trySave(saveCurrentGameState);
+        suspendGameForMenu(retainExistingOverlay ? null : reason);
         if (!sessionCleanup.safe) {
             destroyGame();
             return;
@@ -1332,12 +1338,11 @@ function startApplication(): void {
     }
 
     function releaseOwnedSession(): void {
-        retireHighScoreSync();
         pwaSessionState = "stopping";
         sessionGeneration.invalidate();
         menuRequestSerial++;
-        sessionCleanup.run(() => syncScreenWakeLock());
-        if (suspendGameForMenu()) sessionCleanup.trySave(saveCurrentGameState);
+        suspendGameForMenu("ownership-release");
+        sessionCleanup.run(() => retireHighScoreSync());
         destroyGame();
         if (sessionCleanup.safe) {
             pwaSessionState = "menu";
