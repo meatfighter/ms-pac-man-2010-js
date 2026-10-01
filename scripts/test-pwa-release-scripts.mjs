@@ -68,7 +68,7 @@ function assertVersionMismatchFailsBeforeReleaseBuild() {
 
 function assertReleaseScriptStructure() {
     const { scripts } = packageJson;
-    assert.equal(packageJson.engines?.node, "^20.19.0 || ^22.13.0 || >=24", "package.json must declare a Node version compatible with Vite.");
+    assert.equal(packageJson.engines?.node, ">=24.0.0", "package.json must declare a Node version compatible with Vite.");
     assert.equal(scripts["build:pwa"], "npm run build:pwa:release", "build:pwa must delegate to the release PWA build.");
     assert.equal(
         scripts["build:pwa:release"],

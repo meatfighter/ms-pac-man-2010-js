@@ -1,13 +1,41 @@
 version: 2
 updates:
     - package-ecosystem: npm
-      directory: "/"
+      directory: /
       schedule:
           interval: weekly
+          day: monday
       open-pull-requests-limit: 5
+      versioning-strategy: increase-if-necessary
+      groups:
+          routine-dev:
+              applies-to: version-updates
+              dependency-type: development
+              patterns:
+                  - "*"
+              update-types:
+                  - minor
+                  - patch
+      ignore:
+          # The selected parser supports TypeScript below 6.1; review compiler updates separately.
+          - dependency-name: typescript
+            versions:
+                - ">=6.1.0"
+          - dependency-name: "@types/node"
+            update-types:
+                - version-update:semver-major
 
     - package-ecosystem: github-actions
-      directory: "/"
+      directory: /
       schedule:
           interval: weekly
+          day: monday
       open-pull-requests-limit: 5
+      groups:
+          routine-actions:
+              applies-to: version-updates
+              patterns:
+                  - "*"
+              update-types:
+                  - minor
+                  - patch

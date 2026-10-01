@@ -1,11 +1,11 @@
 {
     "name": "ms-pac-man-2010-js",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "private": true,
     "license": "SEE LICENSE IN COPYRIGHT.md",
     "type": "module",
     "engines": {
-        "node": "^20.19.0 || ^22.13.0 || >=24"
+        "node": ">=24.0.0"
     },
     "scripts": {
         "stamp": "node scripts/stamp.mjs",
@@ -113,17 +113,17 @@
         "verify:departure-save": "node scripts/run-departure-save-qualification.mjs"
     },
     "dependencies": {
-        "slick2d-ts": "https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/9ddb56642258ca1672098d7b0cedd51e5c14f194"
+        "slick2d-ts": "https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/03b6878aab0106702651f41259c250288c3eb345"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
-        "eslint": "^10.10.0",
-        "globals": "^17.12.0",
+        "eslint": "^10.11.0",
+        "globals": "^17.13.0",
         "playwright": "1.63.0",
-        "prettier": "^3.9.6",
-        "sharp": "0.35.4",
-        "typescript": "^6.0.3",
-        "typescript-eslint": "^8.70.0",
-        "vite": "^8.3.0"
+        "prettier": "^3.9.9",
+        "sharp": "^0.35.5",
+        "typescript": "~6.0.3",
+        "typescript-eslint": "^8.71.0",
+        "vite": "^8.3.2"
     }
 }

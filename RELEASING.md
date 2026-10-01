@@ -68,3 +68,11 @@ node scripts/archive-release.mjs dist /absolute/path/outside/repository/release-
 ```
 
 Keep the previous known-good release available for rollback.
+
+## Dependency maintenance and artifact freeze
+
+Use Node.js 24 or newer and npm's committed lockfile. Routine dependencies use compatible ranges; TypeScript stays on 6.0.x while the selected parser supports versions below 6.1. Review compiler and Node-typing major changes separately. Playwright, when present, stays exact with its matching browser installation. Audit development dependencies as well as runtime dependencies.
+
+When extended qualification is required, run `npm ci`, `npm run qualify:browsers`, then `npm run qualify`. Inventory the complete resulting `dist` before any further check. Set `PWA_ROOT` to the absolute final `dist/pwa` and run every existing no-build leaf from `scripts/run-browser-qualification-suite.mjs`, including its game-specific Node scripts. The wrapper itself rebuilds and must not be used as evidence that its earlier checks covered the final packaged bytes. Recheck the complete inventory afterward. Preserve all About assets and desktop archives; stage the complete release and promote those same bytes after acceptance.
+
+Firefox is required by default. Any explicitly authorized environmental exception must identify the affected scripts, browser, launch evidence and exact artifact; skipped coverage is not a pass. An assertion failure after successful launch is not an environmental waiver. Keep physical-device acceptance separate.

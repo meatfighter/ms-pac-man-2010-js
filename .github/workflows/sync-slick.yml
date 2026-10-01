@@ -45,7 +45,7 @@ jobs:
               if: steps.slick.outputs.needs_update == 'true'
               uses: actions/setup-node@v7
               with:
-                  node-version: 22.13.0
+                  node-version: "24"
                   cache: npm
 
             - name: Set Up Java

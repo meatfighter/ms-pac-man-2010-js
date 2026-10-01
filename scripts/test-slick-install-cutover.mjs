@@ -3,9 +3,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { test } from "node:test";
 
-const EXPECTED_ENGINE_SHA = "9ddb56642258ca1672098d7b0cedd51e5c14f194";
+const EXPECTED_ENGINE_SHA = "03b6878aab0106702651f41259c250288c3eb345";
 const EXPECTED_ENGINE_URL = `https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/${EXPECTED_ENGINE_SHA}`;
-const EXPECTED_ENGINE_VERSION = "1.7.3";
+const EXPECTED_ENGINE_VERSION = "1.7.4";
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
 const packageLock = JSON.parse(readFileSync("package-lock.json", "utf8"));
