@@ -179,7 +179,7 @@ try {
             await seedPage.waitForFunction(() => window.scoreDurabilitySeed !== undefined, null, { timeout: 60000 });
             const template = JSON.parse(await seedPage.evaluate(() => window.scoreDurabilitySeed));
             const hallTemplate = JSON.parse(await seedPage.evaluate(() => window.scoreHallSeed));
-            assert.equal(template.version, 11);
+            assert.equal(template.version, 12);
             await seedPage.close();
             async function guardRequests(c) {
                 await c.route("**/*", (route) => {
