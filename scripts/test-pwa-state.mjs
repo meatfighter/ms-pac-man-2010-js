@@ -781,7 +781,7 @@ try {
                 } finally {
                     storage.getItem = read;
                 }
-                assert.equal(JSON.parse(read(key)).version, 11);
+                assert.equal(JSON.parse(read(key)).version, GAME_STATE_VERSION);
                 assert.equal(store.hasValidSave(), true);
                 const target = createFakeMain("playing", "target");
                 assert.equal(store.restore(target, createGameContainer()), true);
@@ -1011,11 +1011,11 @@ try {
         assert.equal(target.mode.dotsOffset, -32);
         assert.equal(storage.getItem(key), bytes);
     });
-    await runTest("schema 11 submission failure is durable and contradictory accepted/failure flags are rejected", () => {
+    await runTest("current-schema submission failure is durable and contradictory accepted/failure flags are rejected", () => {
         const serializer = new MsPacManGameStateSerializer();
         for (const failed of [false, true]) {
             const state = serializer.createSnapshot(createFakeMain("enterInitials", "source", { enterPressed: false, submissionFailed: failed }), APP_VERSION);
-            assert.equal(state.version, 11);
+            assert.equal(state.version, GAME_STATE_VERSION);
             assert.equal(isValidMsPacManGameStateSnapshot(state), true);
             state.mode.fields.enterPressed = true;
             if (failed) assert.equal(isValidMsPacManGameStateSnapshot(state), false);
@@ -1430,8 +1430,8 @@ function createMsPacMan(variant) {
 function createGhost(index, variant) {
     const alternate = variant === "target";
     return {
-        x: 40 + index + (alternate ? 10 : 0),
-        y: 50 + index + (alternate ? 10 : 0),
+        x: !alternate && index === 2 ? 216 : 32 + index * 16,
+        y: !alternate && index === 2 ? 200 : 48 + index * 16,
         speed: alternate ? 1 : 2,
         speedRemainder: alternate ? 0.3 : 0.4,
         direction: index % 4,
@@ -1442,9 +1442,9 @@ function createGhost(index, variant) {
         spriteIndexIncrementor: alternate ? 7 : 8,
         targetX: alternate ? 9 : 10,
         targetY: alternate ? 11 : 12,
-        inHome: index === 0 ? !alternate : alternate,
+        inHome: alternate,
         exitingHome: index === 1 ? !alternate : alternate,
-        enteringHome: index === 2 ? !alternate : alternate
+        enteringHome: index === 2 && !alternate
     };
 }
 

@@ -145,6 +145,12 @@ public abstract class Ghost extends Thing {
   }
 
   public void moveEyeBalls() {
+    // The house doorway is half a tile off the maze grid. Eyes created
+    // here have already arrived; do not move away before recognizing it.
+    if (x == 13 * 16 + 8 && y == 11 * 16) {
+      enteringHome = true;
+      return;
+    }
     
     if ((x & 15) == 0 && (y & 15) == 0) {
       switch(getHomeDirection(x, y)) {
@@ -190,10 +196,10 @@ public abstract class Ghost extends Thing {
       if (x != 13 * 16 + 8) {
         if (y < 14 * 16) {
           y++;
-          direction = Main.UP;
+          direction = Main.DOWN;
         } else if (y > 14 * 16) {
           y--;
-          direction = Main.DOWN;
+          direction = Main.UP;
         } else if (x < 13 * 16 + 8) {
           x++;
           direction = Main.RIGHT;

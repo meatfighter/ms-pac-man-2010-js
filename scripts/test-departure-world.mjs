@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { departureWorld } from "./departure-world.mjs";
 test("timestamps and independent audio clocks cannot count as world progress", () => {
     const baseline = {
-        version: 11,
+        version: 12,
         savedAt: "old",
         mode: { ticks: 36 },
         music: { playback: { positionSeconds: 0.3 } },

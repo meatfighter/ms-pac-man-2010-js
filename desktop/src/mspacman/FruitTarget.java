@@ -23,6 +23,7 @@ public class FruitTarget extends Thing {
   }
 
   public void reset() {
+    exitPath = null;
     eaten = false;
     eatenTimer = 0;
     fruitIndex = 0;

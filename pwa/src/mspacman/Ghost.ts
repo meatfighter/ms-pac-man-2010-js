@@ -134,6 +134,12 @@ export abstract class Ghost extends Thing {
     }
 
     public moveEyeBalls(): void {
+        // The house doorway is half a tile off the maze grid. Eyes created
+        // here have already arrived; do not move away before recognizing it.
+        if (this.x === 13 * 16 + 8 && this.y === 11 * 16) {
+            this.enteringHome = true;
+            return;
+        }
         if ((this.x & 15) === 0 && (this.y & 15) === 0) {
             switch (this.getHomeDirection(this.x, this.y)) {
                 case 5:
@@ -164,10 +170,10 @@ export abstract class Ghost extends Thing {
             if (this.x !== 13 * 16 + 8) {
                 if (this.y < 14 * 16) {
                     this.y++;
-                    this.direction = Main.UP;
+                    this.direction = Main.DOWN;
                 } else if (this.y > 14 * 16) {
                     this.y--;
-                    this.direction = Main.DOWN;
+                    this.direction = Main.UP;
                 } else if (this.x < 13 * 16 + 8) {
                     this.x++;
                     this.direction = Main.RIGHT;

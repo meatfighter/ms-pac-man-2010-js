@@ -376,7 +376,8 @@ function isValidThingFieldState(fields: unknown, kind: "mspacman" | "ghost" | "f
             isIntegerInRange(record.targetY, -4096, 4096) &&
             typeof record.inHome === "boolean" &&
             typeof record.exitingHome === "boolean" &&
-            typeof record.enteringHome === "boolean"
+            typeof record.enteringHome === "boolean" &&
+            isValidGhostHomeMotion(record)
         );
     }
     return (
@@ -390,6 +391,26 @@ function isValidThingFieldState(fields: unknown, kind: "mspacman" | "ghost" | "f
         isIntegerInRange(record.eatenTimer, 0, 90) &&
         typeof record.eaten === "boolean"
     );
+}
+
+/** Called after primitive, identity and coordinate validation. */
+function isValidGhostHomeMotion(fields: Record<string, unknown>): boolean {
+    if (fields.eyeBalls !== true) return fields.enteringHome !== true;
+    if (fields.inHome === true) return false;
+    const x = fields.x as number;
+    const y = fields.y as number;
+    const ghostIndex = fields.ghostIndex as number;
+    const direction = fields.direction as number;
+    const homeX = 13 * 16 + 8;
+    const entranceY = 11 * 16;
+    const homeY = 14 * 16;
+    if (fields.enteringHome === true) {
+        if (x === homeX && y >= entranceY && y <= homeY) return true;
+        return y === homeY && ((ghostIndex === 2 && x >= 11 * 16 + 8 && x <= homeX) || (ghostIndex === 3 && x >= homeX && x <= 15 * 16 + 8));
+    }
+    // The just-eaten doorway state is valid before its first routing opportunity.
+    if (x === homeX && y === entranceY) return true;
+    return direction === 0 || direction === 1 ? (x & 15) === 0 : (y & 15) === 0;
 }
 
 function isValidStandaloneModeFieldState(id: Exclude<ModeId, "playing">, fields: Record<string, unknown>): boolean {

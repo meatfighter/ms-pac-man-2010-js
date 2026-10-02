@@ -1,4 +1,5 @@
 import { verifyCounterParity } from "./CounterParityVerification.js";
+import { verifyGhostHouse } from "./GhostHouseVerification.js";
 import { EnterInitialsMode } from "./mspacman/EnterInitialsMode.js";
 import { Sys } from "slick2d-ts";
 import { PlayingMode } from "./mspacman/PlayingMode.js";
@@ -86,6 +87,11 @@ async function mountMain(restore: ((main: Main, container: AppGameContainer) => 
 async function verify(): Promise<void> {
     localStorage.clear();
     await preloadRuntimeResources();
+
+    if (["ghost-house", "ghost-house-demos"].includes(new URLSearchParams(location.search).get("suite") ?? "")) {
+        await verifyGhostHouse(mountMain, new URLSearchParams(location.search).get("suite") === "ghost-house-demos");
+        return;
+    }
 
     if (new URLSearchParams(location.search).get("suite") === "high-score-seed") {
         const mounted = await mountMain(null);

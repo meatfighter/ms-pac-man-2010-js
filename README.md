@@ -111,3 +111,9 @@ Deploy the qualified server before this client. An old server without the marker
 Use `npm run verify:high-score-durability` for the mandatory loopback-only packaged-browser/server suite;
 it also runs in both `qualify:browsers` and `qualify`. The sibling server dist must already be qualified.
 Do not run the production API smoke command for this workflow.
+
+## Ghost house return and saves
+
+Captured eyes at the house doorway enter immediately, including capture on the first outside exit pixel. Native and browser builds use the same vertical exit alignment. Schema 12 validates eyes/house phases and lanes, retaining legitimate frightened and historical exit flags. Earlier schemas remain nonwriting load misses; authorized saves replace the stable slot. Resetting a fruit also clears its previous maze exit route.
+
+`npm run test:ghost-house` exercises production movement and the shipped 32-maze route data in TypeScript and Java. `npm run verify:ghost-house` adds loaded browser captures, cold restores, all four attract recordings, and packaged Continue/reload checks. It runs in both qualification gates; no fixture entry points ship in the PWA.

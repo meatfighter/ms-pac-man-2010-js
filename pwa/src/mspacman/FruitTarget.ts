@@ -5,7 +5,7 @@ import { Thing } from "./Thing";
 import { toFloat, toInt } from "./JavaMath";
 
 export class FruitTarget extends Thing {
-    public exitPath: number[][];
+    public exitPath: number[][] | null = null;
     public fruitIndex = 0;
     public yOffset = 0;
     public yOffsetAngle = 0;
@@ -22,6 +22,7 @@ export class FruitTarget extends Thing {
     }
 
     public reset(): void {
+        this.exitPath = null;
         this.eaten = false;
         this.eatenTimer = 0;
         this.fruitIndex = 0;
@@ -158,7 +159,7 @@ export class FruitTarget extends Thing {
         } else if (ty >= 31) {
             ty -= 31;
         }
-        return this.exitPath[ty][tx];
+        return this.exitPath![ty][tx];
     }
 
     public render(gc: GameContainer, g: Graphics): void {
