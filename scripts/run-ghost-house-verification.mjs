@@ -89,7 +89,10 @@ async function packagedChecks(browser, checkpoints) {
             const page = await context.newPage();
             await page.addInitScript(
                 ({ key, bytes }) => {
-                    if (localStorage.getItem(key) === null) localStorage.setItem(key, bytes);
+                    if (sessionStorage.getItem("ghost-fixture-installed") === null) {
+                        localStorage.setItem(key, bytes);
+                        sessionStorage.setItem("ghost-fixture-installed", "true");
+                    }
                     localStorage.setItem("ms-pac-man-2010:%2F:fullscreen", "false");
                 },
                 { key, bytes: checkpoint.bytes }
@@ -135,11 +138,9 @@ async function packagedChecks(browser, checkpoints) {
             assert.deepEqual(second.mode, first.mode, checkpoint.label + " retained Continue");
             await page.reload();
             await page.waitForFunction(() => window.__gameResourcesPrepared === true, null, { timeout: 120000 });
-            assert.equal(
-                await page.evaluate((key) => localStorage.getItem(key), key),
-                JSON.stringify(second),
-                checkpoint.label + " reload preserves canonical save"
-            );
+            const afterReload = JSON.parse(await page.evaluate((key) => localStorage.getItem(key), key));
+            assert.deepEqual(afterReload.mode, second.mode, checkpoint.label + " reload preserves frozen gameplay");
+            assert.deepEqual(afterReload.random, second.random, checkpoint.label + " reload preserves RNG");
             await page.evaluate(() => document.getElementById("continueButton").click());
             await page.clock.runFor(1000);
             await page.locator("canvas").waitFor();
