@@ -421,7 +421,15 @@ export async function verifyCounterParity(mount: Mount): Promise<void> {
         world.ateEnergizer();
         for (let chain = 0; chain < 4; chain++) {
             world = current().main.getPlayingModeForState();
-            world.ghostEaten(world.ghosts[chain]);
+            const ghost = world.ghosts[chain];
+            // Captures only occur outside the house. Drive the production exit
+            // before testing award timers instead of manufacturing eyes in-home.
+            if (ghost.inHome) {
+                ghost.exitingHome = true;
+                for (let step = 0; ghost.inHome && step < 400; step++) ghost.update(current().container);
+                assert(!ghost.inHome, "captured ghost completed its real house exit");
+            }
+            world.ghostEaten(ghost);
             assert(world.ghostPointsIndex === chain && world.showGhostPointsTimer === 91, "Actual ghost award");
             await roundtrip(`ghost:${chain}:91`);
             if (chain === 0) {
