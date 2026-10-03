@@ -2,118 +2,67 @@
 
 **[Project page: meatfighter.com/mspacman2010/](https://meatfighter.com/mspacman2010/)** — background, gameplay, controls, and downloads.
 
-This README covers development and maintenance of the Java and TypeScript implementations.
+This repository contains the maintained Java desktop implementation and TypeScript browser port.
 
-## Repository layout
+## Development
 
-| Path                                | Purpose                                                            |
-| ----------------------------------- | ------------------------------------------------------------------ |
-| `about/content.md`                  | Project-page article prose                                         |
-| `about/footer.md`                   | Project-page copyright and licensing footer prose                  |
-| `about/index.html`, `about/assets/` | Page template, SEO metadata placeholders, and artwork              |
-| `desktop/src/`                      | Maintained Java gameplay reference and resources                   |
-| `desktop/`                          | Desktop build, runtime libraries, and platform-specific packaging  |
-| `pwa/src/mspacman/`                 | TypeScript gameplay port                                           |
-| `pwa/src/mspacman/persistence/`     | Save schema, validation, serialization, and restoration            |
-| `pwa/src/app/`                      | Browser shell, preferences, session ownership, and lifecycle       |
-| `pwa/public/`                       | Static game resources and service worker                           |
-| `scripts/`                          | Build tools, local checks, generated metadata, and release tooling |
-| `version.json`                      | Version and build-stamp source                                     |
-
-Generated output belongs in `dist/`, `.release-components/`, and desktop build directories. Do not edit generated bundles or release metadata by hand.
-
-## Getting started
-
-Use Node.js 24 or newer and Git; see [package.json](package.json) for the supported baseline. Desktop builds and Java checks need a JDK with `java`, `javac`, and `jar` on `PATH`. JDK 21 is the reference toolchain; JDK 25 has also been used successfully for a full release build. Desktop output targets Java 8.
-
-Run commands from the repository root:
+Use the Node.js version supported by [package.json](package.json), Git, and a JDK with `java`, `javac`, and `jar` on `PATH`. JDK 21 is the reference toolchain; desktop output targets Java 8.
 
 ```sh
 npm ci --ignore-scripts
 npm run dev
 ```
 
-The commands also work in Windows PowerShell; use `npm.cmd` if PowerShell blocks `npm.ps1`.
+Run commands from the repository root. On Windows PowerShell, use `npm.cmd` if execution policy blocks `npm.ps1`.
 
-## Common tasks
+## Repository layout
 
-| Task                                | Command                                             | Output / notes                                                              |
-| ----------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------- |
-| Run browser development server      | `npm run dev`                                       | Local URL printed by Vite                                                   |
-| Build unsigned PWA                  | `npm run build:pwa:unsigned`                        | `.release-components/pwa-unsigned/`                                         |
-| Build about page                    | `npm run build:about`                               | `.release-components/about/`                                                |
-| Build unsigned web distribution     | `npm run build:web:unsigned`                        | `.release-components/web-unsigned/`; includes desktop download              |
-| Build / run unsigned desktop client | `npm run build:desktop` / `npm run run:desktop`     | See [desktop/README.md](desktop/README.md)                                  |
-| Check source and behavior           | `npm test`                                          | Includes native TypeScript, parity, persistence, and release-tooling checks |
-| Check formatting / lint             | `npm run format:check` / `npm run lint`             | Run before committing                                                       |
-| Check browser / offline behavior    | `npm run verify:browser` / `npm run verify:offline` | See browser prerequisites below                                             |
-| Audit dependencies                  | `npm run verify:dependencies`                       | Queries current npm advisories                                              |
-| Build production release            | `npm run release`                                   | `dist/`; requires active-key release configuration                          |
-| Qualify local commit                | `npm run qualify`                                   | Full local pre-push qualification; builds and verifies `dist/`              |
+| Path                                  | Purpose                                                 |
+| ------------------------------------- | ------------------------------------------------------- |
+| `about/content.md`, `about/footer.md` | Project-page article and attribution                    |
+| `about/index.html`, `about/assets/`   | Page template and artwork                               |
+| `desktop/src/`, `desktop/`            | Java gameplay, resources, and desktop packaging         |
+| `pwa/src/mspacman/`                   | Browser gameplay, high-score client, and persistence    |
+| `pwa/src/app/`, `pwa/public/`         | Browser shell, lifecycle, resources, and service worker |
+| `scripts/`, `version.json`            | Build, test, signing, metadata, and version tooling     |
 
-Component builds use isolated output directories; building a component does not refresh the complete `dist/` distribution. Use the public scripts above rather than invoking internal `_build:*` steps directly.
+## Build and check
 
-Browser fixtures use a locally installed Chrome, Chromium, or Edge. Set `CHROMIUM_PATH` to the executable if automatic discovery fails. Offline verification also needs a built PWA; consult [scripts/run-offline-verification.mjs](scripts/run-offline-verification.mjs) for its output-directory selection.
+| Task                                      | Command                                                     |
+| ----------------------------------------- | ----------------------------------------------------------- |
+| Format / lint                             | `npm run format` / `npm run lint`                           |
+| Build unsigned browser / web distribution | `npm run build:pwa:unsigned` / `npm run build:web:unsigned` |
+| Build project-page component              | `npm run build:about`                                       |
+| Build / run unsigned Java                 | `npm run build:desktop` / `npm run run:desktop`             |
+| Run source and behavior checks            | `npm test`                                                  |
+| Qualify a production release              | `npm run qualify`                                           |
+| Run the extended browser matrix           | `npm run qualify:browsers`                                  |
+| Preview the assembled release             | `npm run preview:dist`                                      |
 
-For the separate Chromium/Firefox/WebKit qualification, install the browser engines locally with `npx playwright install chromium firefox webkit`, then run `npm run qualify:browsers`, which builds its own PWA before testing. For checks against a final packaged PWA without rebuilding, set `PWA_ROOT` to its absolute path and invoke the leaf checks listed in `scripts/run-browser-qualification-suite.mjs`; see [RELEASING.md](RELEASING.md). Linux also needs the Playwright system dependencies and a graphical display or Xvfb. Run `npm run qualify` before pushing release-affecting changes; use the extended browser matrix and appropriate real-device acceptance for material browser-facing changes. GitHub Actions is an optional manual Linux check.
+Unsigned development does not need production signing material. Full release qualification requires the active-key configuration described in [RELEASING.md](RELEASING.md), plus the sibling score-server checkout and its qualified `dist/` for loopback integration checks. Never point automated fixtures at the live leaderboard.
 
-## Maintenance principles
+The complete release is assembled in `dist/`. Component builds use `.release-components/` and do not refresh the complete distribution. Do not edit generated HTML, bundles, archives, or release metadata by hand.
 
-- Compare gameplay changes with the corresponding Java source. Preserve useful structural correspondence, fixed-step timing, Java numeric behavior, and random-state behavior.
-- Keep browser storage, networking, presentation, and lifecycle concerns in the browser-support layer where practical.
-- Avoid unnecessary temporary objects and repeated computation in update and render loops. Use the focused tests listed in [package.json](package.json).
-- The `v1.0.0` release establishes the public save-state compatibility baseline. Future schema changes require an explicit compatibility decision; unfamiliar public saves must not be silently discarded, and schema validation/restoration must be updated together.
-- Regenerate affected resource or parity metadata through the repository scripts and check it before committing.
-- The [slick2d-ts](https://github.com/meatfighter/slick2d-ts) dependency is pinned to an immutable HTTPS commit archive. Update `package.json` and `package-lock.json` together, then verify gameplay and browser behavior against that engine revision.
+Standard browser checks use a local Chrome, Chromium, or Edge; set `CHROMIUM_PATH` if discovery fails. Install the extended matrix with `npx playwright install chromium firefox webkit`. Linux may also require browser system dependencies and a display or Xvfb. See [RELEASING.md](RELEASING.md) for the clean-commit qualification sequence; do not run its nested suites separately first.
 
-## Project page and deployment
+## Maintenance
 
-Edit the article in [about/content.md](about/content.md) and the copyright/licensing footer in [about/footer.md](about/footer.md); layout and SEO wiring live in [about/index.html](about/index.html) and [scripts/build-about.mjs](scripts/build-about.mjs).
+Keep Java and TypeScript gameplay changes aligned, including fixed-step timing, numeric semantics, and random-call ordering. Keep browser networking, lifecycle, and storage concerns separate from gameplay; avoid allocations or unnecessary work in update/render paths.
 
-The canonical URL and Open Graph page URL identify `https://meatfighter.com/mspacman2010/`. Play, download, and page-asset links are relative so the assembled site can be tested beneath a staging directory. Keep production canonical URLs during staging and configure a staging-only `X-Robots-Tag: noindex` response header at the host. That header is a hosting requirement, not something the current build adds.
+Saved games support the current schema. Unsupported or corrupt saves are ignored without rewriting the slot during load; a later authorized save overwrites the slot. No migration layer for older schemas is maintained.
+
+Regenerate affected resource and parity metadata through the repository scripts. The `slick2d-ts` dependency is pinned to an immutable commit archive; update it and the lockfile together only when intentionally adopting a new engine revision.
 
 ## High-score integration
 
-The high-score server is maintained in a separate private repository. Access to it or its release keys is not required for unsigned local development; gameplay remains usable when score networking is unavailable.
+The [score service](https://github.com/meatfighter/ms-pac-man-2010-server) is maintained separately. Gameplay remains usable when networking is unavailable. Production browser clients use the same-origin `/api/ms-pac-man-2010/scores` endpoint.
 
-Use `build:pwa:unsigned`, `build:web:unsigned`, and `build:desktop` for development. `npm run build` and `npm run release` require the maintainer's active-key configuration. Synthetic verification artifacts are not production releases.
+Production builds require the existing server-compatible HMAC configuration. Do not generate replacement keys during routine maintenance or commit key material. The embedded client key deters casual edits; it is not proof of legitimate play. See [RELEASING.md](RELEASING.md#2-check-the-production-signing-key).
 
-Production browser builds use the fixed same-origin endpoint `/api/ms-pac-man-2010/scores`. Moving a build to another directory on the same host does not isolate leaderboard requests. The same leaderboard may be used for staging and production when that is intentional. The current release build does not accept an alternate API path.
+## Project page and documentation
 
-The embedded HMAC key deters casual tampering; it cannot authenticate legitimate play. See the public [client implementation](pwa/src/mspacman/) for protocol handling and [RELEASING.md](RELEASING.md#2-check-the-production-signing-key) for maintainer signing configuration.
+Edit article prose in `about/content.md` and attribution in `about/footer.md`; layout and metadata are maintained in `about/index.html` and `scripts/build-about.mjs`.
 
-## Further documentation
-
-- [RELEASING.md](RELEASING.md): exact-commit qualification, production signing, archive/checksum, and tagging procedure.
-- [desktop/README.md](desktop/README.md): Java build and runtime details.
-- [releases/README.md](releases/README.md): desktop ZIP packaging and uploadable artifacts.
-- [LICENSE](LICENSE): GPL-3.0-or-later license text for original project source code.
-- [COPYRIGHT.md](COPYRIGHT.md): copyright, licensing, trademark, and third-party-content scope.
-- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md): third-party software licenses and redistributed components.
-
-## Durable browser high-score submissions
-
-Explicit initials submission first writes a bounded deployment/endpoint-scoped outbox.
-The application owner retries while a visible page is running; delivery survives New Game,
-Main recreation and reload, independently of game save schema 11. Only a fully validated
-POST 200 carrying `MsPacMan-Score-Durable: 1` removes that tuple. GET never acknowledges
-pending work. Server consideration may leave a score outside the top five.
-
-A failed local enqueue stays editable and displays “NOT QUEUED. PRESS START TO RETRY.”
-The queue holds at most 128 tuples/32 KiB and never evicts accepted entries. Retries use
-persisted reservations/backoff and bounded Retry-After; no per-frame retry or Background Sync.
-Full Reset cancels local replay, including stale callbacks, but cannot undo a server commit.
-Partial Reset leaves score synchronization dormant until a later ownership epoch or successful Reset.
-Delivery needs retained storage, a running visible owner, valid configuration, network and server disk space.
-Clearing/evicting/corrupting storage can lose pending work; browser storage success is not hardware fsync.
-
-Deploy the qualified server before this client. An old server without the marker leaves work pending.
-Use `npm run verify:high-score-durability` for the mandatory loopback-only packaged-browser/server suite;
-it also runs in both `qualify:browsers` and `qualify`. The sibling server dist must already be qualified.
-Do not run the production API smoke command for this workflow.
-
-## Ghost house return and saves
-
-Captured eyes at the house doorway enter immediately, including capture on the first outside exit pixel. Native and browser builds use the same vertical exit alignment. Schema 12 validates eyes/house phases and lanes, retaining legitimate frightened and historical exit flags. Earlier schemas remain nonwriting load misses; authorized saves replace the stable slot. Resetting a fruit also clears its previous maze exit route.
-
-`npm run test:ghost-house` exercises production movement and the shipped 32-maze route data in TypeScript and Java. `npm run verify:ghost-house` adds loaded browser captures, cold restores, all four attract recordings, and packaged Continue/reload checks. It runs in both qualification gates; no fixture entry points ship in the PWA.
+- [desktop/README.md](desktop/README.md): Java build and runtime requirements.
+- [releases/README.md](releases/README.md): local release artifacts.
+- [LICENSE](LICENSE), [COPYRIGHT.md](COPYRIGHT.md), and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md): source licensing, attribution, and third-party scope.

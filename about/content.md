@@ -48,7 +48,7 @@ _Ms. Pac-Man 2010_ is based on the original arcade game but expands on it in sev
 
 A cutscene appears between every stage. The first three recreate the intermissions from the original _Ms. Pac-Man_ arcade game. The later cutscenes were based on the between-fight scenes in _Mike Tyson's Punch-Out!!_ for the Nintendo Entertainment System.
 
-After completing Stage 8, the player is rewarded with a final sequence inspired by Ryu's ending in the arcade version of _Street Fighter II_.
+After completing Stage 8, the player is rewarded with a final sequence inspired by Ryu's ending in the arcade version of _Street Fighter II_ and the NES _Mega Man_ endings, which showcase each defeated enemy on its own title card.
 
 The game employs two special energizers from _Pac-Mania_: the red energizer sends the ghosts into their familiar blue frightened state, while the green energizer temporarily gives Ms. Pac-Man a burst of extra speed.
 

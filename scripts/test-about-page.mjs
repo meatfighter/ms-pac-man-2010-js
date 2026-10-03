@@ -221,3 +221,16 @@ function delay(ms) {
         setTimeout(resolve, ms);
     });
 }
+
+await runTest("ending attribution names both influences and the enemy title cards", () => {
+    const sentence =
+        "After completing Stage 8, the player is rewarded with a final sequence inspired by Ryu's ending in the arcade version of _Street Fighter II_ and the NES _Mega Man_ endings, which showcase each defeated enemy on its own title card.";
+    assert.ok(contentMarkdown.includes(sentence));
+    const article = renderAboutMarkdown(
+        contentMarkdown
+            .replaceAll("__PWA_URL__", "pwa/")
+            .replaceAll("__REPOSITORY_URL__", "https://github.com/meatfighter/ms-pac-man-2010-js")
+            .replaceAll("__DESKTOP_ZIP__", "downloads/game.zip")
+    ).articleHtml;
+    assert.ok(article.includes("<em>Street Fighter II</em> and the NES <em>Mega Man</em> endings, which showcase each defeated enemy on its own title card."));
+});

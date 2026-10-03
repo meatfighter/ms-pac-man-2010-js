@@ -1,13 +1,7 @@
-# Releases
+# Local release artifacts
 
-This directory is a local staging area for uploadable desktop release artifacts.
+This directory holds desktop release archives produced by the repository's release tooling. Generated archives are ignored by Git.
 
-Generated release zips are ignored by default to avoid accidental repository bloat. Use this command when the Java desktop download should be refreshed locally:
+Use `npm run release:desktop` when a local desktop archive is needed. For a complete browser/project-page/desktop release, follow the root [RELEASING.md](../RELEASING.md) procedure and use the assembled `dist/` output.
 
-```text
-npm.cmd run release:desktop
-```
-
-Upload the generated zip to GitHub Releases or another artifact host. If a zip truly needs to be committed, add that specific file intentionally with `git add -f`.
-
-The desktop zip contains the runnable Java jar, legacy Slick2D/LWJGL jars, native libraries, launch scripts, and runtime notes.
+Publish a qualified archive through the chosen release host. Do not commit generated binaries as part of routine maintenance.
