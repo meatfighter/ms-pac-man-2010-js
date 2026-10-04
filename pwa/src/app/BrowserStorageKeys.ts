@@ -5,6 +5,7 @@ export interface BrowserStorageKeys {
     readonly deploymentId: string;
     readonly highScoreOutbox: string;
     readonly gameState: string;
+    readonly rejectedSaveDebug: string;
     readonly scaling: string;
     readonly fullscreen: string;
     readonly volume: string;
@@ -16,6 +17,7 @@ export function createBrowserStorageKeys(locationHref = getCurrentLocationHref()
         deploymentId,
         highScoreOutbox: createStorageKey(deploymentId, "high-score-outbox"),
         gameState: createStorageKey(deploymentId, "game-state"),
+        rejectedSaveDebug: createStorageKey(deploymentId, "debug-invalid-save"),
         scaling: createStorageKey(deploymentId, "scaling"),
         fullscreen: createStorageKey(deploymentId, "fullscreen"),
         volume: createStorageKey(deploymentId, "volume")

@@ -200,7 +200,7 @@ function isValidEnterInitialsState(fields: Record<string, unknown>): boolean {
     const enterPressed = fields.enterPressed;
     return (
         isIntegerInRange(fields.dotsOffset, -32, 0) &&
-        isIntegerInRange(fields.redOffset, 0, 2_147_483_647) &&
+        isIntegerInRange(fields.redOffset, 0, Number.MAX_SAFE_INTEGER) &&
         typeof initials === "string" &&
         initials.length === 3 &&
         /^[A-Z ]{3}$/.test(initials) &&
@@ -252,7 +252,7 @@ function isValidMainFieldState(fields: Record<string, unknown>): boolean {
     return (
         isIntegerInRange(fields.worldIndex, 0, 3) &&
         isIntegerInRange(fields.stageIndex, 0, 8) &&
-        isIntegerInRange(fields.score, 0, 2_147_483_647) &&
+        isIntegerInRange(fields.score, 0, Number.MAX_SAFE_INTEGER) &&
         isIntegerInRange(fields.highScoreQualificationCutoff, 0, 2_147_483_647) &&
         isIntegerInRange(fields.lives, 0, 6) &&
         typeof fields.paused === "boolean" &&
@@ -283,7 +283,7 @@ function isValidPlayingModeFieldState(fields: Record<string, unknown>): boolean 
         isIntegerInRange(fields.chaseModeToggleDelay, 0, 20 * 91) &&
         typeof fields.ghostsBlue === "boolean" &&
         (fields.ghostsBlueOffset === 0 || fields.ghostsBlueOffset === 2) &&
-        isIntegerInRange(fields.ghostsBlueTimer, 0, 100_000) &&
+        isIntegerInRange(fields.ghostsBlueTimer, 0, Number.MAX_SAFE_INTEGER) &&
         (!fields.ghostsBlue || fields.ghostsBlueTimer > 0) &&
         typeof fields.showGhostPoints === "boolean" &&
         isIntegerInRange(fields.showGhostPointsTimer, 0, 91) &&
@@ -372,8 +372,8 @@ function isValidThingFieldState(fields: unknown, kind: "mspacman" | "ghost" | "f
             isIntegerInRange(record.ghostIndex, 0, 3) &&
             isIntegerInRange(record.spriteIndex, 0, 1) &&
             isIntegerInRange(record.spriteIndexIncrementor, 0, 14) &&
-            isIntegerInRange(record.targetX, -4096, 4096) &&
-            isIntegerInRange(record.targetY, -4096, 4096) &&
+            isIntegerInRange(record.targetX, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) &&
+            isIntegerInRange(record.targetY, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) &&
             typeof record.inHome === "boolean" &&
             typeof record.exitingHome === "boolean" &&
             typeof record.enteringHome === "boolean" &&
@@ -526,7 +526,12 @@ function isValidRobotInputs(value: unknown): value is RobotInputSnapshot[] {
     return value.every((entry, index) => {
         const snapshot = asRecord(entry);
         const maximum = DEMO_LENGTHS[index];
-        return maximum !== undefined && snapshot !== null && hasExactKeys(snapshot, ROBOT_INPUT_SNAPSHOT_KEYS) && isIntegerInRange(snapshot.index, 0, maximum);
+        return (
+            maximum !== undefined &&
+            snapshot !== null &&
+            hasExactKeys(snapshot, ROBOT_INPUT_SNAPSHOT_KEYS) &&
+            isIntegerInRange(snapshot.index, 0, Number.MAX_SAFE_INTEGER)
+        );
     });
 }
 

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig, type PluginOption } from "vite";
+import { defineConfig, type PluginOption, type Plugin } from "vite";
 import { RESOURCE_VERSIONS } from "./src/app/ResourceVersions.ts";
 
 interface VersionInfo {
@@ -292,13 +292,29 @@ function versionedStaticAssetsPlugin(command: string, config: HighScoreBuildConf
     };
 }
 
+function excludePersistenceFuzzFromRelease(): Plugin {
+    return {
+        name: "exclude-persistence-fuzz-from-release",
+        apply: "build",
+        generateBundle(_options, bundle) {
+            const forbidden = /__PERSISTENCE_FUZZ_ONLY__|__persistenceFuzz|__persistence_fuzz__\//;
+            for (const [name, entry] of Object.entries(bundle)) {
+                const content = entry.type === "chunk" ? entry.code : typeof entry.source === "string" ? entry.source : "";
+                if (forbidden.test(name) || forbidden.test(content)) {
+                    throw new Error(`Test-only persistence fuzzer leaked into release: ${name}`);
+                }
+            }
+        }
+    };
+}
+
 export default defineConfig(({ command, mode }) => {
     const highScoreBuildConfig = resolveHighScoreBuildConfig(command, mode);
 
     return {
         root: rootDir,
         base: command === "build" ? "./" : "/",
-        plugins: [versionedHtmlPlugin(highScoreBuildConfig), versionedStaticAssetsPlugin(command, highScoreBuildConfig)],
+        plugins: [excludePersistenceFuzzFromRelease(), versionedHtmlPlugin(highScoreBuildConfig), versionedStaticAssetsPlugin(command, highScoreBuildConfig)],
         define: {
             __APP_VERSION__: JSON.stringify(versionInfo.version),
             __BUILD_STAMP__: JSON.stringify(versionInfo.buildStamp),

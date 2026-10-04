@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 
 const qualificationScripts = [
+    "verify:persistence-fuzz:browsers",
     "verify:ghost-house",
     "verify:departure-save",
     "verify:fullscreen",

@@ -16,7 +16,8 @@ const controls = { captureThrows: false, restoreThrows: false, captureHook: null
 globalThis.__persistenceStoreTest = controls;
 const makeSnapshot = () => ({ version, supported: true, marker: "fresh" });
 controls.snapshot = makeSnapshot;
-const serializer = `export class ${config.serializerName} {
+const serializer = `export function isValidSnapshotForLoadedResources(){return true;}
+export class ${config.serializerName} {
     createSnapshot(){const c=globalThis.__persistenceStoreTest;c.captureHook?.();if(c.captureThrows)throw new Error("capture failure");return c.snapshot();}
     isSupportedSnapshot(s){return s?.version===${version} && s?.supported===true;}
     isSupportedSnapshotForLoadedResources(){return true;}

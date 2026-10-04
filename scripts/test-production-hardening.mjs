@@ -95,7 +95,9 @@ test("failed import siblings remain observed until settlement", async () => {
 
 test("oversized stored data is rejected on read but cannot block an authorized current save", () => {
     const { GAME_STATE_VERSION } = load("pwa/src/mspacman/persistence/GameStateSnapshot.ts", {});
-    const valuePolicy = load("pwa/src/mspacman/persistence/SnapshotValuePolicy.ts", {});
+    // This VM fixture tests overwrite authority with a mock serializer. Its objects
+    // are cross-realm; real JSON-domain acceptance is tested by validator-repairs.
+    const valuePolicy = { hasReasonableSnapshotValues: () => true };
     const text = JSON.stringify({ version: 999, payload: "x".repeat(1_000_001) });
     let stored = text;
     const context = {
@@ -137,10 +139,12 @@ test("oversized stored data is rejected on read but cannot block an authorized c
             if (name.includes("SnapshotLimits")) return { MAX_SNAPSHOT_TEXT_LENGTH: 1_000_000 };
             if (name.includes("Serializer"))
                 return {
+                    isValidSnapshotForLoadedResources: () => true,
                     MsPacManGameStateSerializer: class {
                         createSnapshot() {
                             return { version: GAME_STATE_VERSION, supported: true, marker: "current" };
                         }
+
                         isSupportedSnapshot(snapshot) {
                             return snapshot?.version === GAME_STATE_VERSION && snapshot?.supported === true;
                         }

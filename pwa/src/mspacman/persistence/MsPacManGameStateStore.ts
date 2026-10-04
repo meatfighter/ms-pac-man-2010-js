@@ -1,3 +1,5 @@
+import { retainRejectedSave, type RejectedSaveStage } from "./RejectedSaveDebug.js";
+import { isValidSnapshotForLoadedResources } from "./MsPacManGameStateSerializer.js";
 import { hasReasonableSnapshotValues } from "./SnapshotValuePolicy.js";
 import { captureAndWriteSnapshot, removePreference, type SnapshotWriteResult } from "../../app/BrowserPersistence.js";
 import type { GameContainer } from "slick2d-ts";
@@ -27,10 +29,31 @@ export class MsPacManGameStateStore {
             "Ms. Pac-Man game state",
             createBrowserStorageKeys().gameState,
             () => this.serializer.createSnapshot(main, this.appVersion),
-            (snapshot) => this.isSnapshotValid(snapshot),
+            (snapshot) => this.validateOutgoingSnapshot(main, snapshot, isAuthorized),
             MAX_SNAPSHOT_TEXT_LENGTH,
             isAuthorized
         );
+    }
+
+    private validateOutgoingSnapshot(main: Main, snapshot: MsPacManGameStateSnapshot, isAuthorized: () => boolean): boolean {
+        const checks: ReadonlyArray<readonly [RejectedSaveStage, () => boolean]> = [
+            ["structure-and-graph", () => this.isSnapshotValid(snapshot)],
+            ["loaded-resources", () => isValidSnapshotForLoadedResources(main, snapshot)]
+        ];
+        for (const [stage, check] of checks) {
+            let valid: boolean;
+            try {
+                valid = check();
+            } catch (error) {
+                retainRejectedSave(snapshot, this.appVersion, { stage, kind: "threw", error }, isAuthorized);
+                throw error;
+            }
+            if (!valid) {
+                retainRejectedSave(snapshot, this.appVersion, { stage, kind: "returned-false" }, isAuthorized);
+                return false;
+            }
+        }
+        return true;
     }
 
     public restore(main: Main, gc: GameContainer): boolean {

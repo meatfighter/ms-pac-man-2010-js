@@ -78,7 +78,11 @@ export class RobotInput implements IInput {
     }
 
     public setState(state: { readonly index: number }): void {
-        this.index = Math.max(0, Math.min(this.data.length, Math.trunc(state.index)));
+        if (!Number.isSafeInteger(state.index) || state.index < 0) {
+            throw new RangeError("Invalid saved robot-input cursor.");
+        }
+        // Exhausted input remains neutral; retain the producer cursor exactly.
+        this.index = state.index;
     }
 
     public update(): boolean {

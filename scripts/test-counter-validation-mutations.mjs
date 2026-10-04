@@ -12,18 +12,12 @@ async function probe(mutation = (s) => s, policyMutation = (s) => s) {
             const validator = await load("persistence/MsPacManGameStateSerializer");
             const { hasReasonableSnapshotValues: valid } = await load("persistence/SnapshotValuePolicy");
             const sample = (id, fields) => ({ mode: { id, fields } });
-            for (const [id, key] of [
-                ["enterInitials", "redOffset"],
-                ["selectWorld", "angleOffset"]
-            ]) {
-                assert.equal(valid(sample(id, { [key]: 100001 })), true, "accumulator positive");
-                for (const value of [-1, Infinity]) assert.equal(valid(sample(id, { [key]: value })), false, "accumulator negative");
-                assert.equal(valid(sample("attract", { [key]: 100001 })), false, "exact mode scope");
-                assert.equal(valid(sample(id, { nested: { [key]: 100001 } })), false, "exact path scope");
-                assert.equal(valid(sample(id, { x: 100001 })), false, "unrelated guard");
+            for (const number of [-100001, 100001.5, 1000001, 2147483648, Number.MAX_SAFE_INTEGER, 1e20]) {
+                assert.equal(valid(sample("enterInitials", { redOffset: number })), true, "no blanket magnitude guard");
+                assert.equal(valid(sample("attract", { nested: { x: number } })), true, "no lexical or path guard");
             }
-            assert.equal(valid(sample("enterInitials", { redOffset: 0.5 })), false, "integer red");
-            assert.equal(valid(sample("enterInitials", { redOffset: 2147483648 })), false, "integer maximum");
+            for (const value of [NaN, Infinity, -Infinity]) assert.equal(valid({ value }), false, "finite JSON budget");
+            assert.equal(valid({ text: "x".repeat(4096) }), true, "allowed JSON budget");
             assert.equal(valid({ text: "x".repeat(4097) }), false, "string budget");
             for (const [id, name] of [
                 ["act1", "Act1Mode"],
@@ -53,6 +47,13 @@ async function probe(mutation = (s) => s, policyMutation = (s) => s) {
             initials.init({ tiles: [Array(50).fill({})], input: { clearKeyPressedRecord() {} }, score: 123 }, {});
             const initialFields = Object.fromEntries(Object.entries(initials).filter(([, v]) => typeof v !== "object"));
             assert.equal(validator.isValidStandaloneModeFieldState("enterInitials", { ...initialFields, dotsOffset: -32 }), true, "dots sentinel");
+            assert.equal(
+                validator.isValidStandaloneModeFieldState("enterInitials", { ...initialFields, redOffset: 2147483648 }),
+                true,
+                "large red accumulator"
+            );
+            for (const redOffset of [-1, 0.5, Infinity, Number.MAX_SAFE_INTEGER + 1])
+                assert.equal(validator.isValidStandaloneModeFieldState("enterInitials", { ...initialFields, redOffset }), false, "exact red domain");
             const ghost = {
                 fields: { showGhostPoints: true, ghostPointsIndex: 0, showGhostPointsTimer: 91 },
                 eatenGhostIndex: 0,
@@ -100,31 +101,21 @@ test("precise Pac-Man guards reject behavioral mutants with green controls", asy
                 e.code === "ERR_ASSERTION" &&
                 /nextState bound|stork bounds|active ghost guard|inactive ghost sentinel|deferred state allowed|dots sentinel/.test(e.message)
         );
-    for (const [from, to] of [
-        ["current >= 0 && current <= JAVA_INT_MAX", "current >= 0 && current <= 100_000"],
-        [
-            'if (isModeField && modeId === "selectWorld" && key === "angleOffset") return current >= 0;',
-            'if (isModeField && modeId === "selectWorld" && key === "angleOffset") return current >= 0 && current <= 100_000;'
-        ],
-        ["if (!Number.isFinite(current)) return false;", "if (false) return false;"],
-        [
-            'if (isModeField && modeId === "selectWorld" && key === "angleOffset") return current >= 0;',
-            'if (isModeField && modeId === "selectWorld" && key === "angleOffset") return true;'
-        ],
-        ['modeId === "enterInitials"', "true"],
-        ['modeId === "selectWorld"', "true"],
-        ['path.length === 3 && path[0] === "mode" && path[1] === "fields"', "true"],
-        ["Math.abs(current) <= MAX_GAMEPLAY_NUMBER_MAGNITUDE", "true"],
-        ["current.length <= MAX_SNAPSHOT_STRING_LENGTH", "true"],
-        ["Number.isInteger(current) && current >= 0 && current <= JAVA_INT_MAX", "current >= 0 && current <= JAVA_INT_MAX"],
-        ["const MAX_GAMEPLAY_NUMBER_MAGNITUDE = 100_000", "const MAX_GAMEPLAY_NUMBER_MAGNITUDE = 1_000_000"]
-    ])
+    // Mutation checks for the new single JSON-budget wrapper. Precise domains
+    // remain tested above and by the real producer tests, not duplicated here.
+    const anchor = "return isSnapshotJsonWithinBudget(value);";
+    for (const replacement of [
+        "return true;",
+        "return isSnapshotJsonWithinBudget(value) && JSON.stringify(value).length < 1000;",
+        'const stack = [value]; while (stack.length) { const v = stack.pop(); if (typeof v === "number" && Math.abs(v) > 100000) return false; if (v && typeof v === "object") stack.push(...Object.values(v)); } return isSnapshotJsonWithinBudget(value);'
+    ]) {
         await assert.rejects(
             probe(
                 (s) => s,
-                (s) => replace(s, from, to)
+                (s) => replace(s, anchor, replacement)
             ),
-            (e) => e.code === "ERR_ASSERTION" && /scope|guard|budget|integer red|accumulator positive|accumulator negative/.test(e.message)
+            (e) => e.code === "ERR_ASSERTION" && /budget|guard/.test(e.message)
         );
+    }
     await probe();
 });
