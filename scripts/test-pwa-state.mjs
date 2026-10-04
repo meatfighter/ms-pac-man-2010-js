@@ -474,13 +474,19 @@ try {
         terminalDemoCursor.robotInputs[0].index = 4390;
         assert.equal(serializer.isSupportedSnapshot(terminalDemoCursor), true);
 
-        const excessiveDemoCursor = clone(playingSnapshot);
-        excessiveDemoCursor.robotInputs[0].index = 4391;
-        assert.equal(serializer.isSupportedSnapshot(excessiveDemoCursor), false);
+        const exhaustedDemoCursor = clone(playingSnapshot);
+        exhaustedDemoCursor.robotInputs[0].index = 4391;
+        assert.equal(serializer.isSupportedSnapshot(exhaustedDemoCursor), true);
 
-        const excessiveFourthDemoCursor = clone(playingSnapshot);
-        excessiveFourthDemoCursor.robotInputs[3].index = 3677;
-        assert.equal(serializer.isSupportedSnapshot(excessiveFourthDemoCursor), false);
+        const exhaustedFourthDemoCursor = clone(playingSnapshot);
+        exhaustedFourthDemoCursor.robotInputs[3].index = 3677;
+        assert.equal(serializer.isSupportedSnapshot(exhaustedFourthDemoCursor), true);
+
+        for (const index of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1, NaN, Infinity]) {
+            const invalidCursor = clone(playingSnapshot);
+            invalidCursor.robotInputs[0].index = index;
+            assert.equal(serializer.isSupportedSnapshot(invalidCursor), false);
+        }
 
         const validInitials = serializer.createSnapshot(createFakeMain("enterInitials", "source", { initials: "CAT", enterPressed: true }), APP_VERSION);
         assert.equal(serializer.isSupportedSnapshot(validInitials), true);
