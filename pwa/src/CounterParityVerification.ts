@@ -330,7 +330,12 @@ export async function verifyCounterParity(mount: Mount): Promise<void> {
         assert(field("redOffset") === 100001 && field("dotsOffset") === -3, "Actual initials accumulator wrap");
         await roundtrip("initials:100001:-3");
         assert(Reflect.get(mode(), "newScoreOf") === "YOU ACHIEVED A SCORE OF 1234567.", "Initials full logical score");
-        for (const n of [-1, 0.5, 2147483648])
+        Reflect.set(mode(), "redOffset", 2147483647);
+        Reflect.set(mode(), "dotsOffset", -32);
+        tick();
+        assert(field("redOffset") === 2147483648, "Actual initials counter crosses signed-int boundary");
+        await roundtrip("initials:2147483648");
+        for (const n of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1])
             reject(`red:${n}`, (s) => {
                 s.mode.fields.redOffset = n;
             });
