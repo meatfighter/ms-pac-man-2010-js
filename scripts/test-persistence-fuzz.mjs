@@ -356,3 +356,19 @@ test("first cancellation gives the worker a cooperative cleanup boundary", async
         rmSync(base, { recursive: true, force: true });
     }
 });
+
+test("continuation deduplication retains entity type and phase without transient IDs", () => {
+    const value = (type, state, index = 0) => ({
+        category: "CONTINUATION_DIVERGENCE",
+        difference: { path: `$.things[${index}].fields.x` },
+        snapshot: { things: Array.from({ length: index + 1 }, () => ({ type, fields: { state } })) }
+    });
+    assert.equal(issueSignature(value("Bat", 0)), issueSignature(value("Bat", 0, 3)));
+    assert.notEqual(issueSignature(value("Bat", 0)), issueSignature(value("Dog", 0)));
+    assert.notEqual(issueSignature(value("Bat", 0)), issueSignature(value("Bat", 1)));
+});
+
+test("replay command cannot silently run a new qualification campaign", () => {
+    assert.throws(() => parseArgs(["--profile=replay"], game), /requires --replay/);
+    assert.equal(parseArgs(["--profile=replay", "--replay=evidence.json"], game).profile, "replay");
+});

@@ -122,7 +122,7 @@ function save(snapshot = capture()) {
         } catch {
             /* Optional diagnostic evidence. */
         }
-        issue(result?.reason === "capture-failed" ? "CAPTURE_THROW" : "SAVE_REJECTED", {
+        issue(result?.reason === "capture-failed" ? "CAPTURE_THROW" : result?.reason === "invalid-snapshot" ? "SAVE_REJECTED" : "STORE_WRITE_FAILED", {
             stage: debug?.failedStage ?? result?.reason ?? "frozen-save",
             ruleCode: debug?.ruleCode,
             path: debug?.fieldPath,

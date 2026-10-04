@@ -116,7 +116,7 @@
         "verify:persistence-fuzz": "node scripts/run-persistence-fuzz.mjs --profile=qualification",
         "verify:persistence-fuzz:browsers": "node scripts/run-persistence-fuzz.mjs --profile=browser-qualification",
         "fuzz:persistence:soak": "node scripts/run-persistence-fuzz.mjs --profile=soak",
-        "fuzz:persistence:replay": "node scripts/run-persistence-fuzz.mjs",
+        "fuzz:persistence:replay": "node scripts/run-persistence-fuzz.mjs --profile=replay",
         "test:persistence-fuzz": "node --test scripts/test-persistence-fuzz.mjs && npm run test:validator-repairs",
         "test:validator-repairs": "npm run check:persistence-policy-inventory && node --loader ./scripts/persistence-fuzz/typescript-loader.mjs --test scripts/persistence-fuzz/validator-repairs.test.mjs",
         "generate:persistence-policy-inventory": "node --loader ./scripts/persistence-fuzz/typescript-loader.mjs scripts/persistence-fuzz/inventory.mjs",

@@ -54,8 +54,16 @@ export function snapshotCoverage(snapshot) {
     return [...result].sort();
 }
 export function issueSignature(issue) {
-    const cleanPath = String(issue.path ?? issue.difference?.path ?? "").replace(/\[\d+\]/g, "[*]");
-    return [issue.category, issue.ruleCode ?? issue.stage ?? "", issue.ownerType ?? "", cleanPath, issue.error?.name ?? ""].join("|");
+    const path = String(issue.path ?? issue.difference?.path ?? "");
+    const entityPath = path.match(/(?:gameMode\.)?(entities|things)\[(\d+)\]/);
+    const snapshot = issue.snapshot ?? issue.previousSnapshot;
+    const entities = entityPath?.[1] === "things" ? snapshot?.things : snapshot?.gameMode?.entities;
+    const entity = entityPath ? entities?.[Number(entityPath[2])] : null;
+    const owner = issue.ownerType ?? entity?.type ?? "";
+    const mode = snapshot?.mode?.id ?? snapshot?.modeId ?? snapshot?.mainFields?.mode ?? snapshot?.kind ?? "";
+    const phase = `${mode}:${entity?.fields?.state ?? entity?.fields?.dead ?? ""}`;
+    const cleanPath = path.replace(/\[\d+\]/g, "[*]");
+    return [issue.category, issue.ruleCode ?? issue.stage ?? "", owner, cleanPath, phase, issue.error?.name ?? ""].join("|");
 }
 
 /** A transition trigger, not a validity rule. Every value is observed, never repaired. */

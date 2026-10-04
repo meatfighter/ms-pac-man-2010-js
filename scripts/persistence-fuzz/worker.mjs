@@ -173,7 +173,13 @@ export async function executeTrial(request) {
         await page.evaluate(() => window.__persistenceFuzz.resumeBoundary());
         const restored = await page.evaluate((frames) => window.__persistenceFuzz.run(frames, { trace: true, write: false }), spec.continuation);
         const drift = firstDifference(reference.trace, restored.trace);
-        if (drift) add({ category: "CONTINUATION_DIVERGENCE", difference: drift, snapshot: restored.trace.at(-1), previousSnapshot: reference.trace.at(-1) });
+        if (drift)
+            add({
+                category: "CONTINUATION_DIVERGENCE",
+                difference: drift,
+                snapshot: restored.trace[Number(drift.path.match(/^\$\[(\d+)\]/)?.[1] ?? 0)],
+                previousSnapshot: reference.trace[Number(drift.path.match(/^\$\[(\d+)\]/)?.[1] ?? 0)]
+            });
         if (spec.observerControl && spec.audio !== "native") {
             // Same restored baseline and schedule, but no per-callback captures,
             // validation or writes. Compare only at the end to detect observers

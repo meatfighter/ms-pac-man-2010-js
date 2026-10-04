@@ -18,7 +18,7 @@ export const HELP = `Persistence fuzz campaign (test-only, requires installed de
   npm run fuzz:persistence:replay -- --replay=../qualification-evidence/my-run/issues/<id>/repro.json
 
 Options:
-  --profile=qualification|browser-qualification|soak
+  --profile=qualification|browser-qualification|soak|replay
   --hours=N                 Soak duration (default 8). Stops between trials.
   --trials=N                Limit trials instead of a duration; first sweep is stratified.
   --seed=UINT32             Decimal or hexadecimal master seed, logged immediately.
@@ -88,7 +88,8 @@ export function parseArgs(args, game) {
     for (const key of Object.keys(raw)) if (!supported.has(key)) throw new Error(`Unknown option: --${key}`);
     if (raw.help) return { help: true };
     const profile = raw.profile ?? "qualification";
-    if (!["qualification", "browser-qualification", "soak"].includes(profile)) throw new Error("Invalid campaign profile");
+    if (!["qualification", "browser-qualification", "soak", "replay"].includes(profile)) throw new Error("Invalid campaign profile");
+    if (profile === "replay" && !raw.replay) throw new Error("Replay profile requires --replay");
     if (raw.hours && profile !== "soak") throw new Error("--hours is only valid for the soak profile");
     if (raw.hours && raw.trials) throw new Error("Select --hours or --trials, not both");
     const hours = raw.hours ? Number(raw.hours) : profile === "soak" && !raw.trials ? 8 : null;
@@ -101,6 +102,7 @@ export function parseArgs(args, game) {
     const config = {
         game,
         requireLanes: true,
+        command: [process.execPath, ...process.argv.slice(1)],
         profile,
         seed,
         hours,
