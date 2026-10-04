@@ -336,3 +336,23 @@ test("a frozen world with captures, audio and writes still cannot qualify", asyn
         rmSync(base, { recursive: true, force: true });
     }
 });
+
+test("first cancellation gives the worker a cooperative cleanup boundary", async () => {
+    const base = directory();
+    try {
+        const worker = join(base, "cooperative.mjs");
+        writeFileSync(
+            worker,
+            'process.on("message",(m)=>{if(m.type==="stop")process.send({type:"result",result:{interrupted:true,cooperative:true,issues:[],metrics:{},coverage:[]}},()=>process.exit(130));else process.send({type:"progress",phase:"running"});});'
+        );
+        const stop = new AbortController();
+        const result = await supervisedTrial(
+            { repo: resolve(".") },
+            { workerUrl: pathToFileURL(worker), signal: stop.signal, timeoutMs: 5000, progress: () => stop.abort() }
+        );
+        assert.equal(result.interrupted, true);
+        assert.equal(result.cooperative, true);
+    } finally {
+        rmSync(base, { recursive: true, force: true });
+    }
+});

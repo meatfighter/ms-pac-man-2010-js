@@ -50,9 +50,14 @@ export function supervisedTrial(request, { timeoutMs = 180000, signal, progress 
                 child.once("exit", () => clearTimeout(hard));
                 hard.unref();
             }
-            resolve({ ...result, workerTail: tail, lastPhase: phase });
+            resolve({ ...result, ...(signal?.aborted ? { interrupted: true } : {}), workerTail: tail, lastPhase: phase });
         };
-        const abort = () => finish({ interrupted: true, issues: [], metrics: {}, coverage: [] }, true);
+        const abort = () => {
+            clearTimeout(timer);
+            // Let browser/server cleanup settle before the bounded hard fallback.
+            if (child.connected) child.send({ type: "stop" }, () => {});
+            timer = setTimeout(() => finish({ interrupted: true, issues: [], metrics: {}, coverage: [] }, true), 2000);
+        };
         signal?.addEventListener("abort", abort, { once: true });
         child.on("error", (error) => finish({ infrastructureFailure: { message: error.message }, issues: [], metrics: {}, coverage: [] }, true));
         child.on("message", (message) => {

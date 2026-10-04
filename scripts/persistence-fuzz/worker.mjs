@@ -8,14 +8,22 @@ import { stratumId } from "./profiles.mjs";
 let server = null,
     browser = null,
     context = null,
-    closing = false;
-async function cleanup() {
-    if (closing) return;
-    closing = true;
-    await context?.close().catch(() => {});
-    await browser?.close().catch(() => {});
-    await server?.close().catch(() => {});
+    cleanupPromise = null,
+    stopping = false;
+function cleanup() {
+    return (cleanupPromise ??= (async () => {
+        await context?.close().catch(() => {});
+        await browser?.close().catch(() => {});
+        await server?.close().catch(() => {});
+    })());
 }
+process.on("message", (message) => {
+    if (message.type !== "stop") return;
+    stopping = true;
+    void cleanup().finally(() =>
+        process.send?.({ type: "result", result: { interrupted: true, issues: [], metrics: {}, coverage: [] } }, () => process.exit(130))
+    );
+});
 process.once("SIGTERM", () => {
     void cleanup().finally(() => process.exit(143));
 });
@@ -233,7 +241,7 @@ export async function executeTrial(request) {
 process.once("message", (request) => {
     void executeTrial(request)
         .then((result) => {
-            process.send?.({ type: "result", result }, () => process.exit(0));
+            if (!stopping) process.send?.({ type: "result", result }, () => process.exit(0));
         })
         .catch((error) => {
             process.send?.({ type: "result", result: { infrastructureFailure: errorDetails(error), issues: [], metrics: {}, coverage: [] } }, () =>
