@@ -53,6 +53,8 @@ Saved games support the current schema. Unsupported or corrupt saves are ignored
 
 Regenerate affected resource and parity metadata through the repository scripts. The `slick2d-ts` dependency is pinned to an immutable commit archive; update it and the lockfile together only when intentionally adopting a new engine revision.
 
+See [PERSISTENCE_FUZZING.md](PERSISTENCE_FUZZING.md) for the deterministic qualification campaign, overnight discovery, replay/minimization, evidence isolation and required complete-game resources.
+
 ## High-score integration
 
 The [score service](https://github.com/meatfighter/ms-pac-man-2010-server) is maintained separately. Gameplay remains usable when networking is unavailable. Production browser clients use the same-origin `/api/ms-pac-man-2010/scores` endpoint.
@@ -66,7 +68,3 @@ Edit article prose in `about/content.md` and attribution in `about/footer.md`; l
 - [desktop/README.md](desktop/README.md): Java build and runtime requirements.
 - [releases/README.md](releases/README.md): local release artifacts.
 - [LICENSE](LICENSE), [COPYRIGHT.md](COPYRIGHT.md), and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md): source licensing, attribution, and third-party scope.
-
-## Persistence fuzzing
-
-See [PERSISTENCE_FUZZING.md](PERSISTENCE_FUZZING.md) for the deterministic qualification campaign, overnight discovery, replay/minimization, evidence isolation and required complete-game resources.
