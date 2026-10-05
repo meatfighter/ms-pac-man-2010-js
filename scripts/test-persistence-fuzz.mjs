@@ -723,3 +723,78 @@ test("acknowledged repeated deliveries persist exact occurrence counts", () => {
         rmSync(base, { recursive: true, force: true });
     }
 });
+
+test("game-owned transition projection uses its actual audio and root schema without cursor churn", async () => {
+    const { transitionProjection: project, captureContext } = await import("./persistence-fuzz/transitions.mjs");
+    const music = { id: "theme", playback: { transport: "playing", positionSeconds: 1 } },
+        sound = { id: "cue", playback: { activeVoiceIndex: 0, voices: [] } };
+    let snapshot, musicOf, soundsOf, complete;
+    if (game === "jackal-js") {
+        snapshot = {
+            kind: "game",
+            mainFields: { stageIndex: 0, hardMode: false },
+            playerFields: { respawning: 4 },
+            gameMode: { fields: { stageCompletedFlag: false, stageCompletedDelay: 20 }, entities: [], elements: [], indexes: {} },
+            currentSongState: { id: "stage", activeMusic: music },
+            audioState: { sounds: [sound] }
+        };
+        musicOf = (s) => s.currentSongState.activeMusic;
+        soundsOf = (s) => s.audioState.sounds;
+        complete = (s) => {
+            s.gameMode.fields.stageCompletedFlag = true;
+        };
+    } else if (game === "stickvania-js") {
+        snapshot = {
+            mode: 1,
+            mainFields: { stageIndex: 0, difficulty: 0, beatStageFlag: false },
+            stage: { currentSegmentIndex: 0, segments: [{ regionIndex: 0 }], simon: 1 },
+            things: [{ id: 1, type: "Simon", fields: { dead: 2 } }],
+            audio: { currentMusic: music, songs: [], sounds: [sound] }
+        };
+        musicOf = (s) => s.audio.currentMusic;
+        soundsOf = (s) => s.audio.sounds;
+        complete = (s) => {
+            s.mainFields.beatStageFlag = true;
+        };
+    } else {
+        snapshot = {
+            mainFields: { stageIndex: 0, worldIndex: 0 },
+            mode: { id: "playing", fields: { finished: false, readyTimer: 0 }, mspacman: { fields: { speedBoost: false } }, ghosts: [] },
+            music,
+            soundEffects: [sound]
+        };
+        musicOf = (s) => s.music;
+        soundsOf = (s) => s.soundEffects;
+        complete = (s) => {
+            s.mode.fields.finished = true;
+        };
+    }
+    const key = (s) => JSON.stringify(project(s)),
+        initial = key(snapshot);
+    for (const change of [
+        (s) => {
+            musicOf(s).playback.transport = "paused";
+        },
+        (s) => {
+            soundsOf(s)[0].playback.voices.push({ looped: false, playbackRate: 1 });
+        },
+        complete,
+        (s) => {
+            s.mainFields.stageIndex++;
+        }
+    ]) {
+        const next = structuredClone(snapshot);
+        change(next);
+        assert.notEqual(key(next), initial);
+    }
+    const next = structuredClone(snapshot);
+    musicOf(next).playback.positionSeconds++;
+    if (game === "jackal-js") {
+        next.playerFields.respawning--;
+        next.gameMode.fields.stageCompletedDelay--;
+    }
+    if (game === "stickvania-js") next.things[0].fields.dead++;
+    if (game === "ms-pac-man-2010-js") next.mode.fields.readyTimer++;
+    assert.equal(key(next), initial);
+    assert.equal(captureContext(snapshot).stage, 0);
+});

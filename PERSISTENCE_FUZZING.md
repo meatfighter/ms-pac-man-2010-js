@@ -128,3 +128,5 @@ The save benchmark compares substitution of only the extra loaded-resource
 preflight within the current validator stack. It is not a comparison against an
 entire older release. No test instrumentation is imported by production entry
 points. Controlled audio does not model arbitrary native suspension clocks.
+
+Each adapter owns `transitions.mjs`, which projects its real mode/player/root and audio schema. Ordinary countdowns and audio cursors are excluded; completion, transport, voice membership and stage/region ownership trigger full writes.

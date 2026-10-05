@@ -118,13 +118,7 @@ export function observedStratum({ main }) {
     return { stage: main.stageIndex, world: main.worldIndex, hard: false };
 }
 
-import { snapshotTransitionKey } from "./compare.mjs";
-export function captureContext(snapshot) {
-    return { stage: snapshot.mainFields.stageIndex, world: snapshot.mainFields.worldIndex, hard: false, mode: snapshot.mode.id };
-}
-export function transitionProjection(snapshot) {
-    return { context: captureContext(snapshot), phases: snapshotTransitionKey(snapshot) };
-}
+export { captureContext, transitionProjection } from "./transitions.mjs";
 export function instrument({ main }, observer) {
     if (main.mode !== Main.playingMode) return;
     const world = main.getPlayingModeForState();
