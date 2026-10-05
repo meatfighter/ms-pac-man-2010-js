@@ -130,3 +130,5 @@ entire older release. No test instrumentation is imported by production entry
 points. Controlled audio does not model arbitrary native suspension clocks.
 
 Each adapter owns `transitions.mjs`, which projects its real mode/player/root and audio schema. Ordinary countdowns and audio cursors are excluded; completion, transport, voice membership and stage/region ownership trigger full writes.
+
+Input generator 3 excludes both `P` and NES Start/Enter from random gameplay recipes: either can toggle Pause. Explicit paired pause fixtures retain pause/resume coverage. Recipe/profile format remains 2.

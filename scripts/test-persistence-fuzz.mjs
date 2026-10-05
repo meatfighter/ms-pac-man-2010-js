@@ -798,3 +798,15 @@ test("game-owned transition projection uses its actual audio and root schema wit
     assert.equal(key(next), initial);
     assert.equal(captureContext(snapshot).stage, 0);
 });
+
+test("ordinary gameplay recipes never emit an unpaired Pause or NES Start edge", () => {
+    for (const name of ["jackal-js", "stickvania-js", "ms-pac-man-2010-js"])
+        for (let index = 0; index < casePlan(name).length; index++) {
+            const spec = makeTrial(name, { seed: 0x20261004, profile: "qualification" }, index);
+            assert.equal(spec.generatorVersion, 3);
+            assert.ok(
+                [...spec.frames, ...spec.continuation].every((frame) => (frame.mask & (64 | 128)) === 0),
+                `${name}:${index}`
+            );
+        }
+});

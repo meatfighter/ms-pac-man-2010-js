@@ -1,5 +1,5 @@
 /** Test randomness is deliberately separate from each game's JavaRandom. */
-export const GENERATOR_VERSION = 2;
+export const GENERATOR_VERSION = 3;
 export function seed32(value) {
     const number = Number(value);
     if (!Number.isSafeInteger(number) || number < 0 || number > 0xffffffff) throw new RangeError("Seed must be a uint32 (decimal or 0x hexadecimal).");
@@ -41,9 +41,8 @@ export function framesFor(inputSeed, scheduleSeed, count, game) {
                 if (input.next() < 0.55) mask |= 16;
                 if (input.next() < 0.25) mask |= 32;
             }
-            // Pause/resume belongs to explicit paired scenarios, never a lone random toggle.
-            if (input.next() < 0.02) mask = 128;
-            remaining = mask === 64 || mask === 128 ? 0 : 1 + input.int(64);
+            // Both P and NES Start/Enter can toggle Pause. Explicit paired fixtures own them.
+            remaining = 1 + input.int(64);
         }
         const deltaMs = [5, 10, 10, 11, 16, 20, 30][timing.int(7)];
         const renderCount = [0, 1, 1, 1, 2][timing.int(5)];
