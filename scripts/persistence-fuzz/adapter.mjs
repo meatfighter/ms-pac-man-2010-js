@@ -4,6 +4,7 @@ import { RuntimeLoader } from "/src/app/RuntimeLoader.ts";
 import { beginGameAudio, commitGameAudio, releaseGameAudio } from "/src/app/PlaybackSession.ts";
 import { MsPacManGameStateSerializer } from "/src/mspacman/persistence/MsPacManGameStateSerializer.ts";
 import { createBrowserStorageKeys } from "/src/app/BrowserStorageKeys.ts";
+import { PlayingMode } from "/src/mspacman/PlayingMode.ts";
 import { Main } from "/src/mspacman/Main.ts";
 import { random } from "./prng.mjs";
 
@@ -33,7 +34,7 @@ export async function mount(restore, version) {
     await runtime.slick.ResourceLoader.waitForAll();
     return { main, container, game, store, runtime };
 }
-export function seed({ main, container }, spec) {
+export function seed({ main, container }, spec, step) {
     main.demoMode = false;
     main.lives = 5;
     main.score = 0;
@@ -43,6 +44,19 @@ export function seed({ main, container }, spec) {
     main.setMode(Main.playingMode, container);
     const world = main.getPlayingModeForState(),
         player = world.mspacman;
+    let startupCallbacks = 0;
+    while ((world.readyTimer > 0 || world.fadeState !== PlayingMode.FADE_NONE) && startupCallbacks++ < 300)
+        step({ mask: 0, deltaMs: 11, renderCount: 1 }, "setup-producer");
+    if (world.readyTimer > 0 || world.fadeState !== PlayingMode.FADE_NONE) throw new Error("SETUP: maze introduction did not reach gameplay");
+    if (spec.recordingBoundary) {
+        const { index, offset } = spec.recordingBoundary;
+        const robot = main.robotInputs[index];
+        robot.reset();
+        const length = robot.data.length;
+        for (let step = 0; step < length + offset; step++) robot.update();
+        if (robot.getState().index !== length + offset) throw new Error("SETUP: recorded input producer did not reach boundary");
+        return { strategy: "explicit-boundary", recording: { index, length, offset, cursor: robot.getState().index }, x: player.x, y: player.y };
+    }
     if (spec.lane === "natural") return { strategy: "normal-maze-entry", x: player.x, y: player.y, world: spec.world, stage: spec.stage };
     const candidates = [];
     for (let y = 0; y < world.typeMap.length; y++)
@@ -62,7 +76,15 @@ export function seed({ main, container }, spec) {
         point = candidates[rng.int(candidates.length)];
     player.x = point.x;
     player.y = point.y;
-    player.direction = point.directions[rng.int(point.directions.length)];
+    // Ask the actual movement predicates after placement, including wrap rules.
+    const headings = [
+        [Main.UP, "canMoveUp"],
+        [Main.DOWN, "canMoveDown"],
+        [Main.LEFT, "canMoveLeft"],
+        [Main.RIGHT, "canMoveRight"]
+    ].filter(([, method]) => player[method]());
+    if (!headings.length) throw new Error("SETUP: production movement rejects candidate footprint");
+    player.direction = headings[rng.int(headings.length)][0];
     return { strategy: "passable-aligned-cell", x: player.x, y: player.y, direction: player.direction, world: spec.world, stage: spec.stage };
 }
 export function retire(mounted) {
@@ -85,7 +107,7 @@ export function diagnose(_main, snapshot, stage) {
     return { ownerType: `mode:${snapshot.mode.id}`, ruleCode: stage };
 }
 
-// Benchmark the former outgoing preflight boundary with the current serializer.
+// Benchmark substitution of only the extra resource preflight in the CURRENT stack.
 export function validateBaseline(main, snapshot) {
     if (!serializer.isSupportedSnapshot(snapshot)) return "structure-and-graph";
     if (!hasReasonableSnapshotValues(snapshot)) return "values-and-audio";
@@ -94,4 +116,19 @@ export function validateBaseline(main, snapshot) {
 
 export function observedStratum({ main }) {
     return { stage: main.stageIndex, world: main.worldIndex, hard: false };
+}
+
+import { snapshotTransitionKey } from "./compare.mjs";
+export function captureContext(snapshot) {
+    return { stage: snapshot.mainFields.stageIndex, world: snapshot.mainFields.worldIndex, hard: false, mode: snapshot.mode.id };
+}
+export function transitionProjection(snapshot) {
+    return { context: captureContext(snapshot), phases: snapshotTransitionKey(snapshot) };
+}
+export function instrument({ main }, observer) {
+    if (main.mode !== Main.playingMode) return;
+    const world = main.getPlayingModeForState();
+    observer.actor(world.mspacman, true);
+    observer.input(world.input);
+    for (const ghost of world.ghosts) observer.actor(ghost);
 }

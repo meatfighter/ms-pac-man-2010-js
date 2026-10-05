@@ -42,6 +42,7 @@ export class Reporter {
         this.fileSizes = new Map();
         this.incomplete = false;
         this.issues = new Map();
+        this.deliveries = new Map();
         if (existsSync(this.directory)) throw new Error(`Refusing to reuse evidence directory: ${this.directory}`);
         mkdirSync(this.directory, { recursive: true });
         this.fd = openSync(join(this.directory, "events.jsonl"), "wx");
@@ -82,10 +83,15 @@ export class Reporter {
     }
 
     finding(issue, reproduction) {
+        const delivery = issue.evidenceId;
+        if (delivery && this.deliveries.has(delivery)) return this.deliveries.get(delivery);
         const signature = issueSignature(issue);
         let row = this.issues.get(signature);
         if (row) {
-            row.occurrences++;
+            row.occurrences += issue.occurrences ?? 1;
+            this.retainVariant(row, issue);
+            this.event({ event: "finding-delivery", evidenceId: delivery, ...row });
+            if (delivery) this.deliveries.set(delivery, row.id);
             return row.id;
         }
         if (this.issues.size >= 256) {
@@ -93,7 +99,7 @@ export class Reporter {
             throw new Error("Unique-issue budget exhausted.");
         }
         const id = createHash("sha256").update(signature).digest("hex").slice(0, 16);
-        row = { id, signature, occurrences: 1, category: issue.category, ruleCode: issue.ruleCode ?? null };
+        row = { id, signature, occurrences: issue.occurrences ?? 1, category: issue.category, ruleCode: issue.ruleCode ?? null };
         this.issues.set(signature, row);
         // gzip is used for large snapshots; repro.json remains directly readable.
         const { snapshot, previousSnapshot, ...description } = issue;
@@ -106,9 +112,69 @@ export class Reporter {
             if (value === undefined || value === null) continue;
             const bytes = gzipSync(JSON.stringify(value));
             this.reserve(bytes.length);
-            writeFileSync(join(this.directory, `issues/${id}/${name}.json.gz`), bytes, { flag: "wx" });
+            writeFileSync(join(this.directory, `issues/${id}/${name}.json.gz`), bytes, { flag: "wx", flush: true });
         }
+        row.variants = [];
+        row.omittedVariants = 0;
+        this.retainVariant(row, issue);
+        this.event({ event: "finding-delivery", evidenceId: delivery, ...row });
+        if (delivery) this.deliveries.set(delivery, id);
         return id;
+    }
+
+    retainVariant(row, issue) {
+        // Boolean gates are uncertain families, not proven root causes.
+        if (
+            issue.path ||
+            issue.difference?.path ||
+            (issue.ruleCode && !["structure-and-graph", "loaded-resources", "values-and-audio", "thing-fields", "entity-fields"].includes(issue.ruleCode))
+        )
+            return;
+        const bytes = JSON.stringify(issue.snapshot ?? issue);
+        const hash = createHash("sha256").update(bytes).digest("hex");
+        if (row.variants?.includes(hash)) return;
+        row.variants ??= [];
+        if (row.variants.length >= 4) {
+            row.omittedVariants++;
+            return;
+        }
+        const zipped = gzipSync(bytes);
+        this.reserve(zipped.length);
+        writeFileSync(join(this.directory, `issues/${row.id}/variant-${hash}.json.gz`), zipped, { flag: "wx", flush: true });
+        row.variants.push(hash);
+    }
+
+    terminal(summary) {
+        // Dedicated 16 KiB terminal allowance does not consume normal evidence.
+        // Absence of this receipt always means incomplete, regardless of summary.json.
+        const summaryBytes = existsSync(join(this.directory, "summary.json")) ? readFileSync(join(this.directory, "summary.json")) : null;
+        const receipt = {
+            formatVersion: 2,
+            status: summary.status,
+            exitCode: summary.exitCode,
+            planCompleted: summary.planCompleted,
+            stopReason: summary.stopReason,
+            completedCases: summary.completed,
+            integrityVerified: summary.integrityVerified,
+            evidenceIncomplete: this.incomplete || summary.evidenceIncomplete,
+            summarySha256: summaryBytes ? createHash("sha256").update(summaryBytes).digest("hex") : null
+        };
+        if (receipt.evidenceIncomplete && receipt.exitCode !== 130) {
+            receipt.status = "incomplete";
+            receipt.exitCode = 2;
+        }
+        const text = JSON.stringify(receipt, null, 2) + "\n";
+        if (Buffer.byteLength(text) > 16384) throw new Error("Terminal receipt exceeded reserved allowance");
+        const target = join(this.directory, "terminal.json");
+        const fd = openSync(`${target}.pending`, "w");
+        try {
+            writeSync(fd, text);
+            fsyncSync(fd);
+        } finally {
+            closeSync(fd);
+        }
+        renameSync(`${target}.pending`, target);
+        return receipt;
     }
 
     close() {

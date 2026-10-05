@@ -1,5 +1,5 @@
 /** Test randomness is deliberately separate from each game's JavaRandom. */
-export const GENERATOR_VERSION = 1;
+export const GENERATOR_VERSION = 2;
 export function seed32(value) {
     const number = Number(value);
     if (!Number.isSafeInteger(number) || number < 0 || number > 0xffffffff) throw new RangeError("Seed must be a uint32 (decimal or 0x hexadecimal).");
@@ -41,8 +41,7 @@ export function framesFor(inputSeed, scheduleSeed, count, game) {
                 if (input.next() < 0.55) mask |= 16;
                 if (input.next() < 0.25) mask |= 32;
             }
-            // Pause is an occasional isolated press, not a permanent game freeze.
-            if (input.next() < 0.02 && game !== "stickvania-js") mask = 64;
+            // Pause/resume belongs to explicit paired scenarios, never a lone random toggle.
             if (input.next() < 0.02) mask = 128;
             remaining = mask === 64 || mask === 128 ? 0 : 1 + input.int(64);
         }

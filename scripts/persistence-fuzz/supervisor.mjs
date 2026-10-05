@@ -18,7 +18,10 @@ export function killOwnedProcessTree(child, signal = "SIGTERM") {
     }
 }
 /** Each trial has a new process/browser/server; poisoned trials cannot taint later trials. */
-export function supervisedTrial(request, { timeoutMs = 180000, signal, progress = () => {}, workerUrl = new URL("./worker.mjs", import.meta.url) } = {}) {
+export function supervisedTrial(
+    request,
+    { timeoutMs = 180000, signal, progress = () => {}, onEvidence = () => {}, workerUrl = new URL("./worker.mjs", import.meta.url) } = {}
+) {
     return new Promise((resolve) => {
         if (signal?.aborted) return resolve({ interrupted: true, issues: [], metrics: {}, coverage: [] });
         const child = fork(fileURLToPath(workerUrl), [], {
@@ -30,6 +33,8 @@ export function supervisedTrial(request, { timeoutMs = 180000, signal, progress 
             // Do not pass arbitrary test-runner flags or inspectors to the child.
             execArgv: []
         });
+        const retained = new Map();
+        let lastEvidence = {};
         let settled = false,
             tail = "",
             phase = "spawn",
@@ -50,7 +55,17 @@ export function supervisedTrial(request, { timeoutMs = 180000, signal, progress 
                 child.once("exit", () => clearTimeout(hard));
                 hard.unref();
             }
-            resolve({ ...result, ...(signal?.aborted ? { interrupted: true } : {}), workerTail: tail, lastPhase: phase });
+            const merged = new Map(retained);
+            for (const [index, issue] of (result.issues ?? []).entries()) merged.set(issue.evidenceId ?? `terminal:${index}`, issue);
+            resolve({
+                ...lastEvidence,
+                ...result,
+                metrics: Object.keys(result.metrics ?? {}).length ? result.metrics : (lastEvidence.metrics ?? {}),
+                issues: [...merged.values()],
+                ...(signal?.aborted ? { interrupted: true } : {}),
+                workerTail: tail,
+                lastPhase: phase
+            });
         };
         const abort = () => {
             clearTimeout(timer);
@@ -61,6 +76,21 @@ export function supervisedTrial(request, { timeoutMs = 180000, signal, progress 
         signal?.addEventListener("abort", abort, { once: true });
         child.on("error", (error) => finish({ infrastructureFailure: { message: error.message }, issues: [], metrics: {}, coverage: [] }, true));
         child.on("message", (message) => {
+            if (settled) return;
+            if (message.type === "evidence") {
+                try {
+                    onEvidence(message.packet);
+                    for (const issue of message.packet.issues ?? []) retained.set(issue.evidenceId, issue);
+                    lastEvidence = { ...lastEvidence, ...message.packet, issues: undefined };
+                    if (child.connected) child.send({ type: "evidence-ack", sequence: message.sequence }, () => {});
+                } catch (error) {
+                    finish(
+                        { incomplete: true, infrastructureFailure: { name: error.name, message: error.message }, issues: [], metrics: {}, coverage: [] },
+                        true
+                    );
+                }
+                return;
+            }
             if (message.type === "progress") {
                 phase = message.phase;
                 progress(message);

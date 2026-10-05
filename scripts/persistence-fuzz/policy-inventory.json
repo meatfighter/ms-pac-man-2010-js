@@ -177,12 +177,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 430,
+                    "line": 433,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndex\") && !isIntegerInRange(fields.chompSpriteIndex, 0, 3)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 431,
+                    "line": 434,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
                 }
             ],
@@ -259,7 +259,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 431,
+                    "line": 434,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
                 }
             ],
@@ -413,17 +413,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -493,17 +493,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -573,12 +573,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 428,
+                    "line": 431,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndex\") && !isIntegerInRange(fields.ghostSpriteIndex, 0, 1)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 429,
+                    "line": 432,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
                 }
             ],
@@ -669,7 +669,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 429,
+                    "line": 432,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
                 }
             ],
@@ -980,7 +980,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 417,
+                    "line": 420,
                     "source": "if (id === \"act1\" && !isIntegerInRange(fields.nextState, 0, 2)) return false;"
                 }
             ],
@@ -1263,37 +1263,37 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 440,
+                    "line": 447,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 442,
+                    "line": 449,
                     "source": "return isIntegerInRange(fields.state, 0, 5);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 444,
+                    "line": 451,
                     "source": "return isIntegerInRange(fields.state, 0, 3);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 448,
+                    "line": 455,
                     "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 450,
+                    "line": 457,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 453,
+                    "line": 460,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 461,
+                    "line": 468,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 }
             ],
@@ -1342,7 +1342,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 426,
+                    "line": 429,
                     "source": "if (Object.hasOwn(fields, \"substate\") && !isIntegerInRange(fields.substate, 0, 4)) return false;"
                 }
             ],
@@ -1419,8 +1419,8 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 427,
-                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, 1_000_000)) return false;"
+                    "line": 430,
+                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, Number.MAX_SAFE_INTEGER)) return false;"
                 }
             ],
             "producerEvidence": "Declaration and assignment references below; browser campaign coverage is observed separately, never inferred from policy defaults.",
@@ -1517,7 +1517,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 425,
+                    "line": 428,
                     "source": "if (Object.hasOwn(fields, \"topClapperIndex\") && !isIntegerInRange(fields.topClapperIndex, 0, 2)) return false;"
                 }
             ],
@@ -1580,12 +1580,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 430,
+                    "line": 433,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndex\") && !isIntegerInRange(fields.chompSpriteIndex, 0, 3)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 431,
+                    "line": 434,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
                 }
             ],
@@ -1704,7 +1704,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 431,
+                    "line": 434,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
                 }
             ],
@@ -1752,17 +1752,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -1811,17 +1811,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -2201,37 +2201,37 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 440,
+                    "line": 447,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 442,
+                    "line": 449,
                     "source": "return isIntegerInRange(fields.state, 0, 5);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 444,
+                    "line": 451,
                     "source": "return isIntegerInRange(fields.state, 0, 3);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 448,
+                    "line": 455,
                     "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 450,
+                    "line": 457,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 453,
+                    "line": 460,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 461,
+                    "line": 468,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 }
             ],
@@ -2315,7 +2315,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 426,
+                    "line": 429,
                     "source": "if (Object.hasOwn(fields, \"substate\") && !isIntegerInRange(fields.substate, 0, 4)) return false;"
                 }
             ],
@@ -2392,8 +2392,8 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 427,
-                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, 1_000_000)) return false;"
+                    "line": 430,
+                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, Number.MAX_SAFE_INTEGER)) return false;"
                 }
             ],
             "producerEvidence": "Declaration and assignment references below; browser campaign coverage is observed separately, never inferred from policy defaults.",
@@ -2476,7 +2476,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 425,
+                    "line": 428,
                     "source": "if (Object.hasOwn(fields, \"topClapperIndex\") && !isIntegerInRange(fields.topClapperIndex, 0, 2)) return false;"
                 }
             ],
@@ -2539,17 +2539,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -2612,17 +2612,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -2977,37 +2977,37 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 440,
+                    "line": 447,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 442,
+                    "line": 449,
                     "source": "return isIntegerInRange(fields.state, 0, 5);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 444,
+                    "line": 451,
                     "source": "return isIntegerInRange(fields.state, 0, 3);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 448,
+                    "line": 455,
                     "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 450,
+                    "line": 457,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 453,
+                    "line": 460,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 461,
+                    "line": 468,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 }
             ],
@@ -3077,7 +3077,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 418,
+                    "line": 421,
                     "source": "if ((id === \"act3\" || id === \"act4\") && (!isIntegerInRange(fields.storkSpriteIndex, 0, 1) || !isIntegerInRange(fields.storkSpriteIndexIncrementor, 0, 11)))"
                 }
             ],
@@ -3133,7 +3133,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 418,
+                    "line": 421,
                     "source": "if ((id === \"act3\" || id === \"act4\") && (!isIntegerInRange(fields.storkSpriteIndex, 0, 1) || !isIntegerInRange(fields.storkSpriteIndexIncrementor, 0, 11)))"
                 }
             ],
@@ -3259,7 +3259,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 426,
+                    "line": 429,
                     "source": "if (Object.hasOwn(fields, \"substate\") && !isIntegerInRange(fields.substate, 0, 4)) return false;"
                 }
             ],
@@ -3336,8 +3336,8 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 427,
-                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, 1_000_000)) return false;"
+                    "line": 430,
+                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, Number.MAX_SAFE_INTEGER)) return false;"
                 }
             ],
             "producerEvidence": "Declaration and assignment references below; browser campaign coverage is observed separately, never inferred from policy defaults.",
@@ -3420,7 +3420,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 425,
+                    "line": 428,
                     "source": "if (Object.hasOwn(fields, \"topClapperIndex\") && !isIntegerInRange(fields.topClapperIndex, 0, 2)) return false;"
                 }
             ],
@@ -3483,12 +3483,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 430,
+                    "line": 433,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndex\") && !isIntegerInRange(fields.chompSpriteIndex, 0, 3)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 431,
+                    "line": 434,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
                 }
             ],
@@ -3544,7 +3544,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 431,
+                    "line": 434,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
                 }
             ],
@@ -3592,17 +3592,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -3672,17 +3672,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -3901,37 +3901,37 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 440,
+                    "line": 447,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 442,
+                    "line": 449,
                     "source": "return isIntegerInRange(fields.state, 0, 5);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 444,
+                    "line": 451,
                     "source": "return isIntegerInRange(fields.state, 0, 3);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 448,
+                    "line": 455,
                     "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 450,
+                    "line": 457,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 453,
+                    "line": 460,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 461,
+                    "line": 468,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 }
             ],
@@ -3987,7 +3987,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 418,
+                    "line": 421,
                     "source": "if ((id === \"act3\" || id === \"act4\") && (!isIntegerInRange(fields.storkSpriteIndex, 0, 1) || !isIntegerInRange(fields.storkSpriteIndexIncrementor, 0, 11)))"
                 }
             ],
@@ -4043,7 +4043,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 418,
+                    "line": 421,
                     "source": "if ((id === \"act3\" || id === \"act4\") && (!isIntegerInRange(fields.storkSpriteIndex, 0, 1) || !isIntegerInRange(fields.storkSpriteIndexIncrementor, 0, 11)))"
                 }
             ],
@@ -4255,7 +4255,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 426,
+                    "line": 429,
                     "source": "if (Object.hasOwn(fields, \"substate\") && !isIntegerInRange(fields.substate, 0, 4)) return false;"
                 }
             ],
@@ -4332,8 +4332,8 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 427,
-                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, 1_000_000)) return false;"
+                    "line": 430,
+                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, Number.MAX_SAFE_INTEGER)) return false;"
                 }
             ],
             "producerEvidence": "Declaration and assignment references below; browser campaign coverage is observed separately, never inferred from policy defaults.",
@@ -4444,7 +4444,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 425,
+                    "line": 428,
                     "source": "if (Object.hasOwn(fields, \"topClapperIndex\") && !isIntegerInRange(fields.topClapperIndex, 0, 2)) return false;"
                 }
             ],
@@ -4507,12 +4507,22 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 448,
+                    "line": 437,
+                    "source": "if (dialog === null || !isIntegerInRange(fields.dialogIndex, 0, dialog.length - 1)) return false;"
+                },
+                {
+                    "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
+                    "line": 438,
+                    "source": "if (!isIntegerInRange(fields.stringIndex, 0, dialog[fields.dialogIndex as number].length)) return false;"
+                },
+                {
+                    "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
+                    "line": 455,
                     "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 462,
+                    "line": 469,
                     "source": "isIntegerInRange(fields.dialogIndex, 0, 14) &&"
                 }
             ],
@@ -4596,17 +4606,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -4676,17 +4686,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -4756,7 +4766,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 435,
+                    "line": 442,
                     "source": "if (Object.hasOwn(fields, \"mspacmanIndex\") && !isIntegerInRange(fields.mspacmanIndex, 0, 2)) return false;"
                 }
             ],
@@ -4826,7 +4836,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 436,
+                    "line": 443,
                     "source": "if (Object.hasOwn(fields, \"pacmanIndex\") && !isIntegerInRange(fields.pacmanIndex, 0, 2)) return false;"
                 }
             ],
@@ -4910,37 +4920,37 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 440,
+                    "line": 447,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 442,
+                    "line": 449,
                     "source": "return isIntegerInRange(fields.state, 0, 5);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 444,
+                    "line": 451,
                     "source": "return isIntegerInRange(fields.state, 0, 3);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 448,
+                    "line": 455,
                     "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 450,
+                    "line": 457,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 453,
+                    "line": 460,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 461,
+                    "line": 468,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 }
             ],
@@ -5046,8 +5056,8 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 432,
-                    "source": "if (Object.hasOwn(fields, \"stringIndex\") && !isIntegerInRange(fields.stringIndex, 0, 4096)) return false;"
+                    "line": 438,
+                    "source": "if (!isIntegerInRange(fields.stringIndex, 0, dialog[fields.dialogIndex as number].length)) return false;"
                 }
             ],
             "producerEvidence": "Declaration and assignment references below; browser campaign coverage is observed separately, never inferred from policy defaults.",
@@ -5116,7 +5126,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 433,
+                    "line": 440,
                     "source": "if (Object.hasOwn(fields, \"stringTimer\") && !isIntegerInRange(fields.stringTimer, 0, 2 * 91)) return false;"
                 }
             ],
@@ -5178,7 +5188,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 426,
+                    "line": 429,
                     "source": "if (Object.hasOwn(fields, \"substate\") && !isIntegerInRange(fields.substate, 0, 4)) return false;"
                 }
             ],
@@ -5255,8 +5265,8 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 427,
-                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, 1_000_000)) return false;"
+                    "line": 430,
+                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, Number.MAX_SAFE_INTEGER)) return false;"
                 }
             ],
             "producerEvidence": "Declaration and assignment references below; browser campaign coverage is observed separately, never inferred from policy defaults.",
@@ -5339,7 +5349,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 434,
+                    "line": 441,
                     "source": "if (Object.hasOwn(fields, \"tone\") && !isIntegerInRange(fields.tone, 0, 1)) return false;"
                 }
             ],
@@ -5395,7 +5405,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 425,
+                    "line": 428,
                     "source": "if (Object.hasOwn(fields, \"topClapperIndex\") && !isIntegerInRange(fields.topClapperIndex, 0, 2)) return false;"
                 }
             ],
@@ -5458,12 +5468,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 430,
+                    "line": 433,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndex\") && !isIntegerInRange(fields.chompSpriteIndex, 0, 3)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 431,
+                    "line": 434,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
                 }
             ],
@@ -5526,7 +5536,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 431,
+                    "line": 434,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
                 }
             ],
@@ -5574,17 +5584,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -5633,17 +5643,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -5699,12 +5709,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 428,
+                    "line": 431,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndex\") && !isIntegerInRange(fields.ghostSpriteIndex, 0, 1)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 429,
+                    "line": 432,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
                 }
             ],
@@ -5809,7 +5819,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 429,
+                    "line": 432,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
                 }
             ],
@@ -6055,37 +6065,37 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 440,
+                    "line": 447,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 442,
+                    "line": 449,
                     "source": "return isIntegerInRange(fields.state, 0, 5);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 444,
+                    "line": 451,
                     "source": "return isIntegerInRange(fields.state, 0, 3);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 448,
+                    "line": 455,
                     "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 450,
+                    "line": 457,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 453,
+                    "line": 460,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 461,
+                    "line": 468,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 }
             ],
@@ -6148,7 +6158,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 426,
+                    "line": 429,
                     "source": "if (Object.hasOwn(fields, \"substate\") && !isIntegerInRange(fields.substate, 0, 4)) return false;"
                 }
             ],
@@ -6225,8 +6235,8 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 427,
-                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, 1_000_000)) return false;"
+                    "line": 430,
+                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, Number.MAX_SAFE_INTEGER)) return false;"
                 }
             ],
             "producerEvidence": "Declaration and assignment references below; browser campaign coverage is observed separately, never inferred from policy defaults.",
@@ -6309,7 +6319,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 425,
+                    "line": 428,
                     "source": "if (Object.hasOwn(fields, \"topClapperIndex\") && !isIntegerInRange(fields.topClapperIndex, 0, 2)) return false;"
                 }
             ],
@@ -6372,12 +6382,22 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 448,
+                    "line": 437,
+                    "source": "if (dialog === null || !isIntegerInRange(fields.dialogIndex, 0, dialog.length - 1)) return false;"
+                },
+                {
+                    "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
+                    "line": 438,
+                    "source": "if (!isIntegerInRange(fields.stringIndex, 0, dialog[fields.dialogIndex as number].length)) return false;"
+                },
+                {
+                    "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
+                    "line": 455,
                     "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 462,
+                    "line": 469,
                     "source": "isIntegerInRange(fields.dialogIndex, 0, 14) &&"
                 }
             ],
@@ -6461,17 +6481,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -6541,17 +6561,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -6621,7 +6641,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 435,
+                    "line": 442,
                     "source": "if (Object.hasOwn(fields, \"mspacmanIndex\") && !isIntegerInRange(fields.mspacmanIndex, 0, 2)) return false;"
                 }
             ],
@@ -6691,7 +6711,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 436,
+                    "line": 443,
                     "source": "if (Object.hasOwn(fields, \"pacmanIndex\") && !isIntegerInRange(fields.pacmanIndex, 0, 2)) return false;"
                 }
             ],
@@ -6761,37 +6781,37 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 440,
+                    "line": 447,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 442,
+                    "line": 449,
                     "source": "return isIntegerInRange(fields.state, 0, 5);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 444,
+                    "line": 451,
                     "source": "return isIntegerInRange(fields.state, 0, 3);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 448,
+                    "line": 455,
                     "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 450,
+                    "line": 457,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 453,
+                    "line": 460,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 461,
+                    "line": 468,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 }
             ],
@@ -6897,8 +6917,8 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 432,
-                    "source": "if (Object.hasOwn(fields, \"stringIndex\") && !isIntegerInRange(fields.stringIndex, 0, 4096)) return false;"
+                    "line": 438,
+                    "source": "if (!isIntegerInRange(fields.stringIndex, 0, dialog[fields.dialogIndex as number].length)) return false;"
                 }
             ],
             "producerEvidence": "Declaration and assignment references below; browser campaign coverage is observed separately, never inferred from policy defaults.",
@@ -6967,7 +6987,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 433,
+                    "line": 440,
                     "source": "if (Object.hasOwn(fields, \"stringTimer\") && !isIntegerInRange(fields.stringTimer, 0, 2 * 91)) return false;"
                 }
             ],
@@ -7029,7 +7049,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 426,
+                    "line": 429,
                     "source": "if (Object.hasOwn(fields, \"substate\") && !isIntegerInRange(fields.substate, 0, 4)) return false;"
                 }
             ],
@@ -7106,8 +7126,8 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 427,
-                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, 1_000_000)) return false;"
+                    "line": 430,
+                    "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, Number.MAX_SAFE_INTEGER)) return false;"
                 }
             ],
             "producerEvidence": "Declaration and assignment references below; browser campaign coverage is observed separately, never inferred from policy defaults.",
@@ -7190,7 +7210,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 434,
+                    "line": 441,
                     "source": "if (Object.hasOwn(fields, \"tone\") && !isIntegerInRange(fields.tone, 0, 1)) return false;"
                 }
             ],
@@ -7246,7 +7266,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 425,
+                    "line": 428,
                     "source": "if (Object.hasOwn(fields, \"topClapperIndex\") && !isIntegerInRange(fields.topClapperIndex, 0, 2)) return false;"
                 }
             ],
@@ -7387,17 +7407,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 457,
+                    "line": 464,
                     "source": "isIntegerInRange(fields.countDown, 0, 60)"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 469,
+                    "line": 476,
                     "source": "return isIntegerInRange(fields.pressEnterDelay, 0, 35) && isIntegerInRange(fields.ticks, 0, 911) && isIntegerInRange(fields.countDown, 0, 60);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 473,
+                    "line": 480,
                     "source": "return isIntegerInRange(fields.selection, 0, 3) && isIntegerInRange(fields.selectIndex, 0, 22) && isIntegerInRange(fields.countDown, 0, 60);"
                 }
             ],
@@ -7453,7 +7473,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 202,
+                    "line": 205,
                     "source": "isIntegerInRange(fields.dotsOffset, -32, 0) &&"
                 }
             ],
@@ -7566,17 +7586,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -7646,17 +7666,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -7719,12 +7739,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 428,
+                    "line": 431,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndex\") && !isIntegerInRange(fields.ghostSpriteIndex, 0, 1)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 429,
+                    "line": 432,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
                 }
             ],
@@ -7787,7 +7807,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 429,
+                    "line": 432,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
                 }
             ],
@@ -7835,7 +7855,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 455,
+                    "line": 462,
                     "source": "isIntegerInRange(fields.ghostsVisible, 0, 4) &&"
                 }
             ],
@@ -7976,12 +7996,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 454,
+                    "line": 461,
                     "source": "isIntegerInRange(fields.pressEnterDelay, 0, 35) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 469,
+                    "line": 476,
                     "source": "return isIntegerInRange(fields.pressEnterDelay, 0, 35) && isIntegerInRange(fields.ticks, 0, 911) && isIntegerInRange(fields.countDown, 0, 60);"
                 }
             ],
@@ -8101,7 +8121,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 203,
+                    "line": 206,
                     "source": "isIntegerInRange(fields.redOffset, 0, Number.MAX_SAFE_INTEGER) &&"
                 }
             ],
@@ -8150,37 +8170,37 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 440,
+                    "line": 447,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 442,
+                    "line": 449,
                     "source": "return isIntegerInRange(fields.state, 0, 5);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 444,
+                    "line": 451,
                     "source": "return isIntegerInRange(fields.state, 0, 3);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 448,
+                    "line": 455,
                     "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 450,
+                    "line": 457,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 453,
+                    "line": 460,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 461,
+                    "line": 468,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 }
             ],
@@ -8257,12 +8277,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 456,
+                    "line": 463,
                     "source": "isIntegerInRange(fields.ticks, 0, 3387) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 469,
+                    "line": 476,
                     "source": "return isIntegerInRange(fields.pressEnterDelay, 0, 35) && isIntegerInRange(fields.ticks, 0, 911) && isIntegerInRange(fields.countDown, 0, 60);"
                 }
             ],
@@ -8524,12 +8544,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 430,
+                    "line": 433,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndex\") && !isIntegerInRange(fields.chompSpriteIndex, 0, 3)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 431,
+                    "line": 434,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
                 }
             ],
@@ -8592,7 +8612,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 431,
+                    "line": 434,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
                 }
             ],
@@ -8640,8 +8660,8 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 464,
-                    "source": "isFiniteNumberInRange(fields.creditsY, -4096, 4096)"
+                    "line": 471,
+                    "source": "isFiniteNumberInRange(fields.creditsY, -EndingMode.credits.length * 28 - 0.5, 600)"
                 }
             ],
             "producerEvidence": "Declaration and assignment references below; browser campaign coverage is observed separately, never inferred from policy defaults.",
@@ -8703,7 +8723,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 463,
+                    "line": 470,
                     "source": "isIntegerInRange(fields.delay, 0, 2 * 91) &&"
                 }
             ],
@@ -8794,12 +8814,22 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 448,
+                    "line": 437,
+                    "source": "if (dialog === null || !isIntegerInRange(fields.dialogIndex, 0, dialog.length - 1)) return false;"
+                },
+                {
+                    "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
+                    "line": 438,
+                    "source": "if (!isIntegerInRange(fields.stringIndex, 0, dialog[fields.dialogIndex as number].length)) return false;"
+                },
+                {
+                    "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
+                    "line": 455,
                     "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 462,
+                    "line": 469,
                     "source": "isIntegerInRange(fields.dialogIndex, 0, 14) &&"
                 }
             ],
@@ -8904,7 +8934,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 202,
+                    "line": 205,
                     "source": "isIntegerInRange(fields.dotsOffset, -32, 0) &&"
                 }
             ],
@@ -8967,17 +8997,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -9110,7 +9140,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -9194,17 +9224,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -9330,7 +9360,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -9470,12 +9500,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 428,
+                    "line": 431,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndex\") && !isIntegerInRange(fields.ghostSpriteIndex, 0, 1)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 429,
+                    "line": 432,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
                 }
             ],
@@ -9531,7 +9561,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 429,
+                    "line": 432,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
                 }
             ],
@@ -9863,7 +9893,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 203,
+                    "line": 206,
                     "source": "isIntegerInRange(fields.redOffset, 0, Number.MAX_SAFE_INTEGER) &&"
                 }
             ],
@@ -9912,37 +9942,37 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 440,
+                    "line": 447,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 442,
+                    "line": 449,
                     "source": "return isIntegerInRange(fields.state, 0, 5);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 444,
+                    "line": 451,
                     "source": "return isIntegerInRange(fields.state, 0, 3);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 448,
+                    "line": 455,
                     "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 450,
+                    "line": 457,
                     "source": "return isIntegerInRange(fields.state, 0, 2);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 453,
+                    "line": 460,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 461,
+                    "line": 468,
                     "source": "isIntegerInRange(fields.state, 0, 3) &&"
                 }
             ],
@@ -10090,8 +10120,8 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 432,
-                    "source": "if (Object.hasOwn(fields, \"stringIndex\") && !isIntegerInRange(fields.stringIndex, 0, 4096)) return false;"
+                    "line": 438,
+                    "source": "if (!isIntegerInRange(fields.stringIndex, 0, dialog[fields.dialogIndex as number].length)) return false;"
                 }
             ],
             "producerEvidence": "Declaration and assignment references below; browser campaign coverage is observed separately, never inferred from policy defaults.",
@@ -10153,7 +10183,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 433,
+                    "line": 440,
                     "source": "if (Object.hasOwn(fields, \"stringTimer\") && !isIntegerInRange(fields.stringTimer, 0, 2 * 91)) return false;"
                 }
             ],
@@ -10257,7 +10287,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 202,
+                    "line": 205,
                     "source": "isIntegerInRange(fields.dotsOffset, -32, 0) &&"
                 }
             ],
@@ -10512,17 +10542,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -10599,17 +10629,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -10771,7 +10801,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 203,
+                    "line": 206,
                     "source": "isIntegerInRange(fields.redOffset, 0, Number.MAX_SAFE_INTEGER) &&"
                 }
             ],
@@ -10863,7 +10893,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 389,
+                    "line": 392,
                     "source": "isIntegerInRange(record.aroundHomeIndex, 0, 4) &&"
                 }
             ],
@@ -11018,7 +11048,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 349,
+                    "line": 352,
                     "source": "!isIntegerInRange(record.direction, 0, 3)"
                 }
             ],
@@ -11116,7 +11146,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 391,
+                    "line": 394,
                     "source": "isIntegerInRange(record.eatenTimer, 0, 90) &&"
                 }
             ],
@@ -11179,7 +11209,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 391,
+                    "line": 394,
                     "source": "isIntegerInRange(record.eatenTimer, 0, 90) &&"
                 }
             ],
@@ -11270,7 +11300,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 384,
+                    "line": 387,
                     "source": "isIntegerInRange(record.fruitIndex, 0, 6) &&"
                 }
             ],
@@ -11369,17 +11399,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 347,
+                    "line": 350,
                     "source": "!isFiniteNumberInRange(record.speed, 0, 10) ||"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 348,
+                    "line": 351,
                     "source": "!isFiniteNumberInRange(record.speedRemainder, 0, 1, true) ||"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 364,
+                    "line": 367,
                     "source": "isIntegerInRange(record.speedBoostTimer, 0, 7 * 91) &&"
                 }
             ],
@@ -11421,7 +11451,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 348,
+                    "line": 351,
                     "source": "!isFiniteNumberInRange(record.speedRemainder, 0, 1, true) ||"
                 }
             ],
@@ -11491,7 +11521,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 345,
+                    "line": 348,
                     "source": "!isIntegerInRange(record.x, -64, 512) ||"
                 }
             ],
@@ -11764,12 +11794,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 346,
+                    "line": 349,
                     "source": "!isIntegerInRange(record.y, -64, 544) ||"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 385,
+                    "line": 388,
                     "source": "isIntegerInRange(record.yOffset, -16, 16) &&"
                 }
             ],
@@ -12014,7 +12044,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 385,
+                    "line": 388,
                     "source": "isIntegerInRange(record.yOffset, -16, 16) &&"
                 }
             ],
@@ -12170,7 +12200,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 349,
+                    "line": 352,
                     "source": "!isIntegerInRange(record.direction, 0, 3)"
                 }
             ],
@@ -12558,12 +12588,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 232,
+                    "line": 235,
                     "source": "return isValidThingSnapshot(entry, GHOST_FIELDS, \"ghost\") && snapshot !== null && asRecord(snapshot.fields)?.ghostIndex === index;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 372,
+                    "line": 375,
                     "source": "isIntegerInRange(record.ghostIndex, 0, 3) &&"
                 }
             ],
@@ -12676,17 +12706,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 347,
+                    "line": 350,
                     "source": "!isFiniteNumberInRange(record.speed, 0, 10) ||"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 348,
+                    "line": 351,
                     "source": "!isFiniteNumberInRange(record.speedRemainder, 0, 1, true) ||"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 364,
+                    "line": 367,
                     "source": "isIntegerInRange(record.speedBoostTimer, 0, 7 * 91) &&"
                 }
             ],
@@ -12735,7 +12765,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 348,
+                    "line": 351,
                     "source": "!isFiniteNumberInRange(record.speedRemainder, 0, 1, true) ||"
                 }
             ],
@@ -12819,22 +12849,22 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 355,
+                    "line": 358,
                     "source": "isIntegerInRange(record.spriteIndex, 0, 3) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 356,
+                    "line": 359,
                     "source": "isIntegerInRange(record.spriteIndexIncrementor, 0, 5) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 373,
+                    "line": 376,
                     "source": "isIntegerInRange(record.spriteIndex, 0, 1) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 374,
+                    "line": 377,
                     "source": "isIntegerInRange(record.spriteIndexIncrementor, 0, 14) &&"
                 }
             ],
@@ -12897,12 +12927,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 356,
+                    "line": 359,
                     "source": "isIntegerInRange(record.spriteIndexIncrementor, 0, 5) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 374,
+                    "line": 377,
                     "source": "isIntegerInRange(record.spriteIndexIncrementor, 0, 14) &&"
                 }
             ],
@@ -12950,7 +12980,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 375,
+                    "line": 378,
                     "source": "isIntegerInRange(record.targetX, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) &&"
                 }
             ],
@@ -12992,7 +13022,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 376,
+                    "line": 379,
                     "source": "isIntegerInRange(record.targetY, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) &&"
                 }
             ],
@@ -13034,7 +13064,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 345,
+                    "line": 348,
                     "source": "!isIntegerInRange(record.x, -64, 512) ||"
                 }
             ],
@@ -13440,12 +13470,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 346,
+                    "line": 349,
                     "source": "!isIntegerInRange(record.y, -64, 544) ||"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 385,
+                    "line": 388,
                     "source": "isIntegerInRange(record.yOffset, -16, 16) &&"
                 }
             ],
@@ -13858,17 +13888,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 457,
+                    "line": 464,
                     "source": "isIntegerInRange(fields.countDown, 0, 60)"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 469,
+                    "line": 476,
                     "source": "return isIntegerInRange(fields.pressEnterDelay, 0, 35) && isIntegerInRange(fields.ticks, 0, 911) && isIntegerInRange(fields.countDown, 0, 60);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 473,
+                    "line": 480,
                     "source": "return isIntegerInRange(fields.selection, 0, 3) && isIntegerInRange(fields.selectIndex, 0, 22) && isIntegerInRange(fields.countDown, 0, 60);"
                 }
             ],
@@ -13924,7 +13954,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 202,
+                    "line": 205,
                     "source": "isIntegerInRange(fields.dotsOffset, -32, 0) &&"
                 }
             ],
@@ -14030,17 +14060,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -14124,17 +14154,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -14211,12 +14241,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 454,
+                    "line": 461,
                     "source": "isIntegerInRange(fields.pressEnterDelay, 0, 35) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 469,
+                    "line": 476,
                     "source": "return isIntegerInRange(fields.pressEnterDelay, 0, 35) && isIntegerInRange(fields.ticks, 0, 911) && isIntegerInRange(fields.countDown, 0, 60);"
                 }
             ],
@@ -14322,7 +14352,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 203,
+                    "line": 206,
                     "source": "isIntegerInRange(fields.redOffset, 0, Number.MAX_SAFE_INTEGER) &&"
                 }
             ],
@@ -14371,12 +14401,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 456,
+                    "line": 463,
                     "source": "isIntegerInRange(fields.ticks, 0, 3387) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 469,
+                    "line": 476,
                     "source": "return isIntegerInRange(fields.pressEnterDelay, 0, 35) && isIntegerInRange(fields.ticks, 0, 911) && isIntegerInRange(fields.countDown, 0, 60);"
                 }
             ],
@@ -14417,12 +14447,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 430,
+                    "line": 433,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndex\") && !isIntegerInRange(fields.chompSpriteIndex, 0, 3)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 431,
+                    "line": 434,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
                 }
             ],
@@ -14478,7 +14508,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 431,
+                    "line": 434,
                     "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
                 }
             ],
@@ -14526,7 +14556,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 202,
+                    "line": 205,
                     "source": "isIntegerInRange(fields.dotsOffset, -32, 0) &&"
                 }
             ],
@@ -14589,17 +14619,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -14669,17 +14699,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -14749,12 +14779,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 428,
+                    "line": 431,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndex\") && !isIntegerInRange(fields.ghostSpriteIndex, 0, 1)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 429,
+                    "line": 432,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
                 }
             ],
@@ -14831,7 +14861,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 429,
+                    "line": 432,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
                 }
             ],
@@ -14964,7 +14994,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 203,
+                    "line": 206,
                     "source": "isIntegerInRange(fields.redOffset, 0, Number.MAX_SAFE_INTEGER) &&"
                 }
             ],
@@ -15013,7 +15043,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 262,
+                    "line": 265,
                     "source": "isIntegerInRange(fields.demoIndex, 0, 3) &&"
                 }
             ],
@@ -15145,7 +15175,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 256,
+                    "line": 259,
                     "source": "isIntegerInRange(fields.highScoreQualificationCutoff, 0, 2_147_483_647) &&"
                 }
             ],
@@ -15187,7 +15217,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 257,
+                    "line": 260,
                     "source": "isIntegerInRange(fields.lives, 0, 6) &&"
                 }
             ],
@@ -15213,12 +15243,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 259,
+                    "line": 262,
                     "source": "isFiniteNumberInRange(fields.musicVolume, 0, 1) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 260,
+                    "line": 263,
                     "source": "isFiniteNumberInRange(fields.musicVolumeFadeStep, 0, 1) &&"
                 }
             ],
@@ -15302,7 +15332,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 260,
+                    "line": 263,
                     "source": "isFiniteNumberInRange(fields.musicVolumeFadeStep, 0, 1) &&"
                 }
             ],
@@ -15400,7 +15430,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 255,
+                    "line": 258,
                     "source": "isIntegerInRange(fields.score, 0, Number.MAX_SAFE_INTEGER) &&"
                 }
             ],
@@ -15441,12 +15471,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 128,
+                    "line": 131,
                     "source": "if (!isValidStageIndexForMode(mainFields.stageIndex, mode.id)) {"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 254,
+                    "line": 257,
                     "source": "isIntegerInRange(fields.stageIndex, 0, 8) &&"
                 }
             ],
@@ -15480,7 +15510,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 253,
+                    "line": 256,
                     "source": "isIntegerInRange(fields.worldIndex, 0, 3) &&"
                 }
             ],
@@ -15514,7 +15544,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 361,
+                    "line": 364,
                     "source": "isIntegerInRange(record.corneringEnhancesSpeedCount, 0, 10) &&"
                 }
             ],
@@ -15570,7 +15600,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 361,
+                    "line": 364,
                     "source": "isIntegerInRange(record.corneringEnhancesSpeedCount, 0, 10) &&"
                 }
             ],
@@ -15618,7 +15648,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 349,
+                    "line": 352,
                     "source": "!isIntegerInRange(record.direction, 0, 3)"
                 }
             ],
@@ -15709,7 +15739,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 358,
+                    "line": 361,
                     "source": "isIntegerInRange(record.pellotDampensSpeedCount, 0, 10) &&"
                 }
             ],
@@ -15765,7 +15795,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 358,
+                    "line": 361,
                     "source": "isIntegerInRange(record.pellotDampensSpeedCount, 0, 10) &&"
                 }
             ],
@@ -15813,17 +15843,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 347,
+                    "line": 350,
                     "source": "!isFiniteNumberInRange(record.speed, 0, 10) ||"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 348,
+                    "line": 351,
                     "source": "!isFiniteNumberInRange(record.speedRemainder, 0, 1, true) ||"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 364,
+                    "line": 367,
                     "source": "isIntegerInRange(record.speedBoostTimer, 0, 7 * 91) &&"
                 }
             ],
@@ -15865,7 +15895,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 364,
+                    "line": 367,
                     "source": "isIntegerInRange(record.speedBoostTimer, 0, 7 * 91) &&"
                 }
             ],
@@ -15921,7 +15951,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 364,
+                    "line": 367,
                     "source": "isIntegerInRange(record.speedBoostTimer, 0, 7 * 91) &&"
                 }
             ],
@@ -15976,7 +16006,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 348,
+                    "line": 351,
                     "source": "!isFiniteNumberInRange(record.speedRemainder, 0, 1, true) ||"
                 }
             ],
@@ -16060,22 +16090,22 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 355,
+                    "line": 358,
                     "source": "isIntegerInRange(record.spriteIndex, 0, 3) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 356,
+                    "line": 359,
                     "source": "isIntegerInRange(record.spriteIndexIncrementor, 0, 5) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 373,
+                    "line": 376,
                     "source": "isIntegerInRange(record.spriteIndex, 0, 1) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 374,
+                    "line": 377,
                     "source": "isIntegerInRange(record.spriteIndexIncrementor, 0, 14) &&"
                 }
             ],
@@ -16145,12 +16175,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 356,
+                    "line": 359,
                     "source": "isIntegerInRange(record.spriteIndexIncrementor, 0, 5) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 374,
+                    "line": 377,
                     "source": "isIntegerInRange(record.spriteIndexIncrementor, 0, 14) &&"
                 }
             ],
@@ -16198,7 +16228,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 345,
+                    "line": 348,
                     "source": "!isIntegerInRange(record.x, -64, 512) ||"
                 }
             ],
@@ -16394,12 +16424,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 346,
+                    "line": 349,
                     "source": "!isIntegerInRange(record.y, -64, 544) ||"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 385,
+                    "line": 388,
                     "source": "isIntegerInRange(record.yOffset, -16, 16) &&"
                 }
             ],
@@ -16595,7 +16625,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 283,
+                    "line": 286,
                     "source": "isIntegerInRange(fields.chaseModeToggleDelay, 0, 20 * 91) &&"
                 }
             ],
@@ -16651,7 +16681,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 283,
+                    "line": 286,
                     "source": "isIntegerInRange(fields.chaseModeToggleDelay, 0, 20 * 91) &&"
                 }
             ],
@@ -16721,7 +16751,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 665,
+                    "line": 672,
                     "source": "if (!isValidStageEnergizerLocations(stage.tileMap, fields.energizerLocations)) {"
                 }
             ],
@@ -16769,7 +16799,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 292,
+                    "line": 295,
                     "source": "isIntegerInRange(fields.energizersVisibleTimer, 0, 22) &&"
                 }
             ],
@@ -16839,7 +16869,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 292,
+                    "line": 295,
                     "source": "isIntegerInRange(fields.energizersVisibleTimer, 0, 22) &&"
                 }
             ],
@@ -16887,7 +16917,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 302,
+                    "line": 305,
                     "source": "isIntegerInRange(fields.energizerTimer, 0, 7 * 91) &&"
                 }
             ],
@@ -16949,12 +16979,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 281,
+                    "line": 284,
                     "source": "isIntegerInRange(fields.exitDelay, 0, 10_000) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 314,
+                    "line": 317,
                     "source": "isIntegerInRange(fields.exitDelayTarget, 1, 3 * 91) &&"
                 }
             ],
@@ -17002,7 +17032,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 314,
+                    "line": 317,
                     "source": "isIntegerInRange(fields.exitDelayTarget, 1, 3 * 91) &&"
                 }
             ],
@@ -17044,7 +17074,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 280,
+                    "line": 283,
                     "source": "isIntegerInRange(fields.exitIndex, 1, 4) &&"
                 }
             ],
@@ -17093,17 +17123,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -17194,7 +17224,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 318,
+                    "line": 321,
                     "source": "isIntegerInRange(fields.fadeReason, 0, 2) &&"
                 }
             ],
@@ -17257,17 +17287,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -17351,12 +17381,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 294,
+                    "line": 297,
                     "source": "isIntegerInRange(fields.finishedTimer, 0, 600) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 296,
+                    "line": 299,
                     "source": "isIntegerInRange(fields.finishedBlinkTimer, 0, 22) &&"
                 }
             ],
@@ -17426,7 +17456,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 296,
+                    "line": 299,
                     "source": "isIntegerInRange(fields.finishedBlinkTimer, 0, 22) &&"
                 }
             ],
@@ -17474,7 +17504,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 294,
+                    "line": 297,
                     "source": "isIntegerInRange(fields.finishedTimer, 0, 600) &&"
                 }
             ],
@@ -17572,7 +17602,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 311,
+                    "line": 314,
                     "source": "isFiniteNumberInRange(fields.fruitOdds, 0, 1) &&"
                 }
             ],
@@ -17678,7 +17708,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 298,
+                    "line": 301,
                     "source": "isIntegerInRange(fields.fruitTargetTimer, 0, 10 * 91 - 1) &&"
                 }
             ],
@@ -17733,7 +17763,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 320,
+                    "line": 323,
                     "source": "isIntegerInRange(fields.gameOverTimer, 0, 5 * 91)"
                 }
             ],
@@ -17796,7 +17826,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 320,
+                    "line": 323,
                     "source": "isIntegerInRange(fields.gameOverTimer, 0, 5 * 91)"
                 }
             ],
@@ -17859,12 +17889,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 290,
+                    "line": 293,
                     "source": "isIntegerInRange(fields.ghostPointsIndex, -1, 3) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 326,
+                    "line": 329,
                     "source": "if (showGhostPoints && (!isIntegerInRange(snapshot.fields.ghostPointsIndex, 0, 3) || !isIntegerInRange(snapshot.fields.showGhostPointsTimer, 1, 91))) {"
                 }
             ],
@@ -17934,7 +17964,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 286,
+                    "line": 289,
                     "source": "isIntegerInRange(fields.ghostsBlueTimer, 0, Number.MAX_SAFE_INTEGER) &&"
                 }
             ],
@@ -18060,7 +18090,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 286,
+                    "line": 289,
                     "source": "isIntegerInRange(fields.ghostsBlueTimer, 0, Number.MAX_SAFE_INTEGER) &&"
                 }
             ],
@@ -18250,7 +18280,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 305,
+                    "line": 308,
                     "source": "isIntegerInRange(fields.musicFadeOutTimer, 0, 91) &&"
                 }
             ],
@@ -18313,7 +18343,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 273,
+                    "line": 276,
                     "source": "isFiniteNumberInRange(fields.pelletCountFraction, 0, 1, false) &&"
                 }
             ],
@@ -18355,7 +18385,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 273,
+                    "line": 276,
                     "source": "isFiniteNumberInRange(fields.pelletCountFraction, 0, 1, false) &&"
                 }
             ],
@@ -18545,7 +18575,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 308,
+                    "line": 311,
                     "source": "isIntegerInRange(fields.readyTimer, 0, 91) &&"
                 }
             ],
@@ -18665,7 +18695,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 312,
+                    "line": 315,
                     "source": "isFiniteNumberInRange(fields.redPelletOdds, 0, 1) &&"
                 }
             ],
@@ -18799,12 +18829,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 289,
+                    "line": 292,
                     "source": "isIntegerInRange(fields.showGhostPointsTimer, 0, 91) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 326,
+                    "line": 329,
                     "source": "if (showGhostPoints && (!isIntegerInRange(snapshot.fields.ghostPointsIndex, 0, 3) || !isIntegerInRange(snapshot.fields.showGhostPointsTimer, 1, 91))) {"
                 }
             ],
@@ -18860,12 +18890,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 289,
+                    "line": 292,
                     "source": "isIntegerInRange(fields.showGhostPointsTimer, 0, 91) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 326,
+                    "line": 329,
                     "source": "if (showGhostPoints && (!isIntegerInRange(snapshot.fields.ghostPointsIndex, 0, 3) || !isIntegerInRange(snapshot.fields.showGhostPointsTimer, 1, 91))) {"
                 }
             ],
@@ -18913,7 +18943,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 307,
+                    "line": 310,
                     "source": "isIntegerInRange(fields.spiralTimer, 0, 2 * 91) &&"
                 }
             ],
@@ -19026,7 +19056,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 665,
+                    "line": 672,
                     "source": "if (!isValidStageEnergizerLocations(stage.tileMap, fields.energizerLocations)) {"
                 }
             ],
@@ -19159,17 +19189,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 457,
+                    "line": 464,
                     "source": "isIntegerInRange(fields.countDown, 0, 60)"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 469,
+                    "line": 476,
                     "source": "return isIntegerInRange(fields.pressEnterDelay, 0, 35) && isIntegerInRange(fields.ticks, 0, 911) && isIntegerInRange(fields.countDown, 0, 60);"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 473,
+                    "line": 480,
                     "source": "return isIntegerInRange(fields.selection, 0, 3) && isIntegerInRange(fields.selectIndex, 0, 22) && isIntegerInRange(fields.countDown, 0, 60);"
                 }
             ],
@@ -19225,17 +19255,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 316,
+                    "line": 319,
                     "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 421,
+                    "line": 424,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 423,
+                    "line": 426,
                     "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
                 }
             ],
@@ -19305,17 +19335,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 317,
+                    "line": 320,
                     "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 422,
+                    "line": 425,
                     "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 424,
+                    "line": 427,
                     "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
                 }
             ],
@@ -19385,12 +19415,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 428,
+                    "line": 431,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndex\") && !isIntegerInRange(fields.ghostSpriteIndex, 0, 1)) return false;"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 429,
+                    "line": 432,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
                 }
             ],
@@ -19467,7 +19497,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 429,
+                    "line": 432,
                     "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
                 }
             ],
@@ -19565,7 +19595,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 473,
+                    "line": 480,
                     "source": "return isIntegerInRange(fields.selection, 0, 3) && isIntegerInRange(fields.selectIndex, 0, 22) && isIntegerInRange(fields.countDown, 0, 60);"
                 }
             ],
@@ -19685,7 +19715,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 473,
+                    "line": 480,
                     "source": "return isIntegerInRange(fields.selection, 0, 3) && isIntegerInRange(fields.selectIndex, 0, 22) && isIntegerInRange(fields.countDown, 0, 60);"
                 }
             ],
@@ -19912,7 +19942,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 349,
+                    "line": 352,
                     "source": "!isIntegerInRange(record.direction, 0, 3)"
                 }
             ],
@@ -19938,17 +19968,17 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 347,
+                    "line": 350,
                     "source": "!isFiniteNumberInRange(record.speed, 0, 10) ||"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 348,
+                    "line": 351,
                     "source": "!isFiniteNumberInRange(record.speedRemainder, 0, 1, true) ||"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 364,
+                    "line": 367,
                     "source": "isIntegerInRange(record.speedBoostTimer, 0, 7 * 91) &&"
                 }
             ],
@@ -19974,7 +20004,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 348,
+                    "line": 351,
                     "source": "!isFiniteNumberInRange(record.speedRemainder, 0, 1, true) ||"
                 }
             ],
@@ -20000,7 +20030,7 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 345,
+                    "line": 348,
                     "source": "!isIntegerInRange(record.x, -64, 512) ||"
                 }
             ],
@@ -20083,12 +20113,12 @@
             "validationReferences": [
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 346,
+                    "line": 349,
                     "source": "!isIntegerInRange(record.y, -64, 544) ||"
                 },
                 {
                     "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-                    "line": 385,
+                    "line": 388,
                     "source": "isIntegerInRange(record.yOffset, -16, 16) &&"
                 }
             ],
@@ -20258,877 +20288,882 @@
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 109,
+            "line": 112,
             "source": "tileMap: (value) => isValidNumberMatrix(value, 31, 28, (entry) => isIntegerInRange(entry, 0, 49)),"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 110,
+            "line": 113,
             "source": "typeMap: (value) => isValidNumberMatrix(value, 31, 28, (entry) => isIntegerInRange(entry, 0, 3)),"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 111,
+            "line": 114,
             "source": "energizerLocations: (value) => isValidEnergizerLocations(value),"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 112,
+            "line": 115,
             "source": "fruitData: (value) => isValidNumberMatrix(value, 7, 2, isFiniteNumber)"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 115,
+            "line": 118,
             "source": "export function isValidMsPacManGameStateSnapshot(value: unknown): value is MsPacManGameStateSnapshot {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 125,
+            "line": 128,
             "source": "if (!isValidFieldBag(mainFields, MAIN_FIELDS) || !isValidMainFieldState(mainFields) || !isValidModeSnapshot(mode)) {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 128,
+            "line": 131,
             "source": "if (!isValidStageIndexForMode(mainFields.stageIndex, mode.id)) {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 139,
+            "line": 142,
             "source": "if (mode.id !== \"playing\" || gameplayPaused || mode.inputRobotIndex === null || !isIntegerInRange(demoIndex, 0, DEMO_LENGTHS.length - 1)) {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 155,
+            "line": 158,
             "source": "if (!isValidMusicSnapshot(music)) {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 165,
+            "line": 168,
             "source": "if (!isValidSoundEffects(snapshot.soundEffects)) {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 168,
+            "line": 171,
             "source": "return isValidRandomSnapshot(snapshot.random) && isValidRobotInputs(snapshot.robotInputs);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 171,
+            "line": 174,
             "source": "function isValidModeSnapshot(value: unknown): value is CurrentModeSnapshot {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 179,
+            "line": 182,
             "source": "isValidFieldBag(snapshot.fields, PLAYING_MODE_FIELDS) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 180,
+            "line": 183,
             "source": "isValidPlayingModeFieldState(snapshot.fields) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 183,
+            "line": 186,
             "source": "isValidThingSnapshot(snapshot.mspacman, MSPACMAN_FIELDS, \"mspacman\") &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 184,
+            "line": 187,
             "source": "isValidGhostSnapshots(snapshot.ghosts) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 185,
+            "line": 188,
             "source": "isValidFruitTargetSnapshot(snapshot.fruitTarget) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 186,
+            "line": 189,
             "source": "isValidPlayingObjectRelationships(snapshot as unknown as PlayingModeSnapshot)"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 190,
+            "line": 193,
             "source": "if (fields === undefined || !hasExactKeys(snapshot, MODE_SNAPSHOT_KEYS) || !isValidFieldBag(snapshot.fields, fields)) {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 193,
+            "line": 196,
             "source": "return isValidStandaloneModeFieldState(snapshot.id, snapshot.fields);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 196,
+            "line": 199,
             "source": "function isValidEnterInitialsState(fields: Record<string, unknown>): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 202,
+            "line": 205,
             "source": "isIntegerInRange(fields.dotsOffset, -32, 0) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 203,
+            "line": 206,
             "source": "isIntegerInRange(fields.redOffset, 0, Number.MAX_SAFE_INTEGER) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 207,
+            "line": 210,
             "source": "isIntegerInRange(editingIndex, 0, 2) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 208,
+            "line": 211,
             "source": "isIntegerInRange(blinkTimer, 0, 44) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 216,
+            "line": 219,
             "source": "function isValidThingSnapshot(value: unknown, fields: readonly string[], kind: \"mspacman\" | \"ghost\" | \"fruit\"): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 221,
+            "line": 224,
             "source": "isValidFieldBag(snapshot.fields, fields) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 222,
+            "line": 225,
             "source": "isValidThingFieldState(snapshot.fields, kind)"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 226,
+            "line": 229,
             "source": "function isValidGhostSnapshots(value: unknown): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 232,
+            "line": 235,
             "source": "return isValidThingSnapshot(entry, GHOST_FIELDS, \"ghost\") && snapshot !== null && asRecord(snapshot.fields)?.ghostIndex === index;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 237,
+            "line": 240,
             "source": "function isValidFruitTargetSnapshot(value: unknown): value is FruitTargetSnapshot {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 242,
+            "line": 245,
             "source": "!isValidFieldBag(snapshot.fields, FRUIT_TARGET_FIELDS) ||"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 243,
+            "line": 246,
             "source": "!isValidThingFieldState(snapshot.fields, \"fruit\") ||"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 244,
+            "line": 247,
             "source": "!(snapshot.exitPath === null || isValidNumberMatrix(snapshot.exitPath, 31, 28, (entry) => isIntegerInRange(entry, 0, 4)))"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 251,
+            "line": 254,
             "source": "function isValidMainFieldState(fields: Record<string, unknown>): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 253,
+            "line": 256,
             "source": "isIntegerInRange(fields.worldIndex, 0, 3) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 254,
+            "line": 257,
             "source": "isIntegerInRange(fields.stageIndex, 0, 8) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 255,
+            "line": 258,
             "source": "isIntegerInRange(fields.score, 0, Number.MAX_SAFE_INTEGER) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 256,
+            "line": 259,
             "source": "isIntegerInRange(fields.highScoreQualificationCutoff, 0, 2_147_483_647) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 257,
+            "line": 260,
             "source": "isIntegerInRange(fields.lives, 0, 6) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 259,
+            "line": 262,
             "source": "isFiniteNumberInRange(fields.musicVolume, 0, 1) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 260,
+            "line": 263,
             "source": "isFiniteNumberInRange(fields.musicVolumeFadeStep, 0, 1) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 262,
+            "line": 265,
             "source": "isIntegerInRange(fields.demoIndex, 0, 3) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 267,
+            "line": 270,
             "source": "function isValidPlayingModeFieldState(fields: Record<string, unknown>): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 273,
+            "line": 276,
             "source": "isFiniteNumberInRange(fields.pelletCountFraction, 0, 1, false) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 274,
+            "line": 277,
             "source": "isIntegerInRange(pelletCount, 1, 31 * 28) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 275,
+            "line": 278,
             "source": "isIntegerInRange(pelletsRemaining, 0, pelletCount) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 279,
+            "line": 282,
             "source": "regionCounts.every((value) => isIntegerInRange(value, 0, 4)) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 280,
+            "line": 283,
             "source": "isIntegerInRange(fields.exitIndex, 1, 4) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 281,
+            "line": 284,
             "source": "isIntegerInRange(fields.exitDelay, 0, 10_000) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 283,
+            "line": 286,
             "source": "isIntegerInRange(fields.chaseModeToggleDelay, 0, 20 * 91) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 286,
+            "line": 289,
             "source": "isIntegerInRange(fields.ghostsBlueTimer, 0, Number.MAX_SAFE_INTEGER) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 289,
+            "line": 292,
             "source": "isIntegerInRange(fields.showGhostPointsTimer, 0, 91) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 290,
+            "line": 293,
             "source": "isIntegerInRange(fields.ghostPointsIndex, -1, 3) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 292,
+            "line": 295,
             "source": "isIntegerInRange(fields.energizersVisibleTimer, 0, 22) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 294,
+            "line": 297,
             "source": "isIntegerInRange(fields.finishedTimer, 0, 600) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 296,
+            "line": 299,
             "source": "isIntegerInRange(fields.finishedBlinkTimer, 0, 22) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 298,
+            "line": 301,
             "source": "isIntegerInRange(fields.fruitTargetTimer, 0, 10 * 91 - 1) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 302,
+            "line": 305,
             "source": "isIntegerInRange(fields.energizerTimer, 0, 7 * 91) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 305,
+            "line": 308,
             "source": "isIntegerInRange(fields.musicFadeOutTimer, 0, 91) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 307,
+            "line": 310,
             "source": "isIntegerInRange(fields.spiralTimer, 0, 2 * 91) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 308,
+            "line": 311,
             "source": "isIntegerInRange(fields.readyTimer, 0, 91) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 311,
+            "line": 314,
             "source": "isFiniteNumberInRange(fields.fruitOdds, 0, 1) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 312,
+            "line": 315,
             "source": "isFiniteNumberInRange(fields.redPelletOdds, 0, 1) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 314,
+            "line": 317,
             "source": "isIntegerInRange(fields.exitDelayTarget, 1, 3 * 91) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 316,
+            "line": 319,
             "source": "isIntegerInRange(fields.fadeIndex, 0, 22) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 317,
+            "line": 320,
             "source": "isIntegerInRange(fields.fadeState, 0, 2) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 318,
+            "line": 321,
             "source": "isIntegerInRange(fields.fadeReason, 0, 2) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 320,
+            "line": 323,
             "source": "isIntegerInRange(fields.gameOverTimer, 0, 5 * 91)"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 324,
+            "line": 327,
             "source": "function isValidPlayingObjectRelationships(snapshot: PlayingModeSnapshot): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 326,
+            "line": 329,
             "source": "if (showGhostPoints && (!isIntegerInRange(snapshot.fields.ghostPointsIndex, 0, 3) || !isIntegerInRange(snapshot.fields.showGhostPointsTimer, 1, 91))) {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 341,
+            "line": 344,
             "source": "function isValidThingFieldState(fields: unknown, kind: \"mspacman\" | \"ghost\" | \"fruit\"): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 345,
+            "line": 348,
             "source": "!isIntegerInRange(record.x, -64, 512) ||"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 346,
+            "line": 349,
             "source": "!isIntegerInRange(record.y, -64, 544) ||"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 347,
+            "line": 350,
             "source": "!isFiniteNumberInRange(record.speed, 0, 10) ||"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 348,
+            "line": 351,
             "source": "!isFiniteNumberInRange(record.speedRemainder, 0, 1, true) ||"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 349,
+            "line": 352,
             "source": "!isIntegerInRange(record.direction, 0, 3)"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 355,
+            "line": 358,
             "source": "isIntegerInRange(record.spriteIndex, 0, 3) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 356,
+            "line": 359,
             "source": "isIntegerInRange(record.spriteIndexIncrementor, 0, 5) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 358,
+            "line": 361,
             "source": "isIntegerInRange(record.pellotDampensSpeedCount, 0, 10) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 361,
+            "line": 364,
             "source": "isIntegerInRange(record.corneringEnhancesSpeedCount, 0, 10) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 364,
+            "line": 367,
             "source": "isIntegerInRange(record.speedBoostTimer, 0, 7 * 91) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 372,
+            "line": 375,
             "source": "isIntegerInRange(record.ghostIndex, 0, 3) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 373,
+            "line": 376,
             "source": "isIntegerInRange(record.spriteIndex, 0, 1) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 374,
+            "line": 377,
             "source": "isIntegerInRange(record.spriteIndexIncrementor, 0, 14) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 375,
+            "line": 378,
             "source": "isIntegerInRange(record.targetX, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 376,
+            "line": 379,
             "source": "isIntegerInRange(record.targetY, Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 380,
+            "line": 383,
             "source": "isValidGhostHomeMotion(record)"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 384,
+            "line": 387,
             "source": "isIntegerInRange(record.fruitIndex, 0, 6) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 385,
+            "line": 388,
             "source": "isIntegerInRange(record.yOffset, -16, 16) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 389,
+            "line": 392,
             "source": "isIntegerInRange(record.aroundHomeIndex, 0, 4) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 391,
+            "line": 394,
             "source": "isIntegerInRange(record.eatenTimer, 0, 90) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 397,
+            "line": 400,
             "source": "function isValidGhostHomeMotion(fields: Record<string, unknown>): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 416,
+            "line": 419,
             "source": "function isValidStandaloneModeFieldState(id: Exclude<ModeId, \"playing\">, fields: Record<string, unknown>): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 417,
+            "line": 420,
             "source": "if (id === \"act1\" && !isIntegerInRange(fields.nextState, 0, 2)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 418,
+            "line": 421,
             "source": "if ((id === \"act3\" || id === \"act4\") && (!isIntegerInRange(fields.storkSpriteIndex, 0, 1) || !isIntegerInRange(fields.storkSpriteIndexIncrementor, 0, 11)))"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 421,
+            "line": 424,
             "source": "if (Object.hasOwn(fields, \"fadeIndex\") && !isIntegerInRange(fields.fadeIndex, 0, 22)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 422,
+            "line": 425,
             "source": "if (Object.hasOwn(fields, \"fadeState\") && !isIntegerInRange(fields.fadeState, 0, 2)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 423,
+            "line": 426,
             "source": "if (Object.hasOwn(fields, \"fadeIndex2\") && !isIntegerInRange(fields.fadeIndex2, 0, 22)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 424,
+            "line": 427,
             "source": "if (Object.hasOwn(fields, \"fadeState2\") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 425,
+            "line": 428,
             "source": "if (Object.hasOwn(fields, \"topClapperIndex\") && !isIntegerInRange(fields.topClapperIndex, 0, 2)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 426,
+            "line": 429,
             "source": "if (Object.hasOwn(fields, \"substate\") && !isIntegerInRange(fields.substate, 0, 4)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 427,
-            "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, 1_000_000)) return false;"
-        },
-        {
-            "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 428,
-            "source": "if (Object.hasOwn(fields, \"ghostSpriteIndex\") && !isIntegerInRange(fields.ghostSpriteIndex, 0, 1)) return false;"
-        },
-        {
-            "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 429,
-            "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
-        },
-        {
-            "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 430,
-            "source": "if (Object.hasOwn(fields, \"chompSpriteIndex\") && !isIntegerInRange(fields.chompSpriteIndex, 0, 3)) return false;"
+            "source": "if (Object.hasOwn(fields, \"timer\") && !isIntegerInRange(fields.timer, 0, Number.MAX_SAFE_INTEGER)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 431,
-            "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
+            "source": "if (Object.hasOwn(fields, \"ghostSpriteIndex\") && !isIntegerInRange(fields.ghostSpriteIndex, 0, 1)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 432,
-            "source": "if (Object.hasOwn(fields, \"stringIndex\") && !isIntegerInRange(fields.stringIndex, 0, 4096)) return false;"
+            "source": "if (Object.hasOwn(fields, \"ghostSpriteIndexIncrementor\") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 433,
-            "source": "if (Object.hasOwn(fields, \"stringTimer\") && !isIntegerInRange(fields.stringTimer, 0, 2 * 91)) return false;"
+            "source": "if (Object.hasOwn(fields, \"chompSpriteIndex\") && !isIntegerInRange(fields.chompSpriteIndex, 0, 3)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 434,
-            "source": "if (Object.hasOwn(fields, \"tone\") && !isIntegerInRange(fields.tone, 0, 1)) return false;"
+            "source": "if (Object.hasOwn(fields, \"chompSpriteIndexIncrementor\") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 435,
-            "source": "if (Object.hasOwn(fields, \"mspacmanIndex\") && !isIntegerInRange(fields.mspacmanIndex, 0, 2)) return false;"
+            "line": 437,
+            "source": "if (dialog === null || !isIntegerInRange(fields.dialogIndex, 0, dialog.length - 1)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 436,
-            "source": "if (Object.hasOwn(fields, \"pacmanIndex\") && !isIntegerInRange(fields.pacmanIndex, 0, 2)) return false;"
+            "line": 438,
+            "source": "if (!isIntegerInRange(fields.stringIndex, 0, dialog[fields.dialogIndex as number].length)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 440,
-            "source": "return isIntegerInRange(fields.state, 0, 2);"
+            "source": "if (Object.hasOwn(fields, \"stringTimer\") && !isIntegerInRange(fields.stringTimer, 0, 2 * 91)) return false;"
+        },
+        {
+            "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
+            "line": 441,
+            "source": "if (Object.hasOwn(fields, \"tone\") && !isIntegerInRange(fields.tone, 0, 1)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 442,
-            "source": "return isIntegerInRange(fields.state, 0, 5);"
+            "source": "if (Object.hasOwn(fields, \"mspacmanIndex\") && !isIntegerInRange(fields.mspacmanIndex, 0, 2)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 444,
-            "source": "return isIntegerInRange(fields.state, 0, 3);"
+            "line": 443,
+            "source": "if (Object.hasOwn(fields, \"pacmanIndex\") && !isIntegerInRange(fields.pacmanIndex, 0, 2)) return false;"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 448,
-            "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
-        },
-        {
-            "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 450,
+            "line": 447,
             "source": "return isIntegerInRange(fields.state, 0, 2);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 453,
-            "source": "isIntegerInRange(fields.state, 0, 3) &&"
+            "line": 449,
+            "source": "return isIntegerInRange(fields.state, 0, 5);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 454,
-            "source": "isIntegerInRange(fields.pressEnterDelay, 0, 35) &&"
+            "line": 451,
+            "source": "return isIntegerInRange(fields.state, 0, 3);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 455,
-            "source": "isIntegerInRange(fields.ghostsVisible, 0, 4) &&"
-        },
-        {
-            "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 456,
-            "source": "isIntegerInRange(fields.ticks, 0, 3387) &&"
+            "source": "return isIntegerInRange(fields.state, 0, 1) && (!Object.hasOwn(fields, \"dialogIndex\") || isIntegerInRange(fields.dialogIndex, 0, 2));"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 457,
-            "source": "isIntegerInRange(fields.countDown, 0, 60)"
+            "source": "return isIntegerInRange(fields.state, 0, 2);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 461,
+            "line": 460,
             "source": "isIntegerInRange(fields.state, 0, 3) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
+            "line": 461,
+            "source": "isIntegerInRange(fields.pressEnterDelay, 0, 35) &&"
+        },
+        {
+            "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 462,
-            "source": "isIntegerInRange(fields.dialogIndex, 0, 14) &&"
+            "source": "isIntegerInRange(fields.ghostsVisible, 0, 4) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 463,
-            "source": "isIntegerInRange(fields.delay, 0, 2 * 91) &&"
+            "source": "isIntegerInRange(fields.ticks, 0, 3387) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 464,
-            "source": "isFiniteNumberInRange(fields.creditsY, -4096, 4096)"
+            "source": "isIntegerInRange(fields.countDown, 0, 60)"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 467,
-            "source": "return isValidEnterInitialsState(fields);"
+            "line": 468,
+            "source": "isIntegerInRange(fields.state, 0, 3) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
             "line": 469,
+            "source": "isIntegerInRange(fields.dialogIndex, 0, 14) &&"
+        },
+        {
+            "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
+            "line": 470,
+            "source": "isIntegerInRange(fields.delay, 0, 2 * 91) &&"
+        },
+        {
+            "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
+            "line": 471,
+            "source": "isFiniteNumberInRange(fields.creditsY, -EndingMode.credits.length * 28 - 0.5, 600)"
+        },
+        {
+            "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
+            "line": 474,
+            "source": "return isValidEnterInitialsState(fields);"
+        },
+        {
+            "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
+            "line": 476,
             "source": "return isIntegerInRange(fields.pressEnterDelay, 0, 35) && isIntegerInRange(fields.ticks, 0, 911) && isIntegerInRange(fields.countDown, 0, 60);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 473,
+            "line": 480,
             "source": "return isIntegerInRange(fields.selection, 0, 3) && isIntegerInRange(fields.selectIndex, 0, 22) && isIntegerInRange(fields.countDown, 0, 60);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 477,
+            "line": 484,
             "source": "function isValidMusicSnapshot(value: unknown): value is MusicSnapshot {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 483,
+            "line": 490,
             "source": "isMusicPlaybackSnapshot(snapshot.playback) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 488,
+            "line": 495,
             "source": "function isValidSoundEffects(value: unknown): value is SoundSnapshot[] {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 499,
+            "line": 506,
             "source": "if (!isSoundPlaybackSnapshot(snapshot.playback) || snapshot.playback.voices.length === 0) {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 511,
+            "line": 518,
             "source": "function isValidRandomSnapshot(value: unknown): value is RandomSnapshot {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 516,
+            "line": 523,
             "source": "isIntegerInRange(snapshot.seed0, 0, 65535) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 517,
+            "line": 524,
             "source": "isIntegerInRange(snapshot.seed1, 0, 65535) &&"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 518,
+            "line": 525,
             "source": "isIntegerInRange(snapshot.seed2, 0, 65535)"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 522,
+            "line": 529,
             "source": "function isValidRobotInputs(value: unknown): value is RobotInputSnapshot[] {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 533,
+            "line": 540,
             "source": "isIntegerInRange(snapshot.index, 0, Number.MAX_SAFE_INTEGER)"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 538,
+            "line": 545,
             "source": "function isValidFieldBag(value: unknown, fields: readonly string[]): value is JsonRecord {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 540,
+            "line": 547,
             "source": "return record !== null && hasExactKeys(record, fields) && fields.every((field) => isValidFieldValue(field, record[field]));"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 543,
+            "line": 550,
             "source": "function isValidFieldValue(field: string, value: unknown): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 549,
+            "line": 556,
             "source": "return isValidNumberArray(value);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 558,
+            "line": 565,
             "source": "return integerRange !== undefined ? isIntegerInRange(value, integerRange[0], integerRange[1]) : isFiniteNumber(value);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 561,
+            "line": 568,
             "source": "function isValidNumberArray(value: unknown): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 562,
+            "line": 569,
             "source": "return Array.isArray(value) && value.length > 0 && value.length <= 31 * 28 && value.every((entry) => isIntegerInRange(entry, 0, Number.MAX_SAFE_INTEGER));"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 565,
+            "line": 572,
             "source": "function isValidNumberMatrix(value: unknown, rows: number, columns: number, entryValidator: (value: unknown) => boolean): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 566,
+            "line": 573,
             "source": "return Array.isArray(value) && value.length === rows && value.every((row) => Array.isArray(row) && row.length === columns && row.every(entryValidator));"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 569,
+            "line": 576,
             "source": "function isValidEnergizerLocations(value: unknown): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 573,
+            "line": 580,
             "source": "value.every((row) => Array.isArray(row) && row.length === 2 && isIntegerInRange(row[0], 0, 27) && isIntegerInRange(row[1], 0, 30))"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 590,
+            "line": 597,
             "source": "export function isValidStageIndexForMode(stageIndex: unknown, modeId: ModeId): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 591,
+            "line": 598,
             "source": "if (!isIntegerInRange(stageIndex, 0, 8)) {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 627,
+            "line": 634,
             "source": "function isFiniteNumberInRange(value: unknown, min: number, max: number, exclusiveMax: boolean = false): value is number {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 631,
+            "line": 638,
             "source": "function isIntegerInRange(value: unknown, min: number, max: number): value is number {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 636,
+            "line": 643,
             "source": "return value === null || isIntegerInRange(value, min, max);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 639,
+            "line": 646,
             "source": "export function isValidSnapshotForLoadedResources(main: Main, snapshot: MsPacManGameStateSnapshot): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 645,
+            "line": 652,
             "source": "if (!isIntegerInRange(worldIndex, 0, 3) || !isIntegerInRange(stageIndex, 0, 7)) {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 665,
+            "line": 672,
             "source": "if (!isValidStageEnergizerLocations(stage.tileMap, fields.energizerLocations)) {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 685,
+            "line": 692,
             "source": "function isValidStageEnergizerLocations(tileMap: unknown, saved: unknown): boolean {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 732,
+            "line": 739,
             "source": "mainFields: this.captureFields(main, MAIN_FIELDS),"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 743,
+            "line": 750,
             "source": "if (!this.isSupportedSnapshot(snapshot) || !isValidSnapshotForLoadedResources(main, snapshot)) {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 748,
+            "line": 755,
             "source": "this.restoreFields(main, snapshot.mainFields, MAIN_FIELDS);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 753,
+            "line": 760,
             "source": "this.restoreFields(main, snapshot.mainFields, MAIN_FIELDS);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 764,
+            "line": 771,
             "source": "public isSupportedSnapshot(snapshot: unknown): snapshot is MsPacManGameStateSnapshot {"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 765,
+            "line": 772,
             "source": "return isValidMsPacManGameStateSnapshot(snapshot);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 773,
+            "line": 780,
             "source": "return { id, fields: this.captureFields(main.mode, MODE_FIELDS[id] ?? []) };"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 786,
+            "line": 793,
             "source": "this.restoreFields(mode, snapshot.fields, fields);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 799,
+            "line": 806,
             "source": "fields: this.captureFields(mode, PLAYING_MODE_FIELDS),"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 802,
+            "line": 809,
             "source": "ghosts: mode.ghosts.map((ghost) => ({ fields: this.captureFields(ghost, GHOST_FIELDS) })),"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 804,
+            "line": 811,
             "source": "mspacman: { fields: this.captureFields(mode.mspacman, MSPACMAN_FIELDS) }"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 811,
+            "line": 818,
             "source": "this.restoreFields(mode, snapshot.fields, PLAYING_MODE_FIELDS);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 812,
+            "line": 819,
             "source": "this.restoreFields(mode.mspacman, snapshot.mspacman.fields, MSPACMAN_FIELDS);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 821,
+            "line": 828,
             "source": "this.restoreFields(ghost, ghostSnapshot.fields, GHOST_FIELDS);"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 833,
+            "line": 840,
             "source": "fields: this.captureFields(fruitTarget, FRUIT_TARGET_FIELDS),"
         },
         {
             "file": "pwa/src/mspacman/persistence/MsPacManGameStateSerializer.ts",
-            "line": 839,
+            "line": 846,
             "source": "this.restoreFields(mode.fruitTarget, snapshot.fields, FRUIT_TARGET_FIELDS);"
         },
         {

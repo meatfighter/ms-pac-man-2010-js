@@ -15,7 +15,7 @@ export class Act7Mode implements IMode {
     public static readonly FADE_IN = 1;
     public static readonly FADE_OUT = 2;
 
-    private static readonly dialog = ["\"ONLY ONE MORE STAGE TO GO.'", "\"YOU DONT HAVE A CHANCE. GIVE UP NOW!'", "\"BRING IT ON!'"];
+    public static readonly dialog = ["\"ONLY ONE MORE STAGE TO GO.'", "\"YOU DONT HAVE A CHANCE. GIVE UP NOW!'", "\"BRING IT ON!'"];
 
     private main: Main;
     private state = 0;

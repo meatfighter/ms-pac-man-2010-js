@@ -15,7 +15,7 @@ export class Act5Mode implements IMode {
     public static readonly FADE_IN = 1;
     public static readonly FADE_OUT = 2;
 
-    private static readonly dialog = [
+    public static readonly dialog = [
         "\"THOSE STAGES ARE DIFFICULT!'",
         "\"HANG IN THERE.\n\n\nEATING PELLETS SLOWS YOU DOWN.\n\nWHEN BEING CHASED, HEAD FOR OPEN TERRITORY.\n\n\nALSO, TUNNELS SLOW GHOSTS DOWN.'",
         "\"THANKS FOR THE TIPS.'"

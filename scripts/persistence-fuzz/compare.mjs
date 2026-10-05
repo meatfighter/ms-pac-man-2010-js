@@ -40,16 +40,16 @@ export function snapshotCoverage(snapshot) {
     result.add(`mode:${String(mode)}`);
     for (const entity of snapshot.gameMode?.entities ?? snapshot.things ?? []) {
         const type = entity.type;
-        result.add(`entity:${type}`);
+        result.add(`present:entity:${type}`);
         // Deliberately bounded discrete categories, not one key per timer/position.
         for (const key of ["state", "type", "spriteIndex", "orientation", "dead"]) {
             const value = entity.fields?.[key];
-            if (typeof value === "boolean" || (Number.isInteger(value) && value >= -1 && value <= 32)) result.add(`entity:${type}:${key}:${value}`);
+            if (typeof value === "boolean" || (Number.isInteger(value) && value >= -1 && value <= 32)) result.add(`present:entity:${type}:${key}:${value}`);
         }
     }
     for (const ghost of snapshot.mode?.ghosts ?? []) {
         for (const key of ["blue", "eyeBalls", "inHome", "exitingHome", "enteringHome"])
-            result.add(`ghost:${ghost.fields.ghostIndex}:${key}:${ghost.fields[key]}`);
+            result.add(`present:ghost:${ghost.fields.ghostIndex}:${key}:${ghost.fields[key]}`);
     }
     return [...result].sort();
 }
@@ -63,7 +63,25 @@ export function issueSignature(issue) {
     const mode = snapshot?.mode?.id ?? snapshot?.modeId ?? snapshot?.mainFields?.mode ?? snapshot?.kind ?? "";
     const phase = `${mode}:${entity?.fields?.state ?? entity?.fields?.dead ?? ""}`;
     const cleanPath = path.replace(/\[\d+\]/g, "[*]");
-    return [issue.category, issue.ruleCode ?? issue.stage ?? "", owner, cleanPath, phase, issue.error?.name ?? ""].join("|");
+    const generic = !issue.ruleCode && !cleanPath;
+    const message = generic
+        ? String(issue.error?.message ?? "")
+              .replace(/0x[\da-f]+|\b\d+\b/gi, "#")
+              .slice(0, 512)
+        : "";
+    const site = generic
+        ? String(issue.error?.stack ?? "")
+              .split("\n")
+              .slice(1, 3)
+              .map((line) =>
+                  line
+                      .replace(/https?:\/\/[^/]+/g, "<origin>")
+                      .replace(/\?[^ )]+/g, "")
+                      .trim()
+              )
+              .join(";")
+        : "";
+    return [issue.category, issue.ruleCode ?? issue.stage ?? "", owner, cleanPath, phase, issue.phase ?? "", issue.error?.name ?? "", message, site].join("|");
 }
 
 /** A transition trigger, not a validity rule. Every value is observed, never repaired. */
@@ -85,7 +103,7 @@ export function snapshotTransitionKey(snapshot) {
         "players",
         "hearts",
         "playing",
-        "stageCompleted",
+        "stageCompletedFlag",
         "bossCameraPan",
         "endingCameraPan",
         "finished",
@@ -101,7 +119,7 @@ export function snapshotTransitionKey(snapshot) {
         "creditsAdvance"
     ];
     const player = snapshot.playerFields ?? snapshot.mode?.mspacman?.fields ?? {};
-    const music = snapshot.music ?? snapshot.audio?.currentMusic;
+    const music = snapshot.currentSongState?.activeMusic ?? snapshot.music ?? snapshot.audio?.currentMusic;
     return JSON.stringify({
         main: select(snapshot.mainFields, phases),
         mode: select(snapshot.gameMode?.fields ?? snapshot.mode?.fields, phases),
@@ -118,9 +136,10 @@ export function snapshotTransitionKey(snapshot) {
             requested: snapshot.requestedSongId ?? snapshot.audio?.requestedSong,
             music: music?.id,
             transport: music?.playback?.transport,
-            voices: (snapshot.soundEffects ?? snapshot.audio?.sounds ?? snapshot.audioState?.soundEffects ?? []).map((sound) => [
+            voices: (snapshot.soundEffects ?? snapshot.audio?.sounds ?? snapshot.audioState?.sounds ?? []).map((sound) => [
                 sound.id,
-                sound.playback?.voices?.length
+                sound.playback?.activeVoiceIndex,
+                sound.playback?.voices?.map((voice) => [voice.looped, voice.playbackRate])
             ])
         }
     });

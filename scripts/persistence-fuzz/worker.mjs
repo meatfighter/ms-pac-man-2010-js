@@ -2,7 +2,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { persistenceFuzzPlugin, controlledAudioSource } from "./plugin.mjs";
-import { normalizeSnapshot, firstDifference, issueSignature } from "./compare.mjs";
+import { normalizeSnapshot, firstDifference, snapshotCoverage } from "./compare.mjs";
+import { sealCheckpoint, assertCheckpoint } from "./checkpoint.mjs";
+import { randomUUID } from "node:crypto";
 import { stratumId } from "./profiles.mjs";
 
 let server = null,
@@ -10,6 +12,25 @@ let server = null,
     context = null,
     cleanupPromise = null,
     stopping = false;
+let activeResult = null,
+    activeDrain = async () => {};
+const acknowledgements = new Map();
+let evidenceSequence = 0;
+function transfer(packet) {
+    if (!process.send) return Promise.resolve();
+    const sequence = ++evidenceSequence;
+    return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            acknowledgements.delete(sequence);
+            reject(new Error("Evidence acknowledgement timeout"));
+        }, 3000);
+        acknowledgements.set(sequence, () => {
+            clearTimeout(timeout);
+            resolve();
+        });
+        process.send({ type: "evidence", sequence, packet });
+    });
+}
 function cleanup() {
     return (cleanupPromise ??= (async () => {
         await context?.close().catch(() => {});
@@ -18,11 +39,17 @@ function cleanup() {
     })());
 }
 process.on("message", (message) => {
+    if (message.type === "evidence-ack") {
+        acknowledgements.get(message.sequence)?.();
+        acknowledgements.delete(message.sequence);
+        return;
+    }
     if (message.type !== "stop") return;
     stopping = true;
-    void cleanup().finally(() =>
-        process.send?.({ type: "result", result: { interrupted: true, issues: [], metrics: {}, coverage: [] } }, () => process.exit(130))
-    );
+    void activeDrain()
+        .catch(() => {})
+        .finally(() => cleanup())
+        .finally(() => process.send?.({ type: "result", result: { ...activeResult, interrupted: true } }, () => process.exit(130)));
 });
 process.once("SIGTERM", () => {
     void cleanup().finally(() => process.exit(143));
@@ -37,35 +64,64 @@ function sendProgress(phase, detail = {}) {
 
 export async function executeTrial(request) {
     const { repo, spec, browserEngine = "chromium", executablePath } = request;
-    const result = {
+    const result = (activeResult = {
         issues: [],
         coverage: [],
-        metrics: { captures: 0, writes: 0, restores: 0, callbacks: 0, renders: 0, progress: 0, saveMs: 0, saveMaxMs: 0, maxSnapshotChars: 0 },
+        metrics: {
+            validations: 0,
+            gameplayUpdates: 0,
+            autonomousUpdates: 0,
+            inputActionsObserved: 0,
+            captures: 0,
+            writes: 0,
+            restores: 0,
+            callbacks: 0,
+            renders: 0,
+            progress: 0,
+            saveMs: 0,
+            saveMaxMs: 0,
+            maxSnapshotChars: 0
+        },
         setupComplete: false,
         actualPlacement: null,
         nativeAudio: spec.audio === "native"
-    };
-    const signatures = new Set(),
+    });
+    const trialIdentity = randomUUID();
+    let documentGeneration = 0,
+        workerSequence = 0,
+        streamOffset = 0;
+    const deliveries = new Set(),
         coverage = new Set();
     const add = (issue) => {
-        const signature = issueSignature(issue);
-        if (signatures.has(signature)) return;
-        signatures.add(signature);
+        issue = { ...issue, evidenceId: issue.evidenceId ?? `${trialIdentity}:worker:${++workerSequence}` };
+        if (deliveries.has(issue.evidenceId)) return;
+        deliveries.add(issue.evidenceId);
         result.issues.push(issue);
+        if (issue.category === "FINDING_EVIDENCE_LIMIT") result.incomplete = true;
     };
-    const collect = async (page) => {
-        const data = await page.evaluate(() => window.__persistenceFuzz?.result()).catch(() => null);
-        if (!data) return;
-        for (const issue of data.issues) add(issue);
-        for (const marker of data.coverage) coverage.add(marker);
-        for (const name of Object.keys(result.metrics)) {
-            if (["saveMaxMs", "maxSnapshotChars"].includes(name)) result.metrics[name] = Math.max(result.metrics[name], data.metrics[name] ?? 0);
-            else result.metrics[name] += data.metrics[name] ?? 0;
-        }
+    const transferPending = async () => {
+        const end = result.issues.length;
+        await transfer({ ...result, acceptedCheckpoint: undefined, issues: result.issues.slice(streamOffset), coverage: [...coverage] });
+        streamOffset = end;
     };
     let page = null,
         collected = false;
+    const collect = async (page) => {
+        const data = await page.evaluate(() => window.__persistenceFuzz?.drain()).catch(() => null);
+        if (data) {
+            for (const issue of data.issues) add({ ...issue, evidenceId: `${trialIdentity}:${documentGeneration}:${issue.sequence}` });
+            for (const marker of data.coverage) coverage.add(marker);
+            for (const name of Object.keys(result.metrics)) {
+                if (["saveMaxMs", "maxSnapshotChars"].includes(name)) result.metrics[name] = Math.max(result.metrics[name], data.metrics[name] ?? 0);
+                else result.metrics[name] += data.metrics[name] ?? 0;
+            }
+        }
+        await transferPending();
+    };
+    activeDrain = () => (page ? collect(page) : transferPending());
     const load = async (options) => {
+        if (documentGeneration) await collect(page);
+        documentGeneration++;
         collected = false;
         await page.goto(`${origin}/__persistence_fuzz__/index.html`, { waitUntil: "domcontentloaded" });
         await page.waitForFunction(() => Boolean(window.__persistenceFuzz), null, { timeout: 30000 });
@@ -123,12 +179,14 @@ export async function executeTrial(request) {
         });
         page.setDefaultTimeout(30000);
         try {
+            if (spec.initialCheckpoint) assertCheckpoint(spec.initialCheckpoint, request.sourceIdentity, request.allowSourceDrift);
             await load(
                 spec.initialCheckpoint
                     ? {
                           restore: true,
                           savedText: spec.initialCheckpoint.text,
-                          actualPlacement: { ...spec.initialCheckpoint.actualPlacement, strategy: "accepted-corpus-branch", parent: spec.corpusParent },
+                          actualPlacement: spec.initialCheckpoint.origin?.observedStart,
+                          captureContext: spec.initialCheckpoint.captureContext,
                           clock: spec.initialCheckpoint.clock
                       }
                     : { restore: false }
@@ -138,21 +196,29 @@ export async function executeTrial(request) {
             return result;
         }
         result.setupComplete = true;
+        result.observedStartContext = await page.evaluate(() => window.__persistenceFuzz.context());
+        result.explorationCallbacks = 0;
         result.actualPlacement = await page.evaluate(() => window.__persistenceFuzz.state().actualPlacement);
         coverage.add(stratumId(result.actualPlacement.stratum));
-        coverage.add(`lane:${spec.lane}`);
+        coverage.add(`strategy:${spec.strategy}`);
         const exploration = spec.frames;
-        for (let offset = 0; offset < exploration.length; offset += 64) {
+        for (let offset = 0; offset < exploration.length; offset += 8) {
             sendProgress("exploration", { offset });
             const data = await page.evaluate(({ frames, offset }) => window.__persistenceFuzz.run(frames, { offset }), {
-                frames: exploration.slice(offset, offset + 64),
+                frames: exploration.slice(offset, offset + 8),
                 offset
             });
+            result.explorationCallbacks += data.executed;
+            await collect(page);
             if (data.issues.some((issue) => issue.category === "RUNTIME_EXCEPTION")) break;
         }
+        result.explorationMetrics = { ...result.metrics };
         sendProgress("checkpoint");
         if (!request.mutant && spec.index === 0) result.saveBenchmark = await page.evaluate(() => window.__persistenceFuzz.benchmark());
-        const checkpoint = await page.evaluate(() => window.__persistenceFuzz.checkpoint());
+        const rawCheckpoint = await page.evaluate(() => window.__persistenceFuzz.checkpoint());
+        const checkpoint = rawCheckpoint ? sealCheckpoint(rawCheckpoint, request.sourceIdentity) : null;
+        if (checkpoint) await transfer({ checkpoint });
+        await collect(page);
         if (!checkpoint) return result; // Other trials still run, and evidence is collected in finally.
         // Reference is the ORIGINAL live runtime, not a second restoration.
         await page.evaluate(() => window.__persistenceFuzz.resumeBoundary());
@@ -162,7 +228,13 @@ export async function executeTrial(request) {
         // Cold document: clears static Main/mode state and module singletons.
         sendProgress("cold-restore");
         try {
-            await load({ restore: true, savedText: checkpoint.text, actualPlacement: checkpoint.actualPlacement, clock: checkpoint.clock });
+            await load({
+                restore: true,
+                savedText: checkpoint.text,
+                actualPlacement: checkpoint.origin?.observedStart,
+                captureContext: checkpoint.captureContext,
+                clock: checkpoint.clock
+            });
         } catch (error) {
             add({ category: "SAVE_SUCCEEDED_RESTORE_REJECTED", snapshot: checkpoint.snapshot, error: errorDetails(error), pageErrors });
             return result;
@@ -170,8 +242,11 @@ export async function executeTrial(request) {
         const recaptured = await page.evaluate(() => window.__persistenceFuzz.capture());
         const difference = firstDifference(normalized(checkpoint.snapshot), normalized(recaptured));
         if (difference) add({ category: "IMMEDIATE_RECAPTURE_MISMATCH", difference, snapshot: recaptured, previousSnapshot: checkpoint.snapshot });
+        else for (const marker of snapshotCoverage(recaptured)) coverage.add(`roundTripped:${marker.replace(/^present:/, "")}`);
         await page.evaluate(() => window.__persistenceFuzz.resumeBoundary());
         const restored = await page.evaluate((frames) => window.__persistenceFuzz.run(frames, { trace: true, write: false }), spec.continuation);
+        result.comparedContinuationSteps = Math.min(reference.trace.length, restored.trace.length);
+        if (result.comparedContinuationSteps !== spec.continuation.length) result.incomplete = true;
         const drift = firstDifference(reference.trace, restored.trace);
         if (drift)
             add({
@@ -184,17 +259,43 @@ export async function executeTrial(request) {
             // Same restored baseline and schedule, but no per-callback captures,
             // validation or writes. Compare only at the end to detect observers
             // that alter the execution they are supposed to measure.
+            await collect(page);
+            await load({
+                restore: true,
+                savedText: checkpoint.text,
+                actualPlacement: checkpoint.origin?.observedStart,
+                captureContext: checkpoint.captureContext,
+                clock: checkpoint.clock
+            });
+            await page.evaluate(() => window.__persistenceFuzz.resumeBoundary());
+            await page.evaluate((frames) => window.__persistenceFuzz.run(frames, { write: true, forceWrite: true }), spec.continuation);
             const observedFinal = await page.evaluate(() => window.__persistenceFuzz.capture());
+            const observedEffects = await page.evaluate(() => window.__persistenceFuzz.effects());
             await collect(page);
             collected = true;
             sendProgress("observer-control");
-            await load({ restore: true, savedText: checkpoint.text, actualPlacement: checkpoint.actualPlacement, clock: checkpoint.clock });
+            await load({
+                restore: true,
+                savedText: checkpoint.text,
+                actualPlacement: checkpoint.origin?.observedStart,
+                captureContext: checkpoint.captureContext,
+                clock: checkpoint.clock
+            });
             await page.evaluate(() => window.__persistenceFuzz.resumeBoundary());
             await page.evaluate((frames) => window.__persistenceFuzz.run(frames, { observe: false, write: false }), spec.continuation);
             const controlFinal = await page.evaluate(() => window.__persistenceFuzz.capture());
-            const observationDifference = firstDifference(normalized(observedFinal), normalized(controlFinal));
+            const controlEffects = await page.evaluate(() => window.__persistenceFuzz.effects());
+            const observationDifference =
+                firstDifference(normalized(observedFinal), normalized(controlFinal)) ?? firstDifference(observedEffects, controlEffects, "$.effects");
             if (observationDifference)
-                add({ category: "OBSERVATION_CHANGED_RUNTIME", difference: observationDifference, snapshot: controlFinal, previousSnapshot: observedFinal });
+                add({
+                    category: "OBSERVATION_CHANGED_RUNTIME",
+                    observedEffects,
+                    controlEffects,
+                    difference: observationDifference,
+                    snapshot: controlFinal,
+                    previousSnapshot: observedFinal
+                });
         }
         if (spec.lifecycle) {
             sendProgress("pagehide-reload");
@@ -214,10 +315,12 @@ export async function executeTrial(request) {
             for (const issue of outcome?.issues ?? []) add(issue);
             // Do not prime storage here: this must consume the actual departure write.
             collected = false;
+            documentGeneration++;
             await page.evaluate((value) => window.__persistenceFuzz.configure(value), {
                 spec,
                 restore: true,
-                actualPlacement: checkpoint.actualPlacement,
+                actualPlacement: checkpoint.origin?.observedStart,
+                captureContext: departure.captureContext,
                 clock: departure.clock
             });
             await page.click("#start");
@@ -241,6 +344,9 @@ export async function executeTrial(request) {
     } finally {
         if (page && !collected) await collect(page).catch(() => {});
         result.coverage = request.mutant === "missing-coverage" ? [] : [...coverage];
+        await transferPending().catch(() => {
+            result.incomplete = true;
+        });
         await cleanup();
     }
 }

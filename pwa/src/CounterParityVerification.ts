@@ -1,4 +1,7 @@
 import { type AppGameContainer, Display } from "slick2d-ts";
+import { Act5Mode } from "./mspacman/Act5Mode.js";
+import { Act7Mode } from "./mspacman/Act7Mode.js";
+import { EndingMode } from "./mspacman/EndingMode.js";
 import { Main } from "./mspacman/Main.js";
 import { PlayingMode } from "./mspacman/PlayingMode.js";
 import { type ScalableGame2 } from "./mspacman/ScalableGame2.js";
@@ -400,6 +403,8 @@ export async function verifyCounterParity(mount: Mount): Promise<void> {
                     prior = increment;
                 }
             }
+            assert(current().main.getCurrentModeIdForState() !== id, `${id}: actual handoff completed`);
+            await roundtrip(`${id}:after-handoff`);
             assert(seen.has(0) && seen.has(1), `${id}: actual clapper transition`);
             if (id === "act1") assert(deferred && seen.has(2), "Act1 deferred head-on transition");
             else assert(wrap && sprites.has(0) && sprites.has(1), `${id}: both stork images and 11->0 wrap`);
@@ -417,6 +422,36 @@ export async function verifyCounterParity(mount: Mount): Promise<void> {
                     s.mode.fields.storkSpriteIndexIncrementor = 12;
                 });
             }
+        }
+        for (const [id, stage, dialog] of [
+            ["act5", 5, Act5Mode.dialog],
+            ["act7", 7, Act7Mode.dialog],
+            ["ending", 8, EndingMode.dialog]
+        ] as const) {
+            enter(id, stage);
+            const phases = new Set<number>();
+            const completedLines = new Set<number>();
+            await roundtrip(`${id}:init`);
+            for (let i = 0; i < 60000 && current().main.getCurrentModeIdForState() === id; i++) {
+                tick();
+                if (current().main.getCurrentModeIdForState() !== id) break;
+                const phase = field("state"),
+                    line = field("dialogIndex");
+                const snapshot = capture();
+                assert(isValidMsPacManGameStateSnapshot(snapshot) && isValidSnapshotForLoadedResources(current().main, snapshot), `${id}: producer tick ${i}`);
+                if (!phases.has(phase)) {
+                    phases.add(phase);
+                    await roundtrip(`${id}:phase:${phase}`);
+                }
+                if (field("stringIndex") === dialog[line].length && !completedLines.has(line)) {
+                    completedLines.add(line);
+                    await roundtrip(`${id}:completed-line:${line}`);
+                }
+            }
+            assert(completedLines.size === dialog.length, `${id}: all actual dialog terminal cursors`);
+            if (id === "ending") assert(phases.has(2) && phases.has(3), "Ending: credits terminal overshoot and retained presented value");
+            assert(current().main.getCurrentModeIdForState() !== id, `${id}: actual handoff completed`);
+            await roundtrip(`${id}:after-handoff`);
         }
         enter("playing");
         let world = current().main.getPlayingModeForState();

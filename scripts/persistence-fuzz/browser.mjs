@@ -2,20 +2,28 @@
 // __PERSISTENCE_FUZZ_ONLY__. Served only by the dedicated loopback test plugin.
 import { Sys, Music, SoundStore, ResourceLoader, Renderer, Graphics, Color } from "slick2d-ts";
 import { saveFrozenGame } from "/src/app/FrozenGameSave.ts";
+import { FindingBuffer } from "./findings.mjs";
+import { createObservation } from "./observation.mjs";
 import * as adapter from "./adapter.mjs";
-import { normalizeSnapshot, firstDifference, snapshotCoverage, issueSignature, snapshotTransitionKey } from "./compare.mjs";
+import { normalizeSnapshot, firstDifference, snapshotCoverage } from "./compare.mjs";
 
 if (!import.meta.env.DEV || !["localhost", "127.0.0.1", "[::1]"].includes(location.hostname)) throw new Error("Local development fixture only.");
+const observation = createObservation();
+let currentMutant = null,
+    observationExperiment = false,
+    deferredEffect = null;
 let mounted = null,
     armedDeparture = false,
     held = 0,
     clock = 1_000_000,
     spec = null;
+let drainedMetrics = {};
 let pending = null,
     failure = null,
     status = "ready",
     currentPhase = "prepare",
     tick = -1;
+let validations = 0;
 let captures = 0,
     writes = 0,
     restores = 0,
@@ -31,7 +39,7 @@ let storageSetItem = null;
 let previousGood = null,
     actualPlacement = null,
     previousTransition = null;
-const issues = [],
+const findings = new FindingBuffer(),
     signatures = new Set(),
     coverage = new Set();
 const originalTime = Sys.getTime,
@@ -42,13 +50,7 @@ const nativeAudio = () => spec?.audio === "native";
 const normalize = (snapshot) => normalizeSnapshot(snapshot, { nativeAudio: nativeAudio() });
 const errorDetails = (error) => ({ name: error?.name ?? "Error", message: String(error?.message ?? error), stack: String(error?.stack ?? "").slice(0, 12000) });
 function issue(category, extra = {}) {
-    const value = { category, phase: currentPhase, tick, ...extra };
-    const signature = issueSignature(value);
-    if (!signatures.has(signature)) {
-        if (issues.length >= 24) throw new Error("Trial issue evidence budget exhausted");
-        signatures.add(signature);
-        issues.push(value);
-    }
+    findings.add({ category, phase: currentPhase, tick, ...extra });
 }
 function capture() {
     const value = adapter.serializer.createSnapshot(mounted.main, version);
@@ -132,7 +134,6 @@ function save(snapshot = capture()) {
         });
         return null;
     }
-    writes++;
     const text = localStorage.getItem(adapter.key);
     if (text === null) {
         issue("SAVE_NOT_WRITTEN", { snapshot });
@@ -153,6 +154,7 @@ function save(snapshot = capture()) {
     const after = capture();
     const mutation = firstDifference(normalize(snapshot), normalize(after));
     if (mutation) issue("SAVE_MUTATED_RUNTIME", { difference: mutation, snapshot: after, previousSnapshot: snapshot });
+    if (!difference && !mutation && mounted.store.hasValidSave()) writes++;
     previousGood = written;
     return { text, snapshot: written };
 }
@@ -175,12 +177,13 @@ function observe(forceWrite = false, canWrite = true) {
         issue("VALIDATION_THROW", { snapshot, error: errorDetails(error) });
         return snapshot;
     }
+    if (!invalid) validations++;
     const gameplay = normalize(snapshot);
     for (const key of ["audio", "audioState", "music", "currentSongState", "requestedSongId", "soundEffects"]) delete gameplay[key];
     const encodedGameplay = JSON.stringify(gameplay);
     if (previousGameplay !== null && previousGameplay !== encodedGameplay) progress++;
     previousGameplay = encodedGameplay;
-    const transition = snapshotTransitionKey(snapshot);
+    const transition = JSON.stringify(adapter.transitionProjection(snapshot));
     const changed = transition !== previousTransition;
     previousTransition = transition;
     let novel = false;
@@ -207,9 +210,18 @@ function observe(forceWrite = false, canWrite = true) {
     } else if (canWrite && (forceWrite || changed || novel || callbackCount % spec.writeEvery === 0)) save(snapshot);
     return snapshot;
 }
-function step(frame, phase = "exploration", canWrite = true, observeState = true) {
+function step(frame, phase = "exploration", canWrite = true, observeState = true, forceWrite = false) {
     currentPhase = phase;
-    applyInput(frame.mask);
+    deferredEffect?.();
+    deferredEffect = null;
+    adapter.instrument(mounted, observation);
+    if (currentMutant === "disable-gameplay" && phase !== "setup-producer")
+        for (const actor of observation.actors) {
+            // Independent producer mutation: bypass the observed production methods.
+            // The observer itself receives no mutant flag and does not zero counters.
+            Object.defineProperty(actor, "update", { configurable: true, value: () => true });
+        }
+    applyInput(currentMutant === "drop-input" ? 0 : frame.mask);
     clock += frame.deltaMs;
     window.__persistenceFuzzAudio?.advance(frame.deltaMs);
     const input = mounted.container.getInput();
@@ -217,10 +229,15 @@ function step(frame, phase = "exploration", canWrite = true, observeState = true
     Music.poll(frame.deltaMs);
     SoundStore.get().poll(frame.deltaMs);
     // Use the real container update wrapper and Main's actual fixed-step loop.
-    mounted.container.updateGame(frame.deltaMs);
+    if (phase !== "setup-producer") observation.begin();
+    try {
+        mounted.container.updateGame(frame.deltaMs);
+    } finally {
+        observation.end();
+    }
     callbackCount++;
     for (let i = 0; i < frame.renderCount; i++) render();
-    return observeState ? observe(false, canWrite) : null;
+    return observeState ? observe(forceWrite, canWrite) : null;
 }
 function resumeBoundary() {
     applyInput(0);
@@ -236,6 +253,7 @@ async function boot(request) {
     status = "loading";
     failure = null;
     spec = request.spec;
+    currentMutant = request.mutant;
     if (!nativeAudio()) Object.defineProperty(performance, "now", { configurable: true, value: () => clock });
     Sys.getTime = () => clock;
     Date.now = () => 1_800_000_000_000 + clock;
@@ -251,6 +269,21 @@ async function boot(request) {
         };
     }
     if (request.restore && request.mutant === "restore-score") mounted.main.score++;
+    if (["save-input", "save-rng", "save-deferred"].includes(request.mutant)) {
+        const originalSave = mounted.store.save;
+        mounted.store.save = function (...args) {
+            const result = originalSave.apply(this, args);
+            if (observationExperiment && result.saved) {
+                if (request.mutant === "save-input") {
+                    mounted.container.getInput().pause();
+                    mounted.container.getInput().resume();
+                }
+                if (request.mutant === "save-rng") mounted.main.random.nextInt(100);
+                if (request.mutant === "save-deferred") deferredEffect = () => mounted.main.score++;
+            }
+            return result;
+        };
+    }
 
     if (!(await activation.ready) || !(await adapter.commitGameAudio(activation))) throw new Error("Playback session was not accepted");
     mounted.container.setLoopSuspended(true);
@@ -268,10 +301,18 @@ async function boot(request) {
     }
     if (!mounted.main.isStateSaveReady()) throw new Error("READINESS_UNEXPECTED: initialized runtime is not save-ready");
     actualPlacement = { ...actualPlacement, stratum: adapter.observedStratum(mounted) };
-    if (["stage", "world", "hard"].some((key) => actualPlacement.stratum[key] !== spec[key]))
+    const expectedContext = request.restore ? request.captureContext : spec;
+    const observedContext = adapter.captureContext(capture());
+    if (
+        expectedContext &&
+        (request.restore ? Object.keys(expectedContext) : ["stage", "world", "hard"]).some((key) => observedContext[key] !== expectedContext[key])
+    )
         throw new Error("SETUP: observed stratum differs from requested stratum");
+    currentPhase = "setup-boundary";
+    const boundary = observe(true);
+    if (!boundary || adapter.validate(mounted.main, boundary)) throw new Error("SETUP: completed seed boundary is invalid");
     status = "running";
-    return capture();
+    return boundary;
 }
 window.__persistenceFuzz = {
     configure(request) {
@@ -289,14 +330,26 @@ window.__persistenceFuzz = {
         return { status, failure, actualPlacement, currentPhase, tick };
     },
     capture,
+    context() {
+        return adapter.captureContext(capture());
+    },
     resumeBoundary,
     run(frames, options = {}) {
+        observationExperiment = options.forceWrite === true;
         const trace = [];
-        let traceBytes = 0;
+        let traceBytes = 0,
+            executed = 0;
         for (let index = 0; index < frames.length; index++) {
             tick = (options.offset ?? 0) + index;
             try {
-                const snapshot = step(frames[index], options.trace ? "continuation" : "exploration", options.write !== false, options.observe !== false);
+                const snapshot = step(
+                    frames[index],
+                    options.trace ? "continuation" : "exploration",
+                    options.write !== false,
+                    options.observe !== false,
+                    options.forceWrite === true
+                );
+                executed++;
                 if (snapshot && options.trace) {
                     const normalized = normalize(snapshot);
                     traceBytes += JSON.stringify(normalized).length;
@@ -309,7 +362,8 @@ window.__persistenceFuzz = {
                 break;
             }
         }
-        return { ...this.result(), trace };
+        observationExperiment = false;
+        return { ...this.result(), trace, executed };
     },
     benchmark() {
         const original = mounted.store.validateOutgoingSnapshot;
@@ -333,24 +387,55 @@ window.__persistenceFuzz = {
         currentPhase = "checkpoint";
         const saved = save();
         if (!saved) return null;
-        return { ...saved, actualPlacement, clock };
+        return {
+            formatVersion: 2,
+            ...saved,
+            origin: { caseId: spec.caseId, seedRecipe: { ...spec, initialCheckpoint: undefined }, observedStart: actualPlacement },
+            captureContext: adapter.captureContext(saved.snapshot),
+            clock
+        };
     },
     armDeparture() {
         sessionStorage.removeItem("persistence-fuzz-departure");
         armedDeparture = true;
-        return { snapshot: capture(), clock };
+        const snapshot = capture();
+        return { snapshot, captureContext: adapter.captureContext(snapshot), clock };
     },
     disarmDeparture() {
         armedDeparture = false;
     },
     result() {
         return {
-            issues,
+            issues: findings.values(),
             actualPlacement,
-            coverage: [...coverage],
-            metrics: { captures, writes, restores, callbacks: callbackCount, renders: renderCount, progress, saveMs, saveMaxMs, maxSnapshotChars },
+            coverage: [...coverage, ...observation.markers],
+            metrics: {
+                ...observation.metrics,
+                validations,
+                captures,
+                writes,
+                restores,
+                callbacks: callbackCount,
+                renders: renderCount,
+                progress,
+                saveMs,
+                saveMaxMs,
+                maxSnapshotChars
+            },
             status
         };
+    },
+    effects() {
+        return { ...observation.metrics };
+    },
+    drain() {
+        const value = this.result();
+        const metrics = {};
+        for (const [name, amount] of Object.entries(value.metrics))
+            metrics[name] = ["saveMaxMs", "maxSnapshotChars"].includes(name) ? amount : amount - (drainedMetrics[name] ?? 0);
+        const pendingIssues = findings.drain();
+        drainedMetrics = { ...value.metrics };
+        return { ...value, issues: pendingIssues, metrics };
     },
     departureReceipt() {
         return sessionStorage.getItem("persistence-fuzz-departure");
@@ -384,5 +469,8 @@ window.addEventListener("pagehide", () => {
     currentPhase = "pagehide";
     const started = performance.now();
     const saved = save();
-    sessionStorage.setItem("persistence-fuzz-departure", JSON.stringify({ saved: saved !== null, milliseconds: performance.now() - started, issues }));
+    sessionStorage.setItem(
+        "persistence-fuzz-departure",
+        JSON.stringify({ saved: saved !== null, milliseconds: performance.now() - started, issues: findings.drain() })
+    );
 });

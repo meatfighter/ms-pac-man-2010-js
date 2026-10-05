@@ -3,11 +3,14 @@ import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
 import { seed32, GENERATOR_VERSION } from "./prng.mjs";
-import { strata, PROFILE_VERSION } from "./profiles.mjs";
+import { strata, casePlan, PROFILE_VERSION } from "./profiles.mjs";
 import { Reporter } from "./reporter.mjs";
 import { sourceIdentity, inventory } from "./identity.mjs";
 import { supervisedTrial } from "./supervisor.mjs";
 import { runCampaign } from "./campaign.mjs";
+import { assertCheckpoint } from "./checkpoint.mjs";
+import { readSemanticFloor } from "./semantic-floor.mjs";
+import { finalizeCampaign } from "./finalize.mjs";
 import { minimizeTrial } from "./shrink.mjs";
 
 export const HELP = `Persistence fuzz campaign (test-only, requires installed dev dependencies and real game resources)
@@ -108,7 +111,7 @@ export function parseArgs(args, game) {
         hours,
         browserEngine,
         audio,
-        trials: raw.trials ? integer(raw.trials, "--trials", 1, 10000000) : profile === "soak" ? 10000000 : strata(game).length + 1,
+        trials: raw.trials ? integer(raw.trials, "--trials", 1, 10000000) : profile === "soak" ? 10000000 : casePlan(game).length,
         timeoutMs: raw["timeout-ms"] ? integer(raw["timeout-ms"], "--timeout-ms", 100, 3600000) : 180000,
         evidenceBudget: (raw["max-evidence-mib"] ? integer(raw["max-evidence-mib"], "--max-evidence-mib", 1, 4096) : 128) * 1024 * 1024,
         artifacts: raw.artifacts,
@@ -140,7 +143,7 @@ export async function main(args = process.argv.slice(2)) {
         if (bytes.length > 32 * 1024 * 1024) throw new Error("Replay file exceeds 32 MiB");
         const document = JSON.parse(bytes);
         const replay = document.reproduction ?? document;
-        if (replay.formatVersion !== 1 || replay.spec?.game !== game || !Array.isArray(replay.spec.frames) || !Array.isArray(replay.spec.continuation))
+        if (replay.formatVersion !== 2 || replay.spec?.game !== game || !Array.isArray(replay.spec.frames) || !Array.isArray(replay.spec.continuation))
             throw new Error("Unsupported replay document");
         if (
             !config.allowSourceDrift &&
@@ -172,13 +175,14 @@ export async function main(args = process.argv.slice(2)) {
                 !Number.isSafeInteger(saved.corpusParent)
             )
                 throw new Error("Invalid corpus replay checkpoint");
+            assertCheckpoint(entry, config.sourceIdentity, config.allowSourceDrift);
             JSON.parse(entry.text);
         }
         if (
-            saved.formatVersion !== 1 ||
+            saved.formatVersion !== 2 ||
             saved.generatorVersion !== GENERATOR_VERSION ||
             saved.profileVersion !== PROFILE_VERSION ||
-            !["natural", "spatial"].includes(saved.lane) ||
+            !["natural", "spatial", "corpus"].includes(saved.lane) ||
             !["controlled", "native"].includes(saved.audio) ||
             !Number.isSafeInteger(saved.writeEvery) ||
             saved.writeEvery < 1 ||
@@ -186,7 +190,8 @@ export async function main(args = process.argv.slice(2)) {
             saved.frames.length < 1 ||
             saved.frames.length > 1000000 ||
             saved.continuation.length > 1000 ||
-            !strata(game).some((stratum) => stratum.stage === saved.stage && stratum.world === saved.world && stratum.hard === saved.hard)
+            (!saved.initialCheckpoint &&
+                !strata(game).some((stratum) => stratum.stage === saved.stage && stratum.world === saved.world && stratum.hard === saved.hard))
         )
             throw new Error("Replay recipe/version is not supported by this game");
         for (const key of ["seed", "setupSeed", "inputSeed", "scheduleSeed", "gameSeed"]) seed32(String(saved[key]));
@@ -212,10 +217,17 @@ export async function main(args = process.argv.slice(2)) {
         summary = await runCampaign(
             config,
             reporter,
-            (spec) =>
+            (spec, { onEvidence }) =>
                 supervisedTrial(
-                    { repo, spec, browserEngine: config.browserEngine, executablePath: config.executablePath },
-                    { timeoutMs: config.timeoutMs, signal: stop.signal }
+                    {
+                        repo,
+                        spec,
+                        sourceIdentity: config.sourceIdentity,
+                        allowSourceDrift: config.allowSourceDrift,
+                        browserEngine: config.browserEngine,
+                        executablePath: config.executablePath
+                    },
+                    { timeoutMs: config.timeoutMs, signal: stop.signal, onEvidence }
                 ),
             {
                 signal: stop.signal,
@@ -236,7 +248,14 @@ export async function main(args = process.argv.slice(2)) {
                     target,
                     (spec) =>
                         supervisedTrial(
-                            { repo, spec, browserEngine: config.browserEngine, executablePath: config.executablePath },
+                            {
+                                repo,
+                                spec,
+                                sourceIdentity: config.sourceIdentity,
+                                allowSourceDrift: config.allowSourceDrift,
+                                browserEngine: config.browserEngine,
+                                executablePath: config.executablePath
+                            },
                             { timeoutMs: config.timeoutMs, signal: stop.signal }
                         ),
                     {
@@ -250,7 +269,7 @@ export async function main(args = process.argv.slice(2)) {
                 reporter.atomic("minimization.json", reduction);
                 if (reduction.verified)
                     reporter.atomic("minimized-repro.json", {
-                        formatVersion: 1,
+                        formatVersion: 2,
                         sourceIdentity: config.sourceIdentity,
                         browserEngine: config.browserEngine,
                         targetSignature: target,
@@ -266,18 +285,24 @@ export async function main(args = process.argv.slice(2)) {
         process.removeListener("SIGINT", interrupt);
         process.removeListener("SIGTERM", interrupt);
     }
-    const afterIdentity = sourceIdentity(repo),
+    let afterIdentity = {},
+        afterDist = null;
+    try {
+        afterIdentity = sourceIdentity(repo);
         afterDist = inventory(repo, true);
+    } catch (error) {
+        summary.incomplete = true;
+        summary.integrityFailure = String(error);
+    }
     const unchanged =
         afterIdentity.digest === config.sourceIdentity.digest &&
         afterIdentity.engineDigest === config.sourceIdentity.engineDigest &&
         JSON.stringify(beforeDist) === JSON.stringify(afterDist);
     if (!unchanged) {
-        summary.exitCode = 2;
+        summary.incomplete = true;
         console.error("Source or retained dist changed during the campaign. This is incomplete, not a passing qualification.");
     }
-    // Reporter is closed after runCampaign, but atomic bounded report replacement
-    // remains valid; it never appends to the closed event stream.
+    // Integrity reports precede the single terminal coordinator.
     try {
         reporter.atomic("retained-dist-after.json", afterDist);
         reporter.atomic("integrity.json", {
@@ -285,11 +310,21 @@ export async function main(args = process.argv.slice(2)) {
             engineUnchanged: afterIdentity.engineDigest === config.sourceIdentity.engineDigest,
             distUnchanged: JSON.stringify(beforeDist) === JSON.stringify(afterDist)
         });
-        reporter.atomic("summary.json", summary);
     } catch (error) {
-        summary.exitCode = 2;
+        summary.evidenceIncomplete = true;
         console.error(error.message);
     }
+    if (!config.replaySpec) {
+        try {
+            const semantic = readSemanticFloor(repo, config.sourceIdentity);
+            reporter.atomic("semantic-floor.json", semantic);
+            summary.missingCoverage.push(...semantic.missing.map((group) => `semantic:${group}`));
+        } catch (error) {
+            summary.evidenceIncomplete = true;
+            summary.semanticFailure = String(error);
+        }
+    }
+    finalizeCampaign(config, reporter, summary, unchanged);
     console.log(JSON.stringify({ ...summary, coverage: summary.coverage.length, issues: summary.issues }, null, 2));
     return summary.exitCode;
 }

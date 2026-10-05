@@ -43,18 +43,18 @@ This first reproduces the target signature, then reduces input blocks while keep
 
 ## Profiles and outcomes
 
-Qualification uses the fixed seed `0x20261004`, one stratified sweep, 240 outer callbacks per trial and 24 continuation callbacks. Browser qualification uses 120 callbacks and a real document-reload check for every trial. Soak defaults to eight hours; its initial sweep is stratified, followed by sampling biased toward less-observed strata, with alternating spatial/natural lanes. These are initial explicit work budgets, not benchmarked wall-time promises.
+Qualification uses fixed seed `0x20261004`, 64 maze ? entry cases plus 12 recording-cursor boundary cases, 240 outer callbacks per trial and 24 continuation callbacks. Browser qualification uses 120 callbacks and a real document-reload check for every case. Each stratum has separate spatial and natural entries. The resolved version-2 plan is persisted before execution. Soak defaults to eight hours; it first completes the same fixed plan, then alternates new entries and bounded accepted-corpus branches. Work budgets are explicit counts, not wall-time promises.
 
 Both profiles collect failures, retain evidence, retire damaged/stuck trials, and continue. Finding one defect does not stop the campaign. A repeated systemic infrastructure failure, evidence-budget exhaustion, or user interruption ends the run as **incomplete**, not passing. A hard per-trial child-process watchdog terminates only owned workers/browser descendants. First Ctrl+C requests orderly termination and preserves the pending reproduction; killing the outer process forcibly may leave the last pending trial as the recovery record.
 
 Exit codes:
 
-| Code | Meaning                                                                           |
-| ---- | --------------------------------------------------------------------------------- |
-| 0    | Complete, no findings, required strata and nonzero capture/write/restore coverage |
-| 1    | Findings recorded; release gate fails after collecting the campaign               |
-| 2    | Infrastructure failure, missing coverage, integrity change or incomplete evidence |
-| 130  | User interruption; not qualification                                              |
+| Code | Meaning                                                                                 |
+| ---- | --------------------------------------------------------------------------------------- |
+| 0    | Finalized complete run, no findings, every required case and semantic fixture exercised |
+| 1    | Findings recorded; release gate fails after collecting the campaign                     |
+| 2    | Infrastructure failure, missing coverage, integrity change or incomplete evidence       |
+| 130  | User interruption; not qualification                                                    |
 
 A successful local replay does not require sampling every level. A qualification run does. The surrounding npm chain can stop after a failed fuzz campaign; unexecuted later gates are not passes.
 
@@ -64,7 +64,7 @@ All 32 world/stage mazes. Spatial trials use aligned non-wall cells with an adja
 
 The adapters initialize real runtime classes and resources, feed normal DOM keyboard events through production input, run production container/Main updates and render schedules, capture actual serializers, and invoke the production frozen-save/store path. Placement is never accepted or rejected by asking the snapshot validator whether it likes the seed.
 
-Capture/validation is frequent. New observed entity/mode coverage, actual phase/owner/life/score transitions and periodic intervals trigger full authorized saves. The original live runtime supplies the uninterrupted continuation. Fresh documents reset static caches before restoring saved bytes and comparing immediate durable state plus continuation. Sampled observer-control trials run the same continuation without repeated snapshots to detect observational side effects.
+Capture/validation is frequent. New observed entity/mode coverage, actual phase/owner/life/score transitions and periodic intervals trigger full authorized saves. The original live runtime supplies the uninterrupted continuation. Fresh documents reset static caches before restoring saved bytes and comparing immediate durable state plus continuation. Sampled observation controls restore the same baseline twice: one branch performs frequent captures and real full saves; the other has minimal observation and no intermediate saves. Both reset physical input identically. Compare final durable state and production input-read/update effects, including nondurable lost input. The original-live versus cold-restored continuation remains independent.
 
 The real `pagehide` tier uses the fixture's production frozen-save/store path and receipt, followed by a new document. **It is not a substitute for the full production shell's existing `verify:departure-save` suite**; that suite remains mandatory. Service workers are blocked in fuzz contexts, so service-worker behavior is covered by existing production/offline qualification, not this fixture.
 
@@ -76,11 +76,19 @@ Only wire metadata (`savedAt`, `appVersion`, reconstructed `nextFrameTime`) and 
 
 ## Evidence and replay
 
-`campaign.json` records source/engine identities and configuration. `events.jsonl` is flushed during the run. `summary.json` and `pending-trial.json` are replaced atomically; a crash can be diagnosed from the last recorded trial. First occurrences retain `issue.json`, `repro.json`, and compressed current/previous snapshots. Duplicate signatures increment counters rather than creating unlimited dumps. The default evidence ceiling is 128 MiB and 256 distinct signatures. Exhaustion is explicit failure, not silent data loss.
+`campaign.json` records source/engine identities, configuration and the full case plan. `summary.json` remains `status: running, exitCode: null` until the CLI completes integrity and evidence checks. Only a matching version-2 `terminal.json`, with its summary SHA-256, is a terminal receipt. An absent receipt is incomplete; never infer success from an older summary. A separate 16 KiB terminal allowance remains available if normal evidence fills. Count and duration stopping policies are distinct; duration completes only between bounded trials.
+
+Each case records setup, requested/executed callbacks, actual player/actor updates, delivered input actions, captures, verified writes, cold restores, compared continuation steps and missing work. One inert case cannot borrow another case's totals. Presence, active-root membership, actual `update` calls and successful round trips have different marker prefixes. Animation, render and audio progress alone do not establish gameplay progress.
+
+Workers drain new findings and metric deltas after batches of eight callbacks, before navigation and on cooperative cancellation. Run/trial/document/sequence identities deduplicate streamed and terminal delivery. The parent acknowledges flushed evidence, including the last useful checkpoint, before a worker proceeds. Hard hangs retain the last acknowledged boundary; no claim is made about an untransferred synchronous tail. Setup findings remain labelled setup.
+
+Typed signatures retain owner/field/phase while ignoring transient object indexes. Unstructured exceptions retain normalized message and throw location. Uncertain boolean-gate groups preserve up to four full representative variants and report omitted specimens explicitly. Raw occurrence counts and unique manifestations are separate. The default main evidence ceiling is 128 MiB with 256 reporter signatures; evidence exhaustion is incomplete. No unrelated later finding erases earlier discoveries.
 
 There is no automatic GitHub issue creation and no production leaderboard traffic. Each trial uses an isolated browser context and loopback origin; outbound and API writes are denied. Game-over/ending submission attempts cannot reach the production server.
 
-The implementation currently biases by observed **stratum** coverage. It does not yet implement a disk-backed queue of interesting saved states for branching, or claim exhaustive actor/phase coverage. Detailed observed modes/entities/states are reported so gaps can be addressed deliberately. Known boundary regressions are separate mandatory producer tests rather than hoping random input discovers a cheat code or a terminal demo cursor.
+Checkpoints bind exact saved bytes to a SHA-256, current captured stage/world/mode/region context, immutable seed origin and source/resource identities. Corpus branches restore from current context and are labelled `accepted-corpus-branch`; they never earn natural-entry coverage. Old fixture/profile versions are rejected. Ordinary replay reports the requested target separately as reproduced, not observed or inconclusive, and lists unrelated findings separately.
+
+Required semantic boundaries reuse executed producer/browser suites through `semantic-run.mjs`. Successful exact-source/engine receipts live outside the checkout under `qualification-evidence/persistence-semantic-floor`. Qualification and soak require all groups in `semantic-floor.mjs`; absent or stale receipts are incomplete. Run normal qualification before starting an overnight campaign on a new source identity. Receipts distinguish focused producer tests with inert dependencies from real-resource browser and packaged-shell suites; their case assertions, rather than a script's existence, establish coverage. Replay is intentionally limited to its recorded case.
 
 ## Qualification and release exclusion
 
@@ -111,7 +119,12 @@ actor or phase coverage.
 
 Qualification also runs `npm run verify:persistence-fuzz:controls`: independent
 real-resource browser mutations must expose rejected valid snapshots, suppressed
-canonical writes, restored-score drift and missing coverage. Infrastructure
+canonical writes, restored-score drift, missing coverage, disabled gameplay updates, dropped input, and saves that consume input, advance RNG or defer a gameplay mutation. Every independent control is attempted; infrastructure errors are not mutation kills. Infrastructure
 failures cannot count as mutation kills. Campaign summaries include observed
 progress, actual browser version, save timing and maximum captured text size.
 Timing uses the browser monotonic clock independently of controlled game clocks.
+
+The save benchmark compares substitution of only the extra loaded-resource
+preflight within the current validator stack. It is not a comparison against an
+entire older release. No test instrumentation is imported by production entry
+points. Controlled audio does not model arbitrary native suspension clocks.

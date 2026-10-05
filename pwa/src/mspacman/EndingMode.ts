@@ -20,7 +20,7 @@ export class EndingMode implements IMode {
     public static readonly FADE_IN = 1;
     public static readonly FADE_OUT = 2;
 
-    private static readonly dialog = [
+    public static readonly dialog = [
         "YOU WIN!",
         "AS THE AWARD CEREMONY BEGINS,",
         "THE CROWD CAN BE HEARD WHISPERING...",
@@ -40,7 +40,7 @@ export class EndingMode implements IMode {
 
     private static readonly dialogX = EndingMode.createDialogX();
 
-    private static readonly credits = [
+    public static readonly credits = [
         "CREATIVE STAFF",
         "",
         "",

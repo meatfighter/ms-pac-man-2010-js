@@ -2,6 +2,9 @@ import { Music, isMusicPlaybackSnapshot, isSoundPlaybackSnapshot, type GameConta
 import { isMusicId, isSoundId, musicForId, registeredMusic, registeredSounds } from "../AudioRegistry";
 import { DEMO_LENGTHS } from "../DemoMetadata";
 import type { Main } from "../Main";
+import { Act5Mode } from "../Act5Mode";
+import { Act7Mode } from "../Act7Mode";
+import { EndingMode } from "../EndingMode";
 import { EnterInitialsMode } from "../EnterInitialsMode";
 import type { PlayingMode } from "../PlayingMode";
 import {
@@ -424,12 +427,16 @@ function isValidStandaloneModeFieldState(id: Exclude<ModeId, "playing">, fields:
     if (Object.hasOwn(fields, "fadeState2") && !isIntegerInRange(fields.fadeState2, 0, 2)) return false;
     if (Object.hasOwn(fields, "topClapperIndex") && !isIntegerInRange(fields.topClapperIndex, 0, 2)) return false;
     if (Object.hasOwn(fields, "substate") && !isIntegerInRange(fields.substate, 0, 4)) return false;
-    if (Object.hasOwn(fields, "timer") && !isIntegerInRange(fields.timer, 0, 1_000_000)) return false;
+    if (Object.hasOwn(fields, "timer") && !isIntegerInRange(fields.timer, 0, Number.MAX_SAFE_INTEGER)) return false;
     if (Object.hasOwn(fields, "ghostSpriteIndex") && !isIntegerInRange(fields.ghostSpriteIndex, 0, 1)) return false;
     if (Object.hasOwn(fields, "ghostSpriteIndexIncrementor") && !isIntegerInRange(fields.ghostSpriteIndexIncrementor, 0, 14)) return false;
     if (Object.hasOwn(fields, "chompSpriteIndex") && !isIntegerInRange(fields.chompSpriteIndex, 0, 3)) return false;
     if (Object.hasOwn(fields, "chompSpriteIndexIncrementor") && !isIntegerInRange(fields.chompSpriteIndexIncrementor, 0, 5)) return false;
-    if (Object.hasOwn(fields, "stringIndex") && !isIntegerInRange(fields.stringIndex, 0, 4096)) return false;
+    if (Object.hasOwn(fields, "stringIndex")) {
+        const dialog = id === "act5" ? Act5Mode.dialog : id === "act7" ? Act7Mode.dialog : id === "ending" ? EndingMode.dialog : null;
+        if (dialog === null || !isIntegerInRange(fields.dialogIndex, 0, dialog.length - 1)) return false;
+        if (!isIntegerInRange(fields.stringIndex, 0, dialog[fields.dialogIndex as number].length)) return false;
+    }
     if (Object.hasOwn(fields, "stringTimer") && !isIntegerInRange(fields.stringTimer, 0, 2 * 91)) return false;
     if (Object.hasOwn(fields, "tone") && !isIntegerInRange(fields.tone, 0, 1)) return false;
     if (Object.hasOwn(fields, "mspacmanIndex") && !isIntegerInRange(fields.mspacmanIndex, 0, 2)) return false;
@@ -461,7 +468,7 @@ function isValidStandaloneModeFieldState(id: Exclude<ModeId, "playing">, fields:
                 isIntegerInRange(fields.state, 0, 3) &&
                 isIntegerInRange(fields.dialogIndex, 0, 14) &&
                 isIntegerInRange(fields.delay, 0, 2 * 91) &&
-                isFiniteNumberInRange(fields.creditsY, -4096, 4096)
+                isFiniteNumberInRange(fields.creditsY, -EndingMode.credits.length * 28 - 0.5, 600)
             );
         case "enterInitials":
             return isValidEnterInitialsState(fields);

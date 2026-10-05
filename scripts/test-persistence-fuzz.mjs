@@ -5,26 +5,43 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { seed32, random, framesFor, mix } from "./persistence-fuzz/prng.mjs";
-import { makeTrial, strata, requiredMarkers, evaluateCampaign } from "./persistence-fuzz/profiles.mjs";
+import { makeTrial, strata, casePlan, requiredMarkers, evaluateCampaign } from "./persistence-fuzz/profiles.mjs";
 import { normalizeSnapshot, firstDifference, issueSignature, snapshotTransitionKey } from "./persistence-fuzz/compare.mjs";
 import { Reporter, assertExternalPath } from "./persistence-fuzz/reporter.mjs";
-import { runCampaign } from "./persistence-fuzz/campaign.mjs";
+import { finalizeCampaign } from "./persistence-fuzz/finalize.mjs";
+import { runCampaign as collectCampaign } from "./persistence-fuzz/campaign.mjs";
 import { parseArgs } from "./persistence-fuzz/cli.mjs";
 import { supervisedTrial } from "./persistence-fuzz/supervisor.mjs";
 import { assertNoFuzzInRelease } from "./persistence-fuzz/guard.mjs";
 
+async function runCampaign(config, reporter, execute, options) {
+    const result = await collectCampaign(config, reporter, execute, options);
+    return finalizeCampaign(config, reporter, result, true);
+}
 const game = JSON.parse(readFileSync("package.json", "utf8")).name;
 function directory() {
     return mkdtempSync(join(tmpdir(), "persistence-fuzz-tests-"));
 }
 function config(overrides = {}) {
-    return { game, profile: "qualification", seed: 17, trials: strata(game).length, sourceIdentity: { digest: "test" }, ...overrides };
+    return { game, profile: "qualification", seed: 17, trials: casePlan(game).length, sourceIdentity: { digest: "test" }, ...overrides };
 }
 function good(spec) {
     return {
         issues: [],
         coverage: [requiredMarkers(game)[spec.index % strata(game).length]],
-        metrics: { captures: 10, writes: 2, restores: 1, callbacks: 10, renders: 10, progress: 10 },
+        metrics: {
+            validations: 10,
+            captures: 10,
+            writes: 2,
+            restores: 1,
+            callbacks: 10,
+            renders: 10,
+            progress: 10,
+            gameplayUpdates: 10,
+            inputActionsObserved: 10
+        },
+        explorationCallbacks: spec.frames.length,
+        comparedContinuationSteps: 24,
         setupComplete: true
     };
 }
@@ -115,7 +132,7 @@ test("a campaign records multiple defects, deduplicates repeats, and never stops
             if (spec.index === 1) result.issues = [{ category: "CONTINUATION_DIVERGENCE", difference: { path: "$.random.seed" } }];
             return result;
         });
-        assert.equal(visited.length, strata(game).length);
+        assert.equal(visited.length, casePlan(game).length);
         assert.equal(result.exitCode, 1);
         assert.equal(result.issues.length, 2);
         assert.equal(result.findings, 3);
@@ -299,19 +316,25 @@ test("soak collects multiple findings and retains only bounded accepted novel br
         branches = [];
     try {
         const result = await runCampaign(
-            config({ profile: "soak", trials: strata(game).length + 6 }),
+            config({ profile: "soak", trials: casePlan(game).length + 6 }),
             new Reporter(join(base, "soak"), resolve(".")),
             async (spec) => {
                 visited.push(spec.index);
                 if (spec.initialCheckpoint) branches.push(spec.corpusParent);
                 const row = good(spec);
                 if (spec.index < 2) row.issues = [{ category: "SAVE_REJECTED", ownerType: spec.index ? "GreenBoat" : "GrayBoat" }];
-                else row.acceptedCheckpoint = { text: JSON.stringify({ version: 1, id: spec.index }), clock: 1000000, actualPlacement: {} };
+                else
+                    row.acceptedCheckpoint = {
+                        text: JSON.stringify({ version: 1, id: spec.index }),
+                        clock: 1000000,
+                        actualPlacement: {},
+                        captureContext: { stage: spec.stage, world: spec.world, hard: spec.hard }
+                    };
                 return row;
             }
         );
         assert.equal(result.exitCode, 1);
-        assert.equal(visited.length, strata(game).length + 6);
+        assert.equal(visited.length, casePlan(game).length + 6);
         assert.equal(result.issues.length, 2);
         assert.ok(result.corpusEntries > 0 && result.corpusEntries <= 32);
         assert.ok(branches.length > 0);
@@ -371,4 +394,332 @@ test("continuation deduplication retains entity type and phase without transient
 test("replay command cannot silently run a new qualification campaign", () => {
     assert.throws(() => parseArgs(["--profile=replay"], game), /requires --replay/);
     assert.equal(parseArgs(["--profile=replay", "--replay=evidence.json"], game).profile, "replay");
+});
+
+test("running summary never publishes a success and only coordinator verifies integrity", async () => {
+    const base = directory(),
+        reporter = new Reporter(join(base, "run"), resolve("."));
+    try {
+        const settings = config();
+        const result = await collectCampaign(settings, reporter, async (spec) => {
+            const current = JSON.parse(readFileSync(join(base, "run/summary.json"), "utf8"));
+            assert.equal(current.status, "running");
+            assert.equal(current.exitCode, null);
+            return good(spec);
+        });
+        assert.equal(result.exitCode, null);
+        finalizeCampaign(settings, reporter, result, false);
+        const terminal = JSON.parse(readFileSync(join(base, "run/terminal.json"), "utf8"));
+        assert.equal(terminal.status, "incomplete");
+        assert.equal(terminal.exitCode, 2);
+    } finally {
+        reporter.close();
+        rmSync(base, { recursive: true, force: true });
+    }
+});
+
+test("partial interrupted findings and duplicate streamed delivery survive exactly once", async () => {
+    const base = directory(),
+        reporter = new Reporter(join(base, "run"), resolve("."));
+    try {
+        const result = await runCampaign(config(), reporter, async (spec, { onEvidence }) => {
+            const issue = { category: "SAVE_REJECTED", evidenceId: "run:trial:doc:1", ruleCode: "boat" };
+            onEvidence({ issues: [issue] });
+            onEvidence({ issues: [issue] });
+            return { ...good(spec), issues: [issue], interrupted: true };
+        });
+        assert.equal(result.exitCode, 130);
+        assert.equal(result.findings, 1);
+        assert.equal(result.issues[0].occurrences, 1);
+        assert.equal(result.corpusEntries, 0);
+    } finally {
+        reporter.close();
+        rmSync(base, { recursive: true, force: true });
+    }
+});
+
+test("each strategy and stratum owes its own gameplay, input, writer and continuation work", async () => {
+    const base = directory();
+    try {
+        for (const missing of ["gameplayUpdates", "inputActionsObserved", "writes", "restores", "continuation"]) {
+            const reporter = new Reporter(join(base, missing), resolve("."));
+            const result = await runCampaign(config(), reporter, async (spec) => {
+                const row = good(spec);
+                if (spec.index === 3) {
+                    if (missing === "continuation") row.comparedContinuationSteps = 0;
+                    else row.metrics[missing] = 0;
+                }
+                return row;
+            });
+            assert.equal(result.exitCode, 2, missing);
+            assert.ok(result.missingCoverage.some((marker) => marker.startsWith(makeTrial(game, config(), 3).caseId)));
+        }
+        const defaults = parseArgs([], game);
+        assert.equal(defaults.trials, casePlan(game).length);
+        assert.equal(new Set(Array.from({ length: defaults.trials }, (_, i) => makeTrial(game, defaults, i).caseId)).size, defaults.trials);
+    } finally {
+        rmSync(base, { recursive: true, force: true });
+    }
+});
+
+test("duration between complete trials is valid but count truncation is incomplete", async () => {
+    const base = directory();
+    try {
+        let clock = 0;
+        const spec = makeTrial(game, config(), 0);
+        const settings = config({ profile: "soak", trials: 100, hours: 1 / 3600 });
+        const result = await runCampaign(
+            settings,
+            new Reporter(join(base, "duration"), resolve(".")),
+            async (value) => {
+                clock += 1000 / casePlan(game).length;
+                return good(value);
+            },
+            { now: () => clock }
+        );
+        assert.equal(result.exitCode, 0);
+        assert.equal(result.stopReason, "duration-limit");
+        const short = await runCampaign(config({ trials: 1 }), new Reporter(join(base, "short"), resolve(".")), async () => good(spec));
+        assert.equal(short.exitCode, 2);
+    } finally {
+        rmSync(base, { recursive: true, force: true });
+    }
+});
+
+test("terminal evidence reserve remains available after normal budget exhaustion", async () => {
+    const base = directory(),
+        reporter = new Reporter(join(base, "run"), resolve("."), 500);
+    try {
+        const result = await runCampaign(config(), reporter, async (spec) => good(spec));
+        assert.equal(result.exitCode, 2);
+        const terminal = JSON.parse(readFileSync(join(base, "run/terminal.json"), "utf8"));
+        assert.equal(terminal.exitCode, 2);
+        assert.equal(terminal.evidenceIncomplete, true);
+    } finally {
+        reporter.close();
+        rmSync(base, { recursive: true, force: true });
+    }
+});
+
+test("findings acknowledged before a hung worker remain in watchdog outcome", async () => {
+    const base = directory();
+    try {
+        const worker = join(base, "finding-hang.mjs"),
+            retained = [];
+        writeFileSync(
+            worker,
+            'process.on("message", m => {if(m.type === "evidence-ack") {process.send({type:"progress",phase:"acknowledged"}); return;} process.send({type:"evidence",sequence:1,packet:{issues:[{category:"SAVE_REJECTED",evidenceId:"r:t:d:1"}],metrics:{callbacks:8},explorationCallbacks:8}});setInterval(()=>{},1000);});'
+        );
+        const result = await supervisedTrial(
+            { repo: resolve(".") },
+            { workerUrl: pathToFileURL(worker), timeoutMs: 1000, onEvidence: (packet) => retained.push(...packet.issues) }
+        );
+        assert.equal(retained.length, 1);
+        assert.equal(result.issues.length, 2);
+        assert.equal(result.issues[0].category, "SAVE_REJECTED");
+        assert.equal(result.incomplete, true);
+        assert.equal(result.metrics.callbacks, 8);
+    } finally {
+        rmSync(base, { recursive: true, force: true });
+    }
+});
+
+test("generic throw sites differ and uncertain gate groups retain bounded variants", () => {
+    const a = { category: "RUNTIME_EXCEPTION", error: { name: "Error", message: "Missing boat target 14", stack: "Error\n at Boat.fire (boat.ts:14:2)" } };
+    const b = {
+        category: "RUNTIME_EXCEPTION",
+        error: { name: "Error", message: "Missing player input 14", stack: "Error\n at Player.update (player.ts:55:2)" }
+    };
+    assert.notEqual(issueSignature(a), issueSignature(b));
+    const base = directory(),
+        reporter = new Reporter(join(base, "run"), resolve("."));
+    try {
+        for (let i = 0; i < 6; i++)
+            reporter.finding(
+                { category: "VALIDATION_REJECTED", ruleCode: "structure-and-graph", snapshot: { mainFields: { [i % 2 ? "timer" : "score"]: -i - 1 } } },
+                {}
+            );
+        const row = [...reporter.issues.values()][0];
+        assert.equal(row.occurrences, 6);
+        assert.equal(row.variants.length, 4);
+        assert.equal(row.omittedVariants, 2);
+    } finally {
+        reporter.close();
+        rmSync(base, { recursive: true, force: true });
+    }
+});
+
+test("actual Jackal completion/music/voice transitions are distinct from advancing cursors", () => {
+    const state = {
+        mainFields: {},
+        gameMode: { fields: { stageCompletedFlag: false }, entities: [] },
+        currentSongState: { id: "stage", activeMusic: { id: "intro", playback: { transport: "playing", positionSeconds: 1 } } },
+        audioState: { sounds: [{ id: "gun", playback: { voices: [] } }] }
+    };
+    for (const change of [
+        (s) => (s.gameMode.fields.stageCompletedFlag = true),
+        (s) => (s.currentSongState.activeMusic.playback.transport = "paused"),
+        (s) => s.audioState.sounds[0].playback.voices.push({ positionSeconds: 0 })
+    ]) {
+        const next = structuredClone(state);
+        change(next);
+        assert.notEqual(snapshotTransitionKey(state), snapshotTransitionKey(next));
+    }
+    const next = structuredClone(state);
+    next.currentSongState.activeMusic.playback.positionSeconds++;
+    assert.equal(snapshotTransitionKey(state), snapshotTransitionKey(next));
+});
+
+test("replay target does not confuse an unrelated error or incomplete setup with reproduction", async () => {
+    const base = directory(),
+        spec = makeTrial(game, config(), 0);
+    try {
+        for (const incomplete of [false, true]) {
+            const result = await runCampaign(
+                config({ trials: 1, replaySpec: spec, replayTargetSignature: "original" }),
+                new Reporter(join(base, String(incomplete)), resolve(".")),
+                async () => ({ ...good(spec), incomplete, issues: [{ category: "OTHER" }] })
+            );
+            assert.equal(result.replayTarget.outcome, incomplete ? "inconclusive" : "not-observed");
+            assert.equal(result.replayTarget.otherFindings.length, 1);
+        }
+    } finally {
+        rmSync(base, { recursive: true, force: true });
+    }
+});
+
+test("incremental finding buffers reset per document and retain raw occurrences plus uncertain variants", async () => {
+    const { FindingBuffer } = await import("./persistence-fuzz/findings.mjs");
+    const first = new FindingBuffer();
+    const issue = { category: "SAVE_REJECTED", ruleCode: "explicit-enum", path: "$.things[1].fields.state", ownerType: "Boat" };
+    first.add(issue);
+    first.add({ ...issue, tick: 8 });
+    const rows = first.drain();
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].occurrences, 2);
+    assert.equal(rows[0].sequence, 1);
+    assert.deepEqual(first.drain(), []);
+    first.add(issue);
+    assert.equal(first.drain()[0].sequence, 2);
+    const next = new FindingBuffer();
+    next.add(issue);
+    assert.equal(next.drain()[0].sequence, 1, "worker document identity disambiguates local reset");
+    const coarse = new FindingBuffer();
+    coarse.add({ category: "SAVE_REJECTED", ruleCode: "structure-and-graph", snapshot: { mainFields: { a: -1 } } });
+    coarse.add({ category: "SAVE_REJECTED", ruleCode: "structure-and-graph", snapshot: { mainFields: { b: -1 } } });
+    assert.equal(coarse.drain().length, 2);
+});
+
+test("checkpoint identity binds exact bytes and current context without rewriting origin", async () => {
+    const { sealCheckpoint, assertCheckpoint } = await import("./persistence-fuzz/checkpoint.mjs");
+    const identity = { digest: "source", engineDigest: "resources" };
+    for (const context of [
+        { stage: 1, world: 0, hard: false, mode: "game" },
+        { stage: 8, world: 3, hard: false, mode: "ending" },
+        { stage: 2, world: 0, hard: true, mode: 3, segment: 2, region: 1 }
+    ]) {
+        const checkpoint = sealCheckpoint(
+            {
+                formatVersion: 2,
+                text: JSON.stringify({ mainFields: { stageIndex: context.stage } }),
+                clock: 1000000,
+                origin: { requestedPlacement: { stage: 0 } },
+                captureContext: context
+            },
+            identity
+        );
+        assert.doesNotThrow(() => assertCheckpoint(checkpoint, identity));
+        assert.equal(checkpoint.origin.requestedPlacement.stage, 0);
+        assert.throws(() => assertCheckpoint({ ...checkpoint, text: checkpoint.text + " " }, identity));
+        assert.throws(() => assertCheckpoint(checkpoint, { ...identity, digest: "new" }));
+        assert.doesNotThrow(() => assertCheckpoint(checkpoint, { ...identity, digest: "new" }, true));
+    }
+});
+
+test("semantic floor rejects missing boundaries, wrong commands and stale source", async () => {
+    const { readSemanticFloor, semanticDirectory, semanticCommands } = await import("./persistence-fuzz/semantic-floor.mjs");
+    const base = directory(),
+        repo = join(base, "checkout"),
+        identity = { digest: "exact-source", engineDigest: "engine" };
+    mkdirSync(repo);
+    writeFileSync(join(repo, "package.json"), JSON.stringify({ name: game }));
+    try {
+        assert.deepEqual(readSemanticFloor(repo, identity).missing, Object.keys(semanticCommands[game]));
+        const dir = semanticDirectory(repo, identity);
+        mkdirSync(dir, { recursive: true });
+        const groups = Object.keys(semanticCommands[game]);
+        for (const group of groups) {
+            writeFileSync(
+                join(dir, `${group}.json`),
+                JSON.stringify({
+                    formatVersion: 2,
+                    exitCode: 0,
+                    sourceDigest: identity.digest,
+                    engineDigest: identity.engineDigest,
+                    group,
+                    command: semanticCommands[game][group]
+                })
+            );
+        }
+        assert.deepEqual(readSemanticFloor(repo, identity).missing, []);
+        const boundary = groups.at(-1),
+            file = join(dir, `${boundary}.json`),
+            receipt = JSON.parse(readFileSync(file));
+        for (const corrupt of [
+            { ...receipt, sourceDigest: "stale" },
+            { ...receipt, engineDigest: "stale" },
+            { ...receipt, exitCode: 2 },
+            { ...receipt, command: ["skipped"] }
+        ]) {
+            writeFileSync(file, JSON.stringify(corrupt));
+            assert.deepEqual(readSemanticFloor(repo, identity).missing, [boundary]);
+        }
+    } finally {
+        rmSync(base, { recursive: true, force: true });
+    }
+});
+
+test("actual actor no-op cannot satisfy production-call instrumentation", async () => {
+    const { createObservation } = await import("./persistence-fuzz/observation.mjs");
+    class Player {
+        update() {
+            return true;
+        }
+    }
+    const player = new Player(),
+        observer = createObservation();
+    observer.actor(player, true);
+    observer.begin();
+    player.update();
+    observer.end();
+    assert.equal(observer.metrics.gameplayUpdates, 1);
+    Object.defineProperty(player, "update", { value: () => true });
+    observer.actor(player, true);
+    observer.begin();
+    player.update();
+    observer.end();
+    assert.equal(observer.metrics.gameplayUpdates, 1);
+});
+
+test("acknowledged repeated deliveries persist exact occurrence counts", () => {
+    const base = directory(),
+        reporter = new Reporter(join(base, "run"), resolve("."));
+    try {
+        const issue = { category: "SAVE_REJECTED", ruleCode: "explicit-enum", path: "$.state", ownerType: "Boat" };
+        reporter.finding({ ...issue, evidenceId: "trial:doc:1", occurrences: 3 }, {});
+        reporter.finding({ ...issue, evidenceId: "trial:doc:2", occurrences: 2 }, {});
+        reporter.finding({ ...issue, evidenceId: "trial:doc:2", occurrences: 2 }, {});
+        const events = readFileSync(join(base, "run/events.jsonl"), "utf8")
+            .trim()
+            .split("\n")
+            .map((line) => JSON.parse(line));
+        assert.deepEqual(
+            events.map((event) => event.occurrences),
+            [3, 5]
+        );
+        assert.equal(events.at(-1).evidenceId, "trial:doc:2");
+    } finally {
+        reporter.close();
+        rmSync(base, { recursive: true, force: true });
+    }
 });
