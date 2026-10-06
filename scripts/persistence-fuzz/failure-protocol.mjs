@@ -45,8 +45,10 @@ export function classifyFailure(error, context = {}) {
         domain = "persistence";
         category = "SAVE_SUCCEEDED_RESTORE_REJECTED";
     } else if (["continuation", "restore-recapture"].includes(stage)) {
-        domain = "runtime";
-        category = "RUNTIME_EXCEPTION";
+        // Browser callbacks report their own typed runtime findings. A rejected
+        // Node evaluation may instead be a crash, disconnect or trace budget.
+        domain = "unresolved";
+        category = "WORKER_OPERATION_FAILED";
     } else if (witness.returned === true) {
         domain = "harness";
         category = "POST_RESTORE_FAILED";

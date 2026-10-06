@@ -177,3 +177,16 @@ test("phase timing and late request/console failures survive; expected cleanup s
     );
     assert.ok(phases[1].at >= phases[0].at);
 });
+
+test("Node continuation/recapture transport errors are not gameplay findings", () => {
+    for (const stage of ["continuation", "restore-recapture"])
+        for (const message of ["Browser disconnected", "Execution context destroyed", "Continuation trace budget exceeded"]) {
+            const failure = classifyFailure(new Error(message), {
+                stage,
+                restoreWitness: { ...restoreWitness(), resourcesPrepared: true, expectedBytesVerified: true, entered: true, completed: true, returned: true }
+            });
+            assert.equal(failure.domain, "unresolved");
+            assert.equal(eligibleFinding(failure), false);
+        }
+    assert.equal(eligibleFinding({ domain: "runtime", category: "RUNTIME_EXCEPTION" }), true, "observed browser callback failures retain their domain");
+});
