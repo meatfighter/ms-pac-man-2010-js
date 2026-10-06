@@ -44,6 +44,7 @@ export function supervisedTrial(
             tail = "",
             phase = "spawn",
             exited = false,
+            closed = false,
             exitCode,
             exitSignal;
         let stopRequested = false,
@@ -56,6 +57,9 @@ export function supervisedTrial(
         };
         child.stdout.on("data", append);
         child.stderr.on("data", append);
+        child.once("close", () => {
+            closed = true;
+        });
         const fail = (error) => {
             failure ??= errorDetails(error);
         };
@@ -90,6 +94,13 @@ export function supervisedTrial(
                         done();
                     });
                 });
+            if (!closed) {
+                try {
+                    await bounded(new Promise((done) => child.once("close", done)), 5000, "Worker output streams did not close");
+                } catch (error) {
+                    fail(error);
+                }
+            }
             if (pending?.cleanup?.complete === false || pending?.evidenceComplete === false) fail(new Error("Worker reported incomplete evidence or cleanup"));
             if (exited) {
                 try {
@@ -99,6 +110,7 @@ export function supervisedTrial(
                 }
             }
             if (!pending) fail(new Error("Worker exited without a result"));
+            if (exitCode !== 0 && !(signal?.aborted && exitCode === 130)) fail(new Error(`Worker exit ${exitCode}, signal ${exitSignal}`));
             if (failure)
                 retained.set("supervisor", {
                     protocolVersion,
@@ -108,7 +120,6 @@ export function supervisedTrial(
                     error: failure,
                     evidenceId: "supervisor"
                 });
-            if (exitCode !== 0 && !(signal?.aborted && exitCode === 130)) fail(new Error(`Worker exit ${exitCode}, signal ${exitSignal}`));
             for (const [index, issue] of (pending?.issues ?? []).entries())
                 retained.set(issue.evidenceId ?? `terminal:${index}`, { ...retained.get(issue.evidenceId), ...issue });
             resolve({

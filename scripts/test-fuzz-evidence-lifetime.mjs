@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import vm from "node:vm";
 import { FindingBuffer } from "./persistence-fuzz/findings.mjs";
-import { Reporter } from "./persistence-fuzz/reporter.mjs";
+import { Reporter, replaceEvidenceFile } from "./persistence-fuzz/reporter.mjs";
 import { runCampaign } from "./persistence-fuzz/campaign.mjs";
 import { makeTrial, casePlan } from "./persistence-fuzz/profiles.mjs";
 import { finalizeCampaign } from "./persistence-fuzz/finalize.mjs";
@@ -109,5 +109,57 @@ test("bootstrap, cleanup and transport targets cannot be shrunk as gameplay fail
         const issue = { domain, category: "SAME_STRING" };
         const result = await minimizeTrial(spec, issueSignature(issue), async () => ({ setupComplete: true, issues: [issue] }));
         assert.equal(result.verified, false);
+    }
+});
+
+test("Windows atomic evidence replacement tolerates a bounded sharing race without deleting prior evidence", () => {
+    let calls = 0,
+        waited = 0;
+    const sharing = Object.assign(new Error("reader holds destination"), { code: "EPERM" });
+    replaceEvidenceFile("pending", "durable", {
+        platform: "win32",
+        pause: (ms) => {
+            waited += ms;
+        },
+        rename: (from, to) => {
+            assert.equal(from, "pending");
+            assert.equal(to, "durable");
+            if (++calls < 4) throw sharing;
+        }
+    });
+    assert.equal(calls, 4);
+    assert.equal(waited, 75);
+    calls = 0;
+    assert.throws(
+        () =>
+            replaceEvidenceFile("pending", "durable", {
+                platform: "win32",
+                pause: () => {},
+                rename: () => {
+                    calls++;
+                    throw sharing;
+                }
+            }),
+        (error) => error === sharing
+    );
+    assert.equal(calls, 21);
+    for (const [platform, code] of [
+        ["linux", "EPERM"],
+        ["win32", "ENOSPC"]
+    ]) {
+        calls = 0;
+        assert.throws(
+            () =>
+                replaceEvidenceFile("pending", "durable", {
+                    platform,
+                    pause: () => assert.fail("non-sharing failures must not be retried"),
+                    rename: () => {
+                        calls++;
+                        throw Object.assign(new Error(code), { code });
+                    }
+                }),
+            new RegExp(code)
+        );
+        assert.equal(calls, 1);
     }
 });

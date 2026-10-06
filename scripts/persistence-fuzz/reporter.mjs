@@ -5,6 +5,23 @@ import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { issueSignature } from "./compare.mjs";
 
+// Windows readers may briefly deny replacement. Retain the flushed pending file;
+// retry only sharing/access races, never unlink the last durable destination.
+export function replaceEvidenceFile(
+    from,
+    to,
+    { rename = renameSync, platform = process.platform, pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms) } = {}
+) {
+    for (let attempt = 0; ; attempt++) {
+        try {
+            return rename(from, to);
+        } catch (error) {
+            if (platform !== "win32" || !["EPERM", "EACCES", "EBUSY"].includes(error.code) || attempt === 20) throw error;
+            pause(25);
+        }
+    }
+}
+
 export function assertExternalPath(directory, repo) {
     const absolute = resolve(directory),
         root = realpathSync(repo);
@@ -79,7 +96,7 @@ export class Reporter {
         } finally {
             closeSync(file);
         }
-        renameSync(tmp, target);
+        replaceEvidenceFile(tmp, target);
         this.fileSizes.set(name, size);
     }
 
@@ -208,7 +225,7 @@ export class Reporter {
             // Small emergency summary shares the reserved terminal allowance; it can never certify success.
             const path = join(this.directory, "summary.json");
             writeFileSync(`${path}.pending`, summaryBytes, { flush: true });
-            renameSync(`${path}.pending`, path);
+            replaceEvidenceFile(`${path}.pending`, path);
         }
         const receipt = {
             formatVersion: 3,
@@ -236,7 +253,7 @@ export class Reporter {
         } finally {
             closeSync(fd);
         }
-        renameSync(`${target}.pending`, target);
+        replaceEvidenceFile(`${target}.pending`, target);
         return receipt;
     }
 

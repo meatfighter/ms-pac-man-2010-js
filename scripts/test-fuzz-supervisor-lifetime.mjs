@@ -6,7 +6,21 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { supervisedTrial } from "./persistence-fuzz/supervisor.mjs";
 
-for (const mode of ["success", "result-hang", "result-nonzero", "evidence-crash", "child-crash", "exit-before-result", "cancel", "persistence-reject"]) {
+for (const mode of [
+    "success",
+    "result-hang",
+    "result-nonzero",
+    "evidence-crash",
+    "child-crash",
+    "exit-before-result",
+    "cancel-boot",
+    "cancel-restore",
+    "cancel-drain",
+    "cancel-cleanup",
+    "cleanup-reject",
+    "result-tail",
+    "persistence-reject"
+]) {
     test(`owned worker lifetime (${process.platform}): ${mode}`, { timeout: 20000 }, async () => {
         const dir = mkdtempSync(join(tmpdir(), "fuzz-supervisor-"));
         const file = join(dir, "worker.mjs"),
@@ -19,8 +33,8 @@ process.on('message', message => {
  if (mode === 'child-crash') { const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore',windowsHide:true}); writeFileSync(message.pidFile,String(child.pid)); process.exit(7); }
  if (mode === 'exit-before-result') process.exit(0);
  if (mode === 'evidence-crash' || mode === 'persistence-reject') { process.send({type:'evidence',sequence:1,packet:{issues:[{domain:'persistence',category:'SAVE_REJECTED',evidenceId:'A'}]}}); setInterval(()=>{},1000); return; }
- if (mode === 'cancel') { process.send({type:'progress',phase:'restore'}); setInterval(()=>{},1000); return; }
- process.send({type:'result',result:{issues:[],metrics:{},coverage:[],evidenceComplete:true,cleanup:{complete:true}}},()=>{if(mode==='result-hang')setInterval(()=>{},1000);else process.exit(mode==='result-nonzero'?9:0);});
+ if (mode.startsWith('cancel-')) { process.send({type:'progress',phase:mode.slice(7)}); setInterval(()=>{},1000); return; }
+ process.send({type:'result',result:{issues:[],metrics:{},coverage:[],evidenceComplete:true,cleanup:{complete:mode!=='cleanup-reject'}}},()=>{if(mode==='result-tail')process.stderr.write('final owned worker tail\\n');if(mode==='result-hang')setInterval(()=>{},1000);else process.exit(mode==='result-nonzero'?9:0);});
 });`;
         writeFileSync(file, source);
         const stop = new AbortController(),
@@ -34,7 +48,7 @@ process.on('message', message => {
                     exitGraceMs: 300,
                     signal: stop.signal,
                     progress: () => {
-                        if (mode === "cancel") stop.abort();
+                        if (mode.startsWith("cancel-")) stop.abort();
                     },
                     onEvidence: async (packet) => {
                         await new Promise((done) => setTimeout(done, 30));
@@ -43,8 +57,10 @@ process.on('message', message => {
                     }
                 }
             );
-            if (mode === "success") assert.equal(result.infrastructureFailure, undefined);
+            if (["success", "result-tail"].includes(mode)) assert.equal(result.infrastructureFailure, undefined);
             else assert.equal(result.incomplete, true);
+            if (mode === "result-tail") assert.match(result.workerTail, /final owned worker tail/);
+            if (mode === "cleanup-reject") assert.match(result.infrastructureFailure.message, /incomplete evidence or cleanup/);
             if (mode === "result-hang") assert.match(result.infrastructureFailure.message, /did not exit/);
             if (mode === "result-nonzero") assert.match(result.infrastructureFailure.message, /exit 9/);
             if (mode === "evidence-crash") {

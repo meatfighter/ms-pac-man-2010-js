@@ -16,12 +16,16 @@ export class Diagnostics {
 
     begin(document) {
         this.document = { ...document };
+        this.add("phase");
     }
 
     add(kind, detail = {}) {
         const text = JSON.stringify(detail).replaceAll(this.origin, "<fixture>").slice(0, 4000);
         const row = { ...this.document, at: performance.now(), kind, detail: text };
-        if (["http-error", "pageerror", "crash", "disconnected", "failure-probe", "probe-unavailable", "vite-error"].includes(kind)) {
+        if (
+            ["http-error", "requestfailed", "pageerror", "crash", "close", "disconnected", "failure-probe", "probe-unavailable", "vite-error"].includes(kind) ||
+            (kind === "console" && detail.type === "error")
+        ) {
             this.first ??= row;
             if (!this.cleaning && !detail.expectedCleanup) this.unexpectedFailures++;
         }

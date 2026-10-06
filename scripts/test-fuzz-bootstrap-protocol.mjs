@@ -158,3 +158,22 @@ test("diagnostic quotas preserve first cause and late tail with omission counts"
     assert.match(result.tail.at(-1).detail, /"i":99/);
     assert.ok(result.omitted > 0);
 });
+
+test("phase timing and late request/console failures survive; expected cleanup stays non-failing", () => {
+    const diagnostics = new Diagnostics("http://fixture");
+    diagnostics.begin({ documentId: "one", stage: "configure" });
+    diagnostics.begin({ documentId: "one", stage: "restore" });
+    diagnostics.add("requestfailed", { error: "module aborted" });
+    diagnostics.add("console", { type: "error", text: "late failure" });
+    diagnostics.cleaning = true;
+    diagnostics.add("disconnected", { expectedCleanup: true });
+    const result = diagnostics.snapshot();
+    assert.equal(result.unexpectedFailures, 2);
+    assert.equal(result.first.kind, "requestfailed");
+    const phases = result.tail.filter((row) => row.kind === "phase");
+    assert.deepEqual(
+        phases.map((row) => row.stage),
+        ["configure", "restore"]
+    );
+    assert.ok(phases[1].at >= phases[0].at);
+});
