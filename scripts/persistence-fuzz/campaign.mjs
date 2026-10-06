@@ -1,3 +1,4 @@
+import { protocolVersion, eligibleFinding, completeEvidence } from "./failure-protocol.mjs";
 import { performance } from "node:perf_hooks";
 import { makeTrial, casePlan, missingCaseWork } from "./profiles.mjs";
 import { random, mix } from "./prng.mjs";
@@ -14,7 +15,8 @@ export async function runCampaign(config, reporter, execute, { signal, onProgres
     const selector = random(mix(config.seed, 71));
     let corpusBytes = 0;
     const summary = {
-        formatVersion: 2,
+        formatVersion: 3,
+        protocolVersion,
         game: config.game,
         profile: config.profile,
         seed: config.seed,
@@ -27,6 +29,7 @@ export async function runCampaign(config, reporter, execute, { signal, onProgres
         attempted: 0,
         completed: 0,
         findings: 0,
+        harnessErrors: 0,
         infrastructureFailures: 0,
         captures: 0,
         writes: 0,
@@ -58,7 +61,7 @@ export async function runCampaign(config, reporter, execute, { signal, onProgres
         return summary;
     };
     try {
-        reporter.atomic("campaign.json", { formatVersion: 2, config, plan });
+        reporter.atomic("campaign.json", { formatVersion: 3, protocolVersion, config, plan });
         reporter.atomic("summary.json", refresh());
         for (let index = 0; index < config.trials; index++) {
             if (signal?.aborted) {
@@ -90,32 +93,52 @@ export async function runCampaign(config, reporter, execute, { signal, onProgres
             summary.attempted++;
             const delivered = new Set();
             const ingest = (issue) => {
-                if (issue.evidenceId && delivered.has(issue.evidenceId)) return;
+                const repeated = issue.evidenceId && delivered.has(issue.evidenceId);
                 const id = reporter.finding(issue, reproduction);
+                if (repeated) return;
                 if (issue.evidenceId) delivered.add(issue.evidenceId);
-                summary.findings += issue.occurrences ?? 1;
+                if (eligibleFinding(issue)) summary.findings += issue.occurrences ?? 1;
+                else {
+                    summary.harnessErrors += issue.occurrences ?? 1;
+                    summary.incomplete = true;
+                }
                 onProgress({ event: "finding", index, id, category: issue.category });
             };
-            let result;
+            let result, lastContext;
             try {
                 result = await execute(spec, {
                     onEvidence: (packet) => {
                         for (const issue of packet.issues ?? []) ingest(issue);
-                        if (packet.checkpoint) reporter.atomic("last-checkpoint.json", { index, checkpoint: packet.checkpoint });
+                        if (packet.checkpoint) reporter.atomic("last-checkpoint.json", { index, status: "recovery-only", checkpoint: packet.checkpoint });
+                        if (packet.context) {
+                            lastContext = packet.context;
+                            reporter.atomic(`trials/${index}/context.json`, packet.context);
+                        }
                         reporter.atomic("last-progress.json", { index, ...packet, checkpoint: undefined, issues: undefined });
                     }
                 });
             } catch (error) {
                 result = { infrastructureFailure: { name: error.name, message: error.message }, issues: [] };
             }
+            reporter.atomic(`trials/${index}/context.json`, {
+                ...lastContext,
+                cleanup: result.cleanup,
+                workerExit: result.workerExit,
+                workerTail: result.workerTail,
+                lastPhase: result.lastPhase,
+                infrastructureFailure: result.infrastructureFailure
+            });
             // Partial findings precede EVERY termination branch.
             for (const issue of result.issues ?? [])
                 ingest({ ...issue, actualPlacement: result.actualPlacement, lastPhase: result.lastPhase, workerTail: result.workerTail });
             if (result.infrastructureFailure) {
                 summary.infrastructureFailures++;
+                summary.incomplete = true;
                 reporter.finding({ category: "INFRASTRUCTURE_FAILURE", error: result.infrastructureFailure, workerTail: result.workerTail }, reproduction);
             }
-            summary.incomplete ||= Boolean(result.incomplete);
+            summary.incomplete ||= Boolean(
+                result.incomplete || result.infrastructureFailure || result.evidenceComplete === false || result.cleanup?.complete === false
+            );
             summary.interrupted ||= Boolean(result.interrupted);
             const metrics = result.metrics ?? {};
             const row = {
@@ -139,7 +162,7 @@ export async function runCampaign(config, reporter, execute, { signal, onProgres
             };
             row.missingMarkers = missingCaseWork(row);
             // Every invocation is retained; later work cannot hide an inert required case.
-            reporter.atomic(`cases/${index}.json`, { formatVersion: 2, caseId: spec.caseId, ...row });
+            reporter.atomic(`cases/${index}.json`, { formatVersion: 3, protocolVersion, caseId: spec.caseId, ...row });
             if (!summary.caseEvidence[spec.caseId]?.termination) summary.caseEvidence[spec.caseId] = { ...summary.caseEvidence[spec.caseId], ...row };
             for (const marker of result.coverage ?? []) coverage.add(marker);
             for (const key of ["saveMaxMs", "maxSnapshotChars"]) summary[key] = Math.max(summary[key], metrics[key] ?? 0);
@@ -154,13 +177,16 @@ export async function runCampaign(config, reporter, execute, { signal, onProgres
                 !result.infrastructureFailure &&
                 !result.incomplete &&
                 !result.interrupted &&
+                completeEvidence(result) &&
+                row.missingMarkers.length === 0 &&
                 novelty.length &&
                 corpus.length < 32
             ) {
                 const entry = { index, checkpoint: result.acceptedCheckpoint, coverage: novelty };
                 const bytes = Buffer.byteLength(JSON.stringify(entry));
                 if (corpusBytes + bytes <= 8 * 1024 * 1024) {
-                    reporter.atomic(`corpus/${index}.json`, { formatVersion: 2, sourceIdentity: config.sourceIdentity.digest, ...entry });
+                    reporter.atomic(`corpus/${index}.json`, { formatVersion: 3, protocolVersion, sourceIdentity: config.sourceIdentity.digest, ...entry });
+                    reporter.atomic("last-checkpoint.json", { index, status: "accepted-corpus", checkpoint: result.acceptedCheckpoint });
                     corpus.push(entry);
                     corpusBytes += bytes;
                     for (const marker of result.coverage ?? []) corpusMarkers.add(marker);

@@ -42,6 +42,8 @@ function good(spec) {
         },
         explorationCallbacks: spec.frames.length,
         comparedContinuationSteps: 24,
+        evidenceComplete: true,
+        cleanup: { complete: true },
         setupComplete: true
     };
 }
@@ -128,8 +130,9 @@ test("a campaign records multiple defects, deduplicates repeats, and never stops
         const result = await runCampaign(config(), reporter, async (spec) => {
             visited.push(spec.index);
             const result = good(spec);
-            if (spec.index === 0 || spec.index === 2) result.issues = [{ category: "SAVE_REJECTED", ruleCode: "boat", snapshot: { sprite: 1 } }];
-            if (spec.index === 1) result.issues = [{ category: "CONTINUATION_DIVERGENCE", difference: { path: "$.random.seed" } }];
+            if (spec.index === 0 || spec.index === 2)
+                result.issues = [{ domain: "persistence", category: "SAVE_REJECTED", ruleCode: "boat", snapshot: { sprite: 1 } }];
+            if (spec.index === 1) result.issues = [{ domain: "persistence", category: "CONTINUATION_DIVERGENCE", difference: { path: "$.random.seed" } }];
             return result;
         });
         assert.equal(visited.length, casePlan(game).length);
@@ -230,7 +233,8 @@ test("fuzzer runs production capture/update paths without release imports or Act
     assert.match(source, /saveFrozenGame/);
     assert.match(source, /pagehide/);
     const worker = readFileSync("scripts/persistence-fuzz/worker.mjs", "utf8");
-    assert.match(worker, /page\.reload/);
+    assert.match(worker, /"departure-reload"/);
+    assert.match(readFileSync("scripts/persistence-fuzz/document-loader.mjs", "utf8"), /page\.goto/);
     assert.match(worker, /serviceWorkers: "block"/);
     assert.doesNotMatch(worker, /\.github\/workflows|workflow_dispatch/);
     const entry = game === "jackal-js" ? "pwa/src/main.ts" : game === "stickvania-js" ? "pwa/src/main.ts" : "pwa/src/app/main.ts";
@@ -266,7 +270,7 @@ test("evidence paths cannot enter a sibling game or engine checkout", () => {
 
 test("bounded minimizer preserves the exact failure class and original recipe", async () => {
     const { minimizeTrial } = await import("./persistence-fuzz/shrink.mjs");
-    const issue = { category: "SAVE_REJECTED", ownerType: "GrayBoat", ruleCode: "explicit-enum" };
+    const issue = { domain: "persistence", category: "SAVE_REJECTED", ownerType: "GrayBoat", ruleCode: "explicit-enum" };
     const original = {
         stage: 2,
         seed: 91,
@@ -322,7 +326,7 @@ test("soak collects multiple findings and retains only bounded accepted novel br
                 visited.push(spec.index);
                 if (spec.initialCheckpoint) branches.push(spec.corpusParent);
                 const row = good(spec);
-                if (spec.index < 2) row.issues = [{ category: "SAVE_REJECTED", ownerType: spec.index ? "GreenBoat" : "GrayBoat" }];
+                if (spec.index < 2) row.issues = [{ domain: "persistence", category: "SAVE_REJECTED", ownerType: spec.index ? "GreenBoat" : "GrayBoat" }];
                 else
                     row.acceptedCheckpoint = {
                         text: JSON.stringify({ version: 1, id: spec.index }),
@@ -382,6 +386,7 @@ test("first cancellation gives the worker a cooperative cleanup boundary", async
 
 test("continuation deduplication retains entity type and phase without transient IDs", () => {
     const value = (type, state, index = 0) => ({
+        domain: "persistence",
         category: "CONTINUATION_DIVERGENCE",
         difference: { path: `$.things[${index}].fields.x` },
         snapshot: { things: Array.from({ length: index + 1 }, () => ({ type, fields: { state } })) }
@@ -423,7 +428,7 @@ test("partial interrupted findings and duplicate streamed delivery survive exact
         reporter = new Reporter(join(base, "run"), resolve("."));
     try {
         const result = await runCampaign(config(), reporter, async (spec, { onEvidence }) => {
-            const issue = { category: "SAVE_REJECTED", evidenceId: "run:trial:doc:1", ruleCode: "boat" };
+            const issue = { domain: "persistence", category: "SAVE_REJECTED", evidenceId: "run:trial:doc:1", ruleCode: "boat" };
             onEvidence({ issues: [issue] });
             onEvidence({ issues: [issue] });
             return { ...good(spec), issues: [issue], interrupted: true };
@@ -508,11 +513,11 @@ test("findings acknowledged before a hung worker remain in watchdog outcome", as
             retained = [];
         writeFileSync(
             worker,
-            'process.on("message", m => {if(m.type === "evidence-ack") {process.send({type:"progress",phase:"acknowledged"}); return;} process.send({type:"evidence",sequence:1,packet:{issues:[{category:"SAVE_REJECTED",evidenceId:"r:t:d:1"}],metrics:{callbacks:8},explorationCallbacks:8}});setInterval(()=>{},1000);});'
+            'process.on("message", m => {if(m.type === "stop") return; if(m.type === "evidence-ack") {process.send({type:"progress",phase:"acknowledged"}); return;} process.send({type:"evidence",sequence:1,packet:{issues:[{category:"SAVE_REJECTED",evidenceId:"r:t:d:1"}],metrics:{callbacks:8},explorationCallbacks:8}});setInterval(()=>{},1000);});'
         );
         const result = await supervisedTrial(
             { repo: resolve(".") },
-            { workerUrl: pathToFileURL(worker), timeoutMs: 1000, onEvidence: (packet) => retained.push(...packet.issues) }
+            { workerUrl: pathToFileURL(worker), timeoutMs: 3000, onEvidence: (packet) => retained.push(...packet.issues) }
         );
         assert.equal(retained.length, 1);
         assert.equal(result.issues.length, 2);
@@ -536,7 +541,12 @@ test("generic throw sites differ and uncertain gate groups retain bounded varian
     try {
         for (let i = 0; i < 6; i++)
             reporter.finding(
-                { category: "VALIDATION_REJECTED", ruleCode: "structure-and-graph", snapshot: { mainFields: { [i % 2 ? "timer" : "score"]: -i - 1 } } },
+                {
+                    domain: "persistence",
+                    category: "VALIDATION_REJECTED",
+                    ruleCode: "structure-and-graph",
+                    snapshot: { mainFields: { [i % 2 ? "timer" : "score"]: -i - 1 } }
+                },
                 {}
             );
         const row = [...reporter.issues.values()][0];
@@ -578,7 +588,7 @@ test("replay target does not confuse an unrelated error or incomplete setup with
             const result = await runCampaign(
                 config({ trials: 1, replaySpec: spec, replayTargetSignature: "original" }),
                 new Reporter(join(base, String(incomplete)), resolve(".")),
-                async () => ({ ...good(spec), incomplete, issues: [{ category: "OTHER" }] })
+                async () => ({ ...good(spec), incomplete, issues: [{ domain: "runtime", category: "OTHER" }] })
             );
             assert.equal(result.replayTarget.outcome, incomplete ? "inconclusive" : "not-observed");
             assert.equal(result.replayTarget.otherFindings.length, 1);
@@ -591,7 +601,7 @@ test("replay target does not confuse an unrelated error or incomplete setup with
 test("incremental finding buffers reset per document and retain raw occurrences plus uncertain variants", async () => {
     const { FindingBuffer } = await import("./persistence-fuzz/findings.mjs");
     const first = new FindingBuffer();
-    const issue = { category: "SAVE_REJECTED", ruleCode: "explicit-enum", path: "$.things[1].fields.state", ownerType: "Boat" };
+    const issue = { domain: "persistence", category: "SAVE_REJECTED", ruleCode: "explicit-enum", path: "$.things[1].fields.state", ownerType: "Boat" };
     first.add(issue);
     first.add({ ...issue, tick: 8 });
     const rows = first.drain();
@@ -605,8 +615,8 @@ test("incremental finding buffers reset per document and retain raw occurrences 
     next.add(issue);
     assert.equal(next.drain()[0].sequence, 1, "worker document identity disambiguates local reset");
     const coarse = new FindingBuffer();
-    coarse.add({ category: "SAVE_REJECTED", ruleCode: "structure-and-graph", snapshot: { mainFields: { a: -1 } } });
-    coarse.add({ category: "SAVE_REJECTED", ruleCode: "structure-and-graph", snapshot: { mainFields: { b: -1 } } });
+    coarse.add({ domain: "persistence", category: "SAVE_REJECTED", ruleCode: "structure-and-graph", snapshot: { mainFields: { a: -1 } } });
+    coarse.add({ domain: "persistence", category: "SAVE_REJECTED", ruleCode: "structure-and-graph", snapshot: { mainFields: { b: -1 } } });
     assert.equal(coarse.drain().length, 2);
 });
 
@@ -705,7 +715,7 @@ test("acknowledged repeated deliveries persist exact occurrence counts", () => {
     const base = directory(),
         reporter = new Reporter(join(base, "run"), resolve("."));
     try {
-        const issue = { category: "SAVE_REJECTED", ruleCode: "explicit-enum", path: "$.state", ownerType: "Boat" };
+        const issue = { domain: "persistence", category: "SAVE_REJECTED", ruleCode: "explicit-enum", path: "$.state", ownerType: "Boat" };
         reporter.finding({ ...issue, evidenceId: "trial:doc:1", occurrences: 3 }, {});
         reporter.finding({ ...issue, evidenceId: "trial:doc:2", occurrences: 2 }, {});
         reporter.finding({ ...issue, evidenceId: "trial:doc:2", occurrences: 2 }, {});

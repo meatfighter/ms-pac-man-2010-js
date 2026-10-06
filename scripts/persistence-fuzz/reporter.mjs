@@ -1,3 +1,4 @@
+import { protocolVersion, eligibleFinding } from "./failure-protocol.mjs";
 import { mkdirSync, lstatSync, existsSync, realpathSync, readFileSync, writeFileSync, renameSync, openSync, writeSync, fsyncSync, closeSync } from "node:fs";
 import { dirname, resolve, relative, isAbsolute, join } from "node:path";
 import { createHash } from "node:crypto";
@@ -84,12 +85,23 @@ export class Reporter {
 
     finding(issue, reproduction) {
         const delivery = issue.evidenceId;
-        if (delivery && this.deliveries.has(delivery)) return this.deliveries.get(delivery);
+        if (delivery && this.deliveries.has(delivery)) {
+            const id = this.deliveries.get(delivery);
+            const name = `issues/${id}/enrichment.json`;
+            const old = existsSync(join(this.directory, name)) ? JSON.parse(readFileSync(join(this.directory, name), "utf8")) : {};
+            const additions = Object.fromEntries(
+                ["actualPlacement", "lastPhase", "workerTail", "diagnosticsRef", "restoreWitness", "operation", "stage", "documentId"]
+                    .filter((key) => issue[key] !== undefined)
+                    .map((key) => [key, issue[key]])
+            );
+            this.atomic(name, { ...old, ...additions });
+            return id;
+        }
         const signature = issueSignature(issue);
         let row = this.issues.get(signature);
         if (row) {
             row.occurrences += issue.occurrences ?? 1;
-            this.retainVariant(row, issue);
+            this.retainVariant(row, issue, reproduction);
             this.event({ event: "finding-delivery", evidenceId: delivery, ...row });
             if (delivery) this.deliveries.set(delivery, row.id);
             return row.id;
@@ -99,7 +111,19 @@ export class Reporter {
             throw new Error("Unique-issue budget exhausted.");
         }
         const id = createHash("sha256").update(signature).digest("hex").slice(0, 16);
-        row = { id, signature, occurrences: issue.occurrences ?? 1, category: issue.category, ruleCode: issue.ruleCode ?? null };
+        row = {
+            id,
+            signature,
+            occurrences: issue.occurrences ?? 1,
+            protocolVersion,
+            domain: issue.domain ?? "unresolved",
+            eligible: eligibleFinding(issue),
+            operation: issue.operation,
+            stage: issue.stage,
+            restoreWitness: issue.restoreWitness,
+            category: issue.category,
+            ruleCode: issue.ruleCode ?? null
+        };
         this.issues.set(signature, row);
         // gzip is used for large snapshots; repro.json remains directly readable.
         const { snapshot, previousSnapshot, ...description } = issue;
@@ -116,13 +140,13 @@ export class Reporter {
         }
         row.variants = [];
         row.omittedVariants = 0;
-        this.retainVariant(row, issue);
+        this.retainVariant(row, issue, reproduction);
         this.event({ event: "finding-delivery", evidenceId: delivery, ...row });
         if (delivery) this.deliveries.set(delivery, id);
         return id;
     }
 
-    retainVariant(row, issue) {
+    retainVariant(row, issue, reproduction) {
         // Boolean gates are uncertain families, not proven root causes.
         if (
             issue.path ||
@@ -141,15 +165,54 @@ export class Reporter {
         const zipped = gzipSync(bytes);
         this.reserve(zipped.length);
         writeFileSync(join(this.directory, `issues/${row.id}/variant-${hash}.json.gz`), zipped, { flag: "wx", flush: true });
+        const reproductionHash = createHash("sha256").update(JSON.stringify(reproduction)).digest("hex");
+        const reference = `issues/${row.id}/repro-${reproductionHash}.json`;
+        if (!existsSync(join(this.directory, reference))) this.atomic(reference, reproduction);
+        this.atomic(`issues/${row.id}/variant-${hash}.meta.json`, {
+            protocolVersion,
+            evidenceId: issue.evidenceId,
+            trialId: issue.trialId,
+            documentId: issue.documentId,
+            operation: issue.operation,
+            stage: issue.stage,
+            reproductionRef: reference
+        });
         row.variants.push(hash);
     }
 
     terminal(summary) {
         // Dedicated 16 KiB terminal allowance does not consume normal evidence.
         // Absence of this receipt always means incomplete, regardless of summary.json.
-        const summaryBytes = existsSync(join(this.directory, "summary.json")) ? readFileSync(join(this.directory, "summary.json")) : null;
+        let summaryBytes = existsSync(join(this.directory, "summary.json")) ? readFileSync(join(this.directory, "summary.json")) : null;
+        let storedSummary = null;
+        try {
+            storedSummary = summaryBytes ? JSON.parse(summaryBytes) : null;
+        } catch {
+            /* Unreadable evidence is incomplete. */
+        }
+        if (!storedSummary || storedSummary.status !== summary.status || storedSummary.exitCode !== summary.exitCode) {
+            this.incomplete = true;
+            const emergency = {
+                formatVersion: 3,
+                protocolVersion,
+                status: "incomplete",
+                exitCode: summary.interrupted ? 130 : 2,
+                incomplete: true,
+                evidenceIncomplete: true,
+                findings: summary.findings,
+                infrastructureFailures: summary.infrastructureFailures,
+                failure: "Final summary could not be persisted normally; inspect retained issue and case evidence.",
+                previousSummarySha256: summaryBytes ? createHash("sha256").update(summaryBytes).digest("hex") : null
+            };
+            summaryBytes = Buffer.from(JSON.stringify(emergency, null, 2) + "\n");
+            // Small emergency summary shares the reserved terminal allowance; it can never certify success.
+            const path = join(this.directory, "summary.json");
+            writeFileSync(`${path}.pending`, summaryBytes, { flush: true });
+            renameSync(`${path}.pending`, path);
+        }
         const receipt = {
-            formatVersion: 2,
+            formatVersion: 3,
+            protocolVersion,
             status: summary.status,
             exitCode: summary.exitCode,
             planCompleted: summary.planCompleted,

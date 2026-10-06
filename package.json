@@ -117,11 +117,11 @@
         "verify:persistence-fuzz:browsers": "node scripts/run-persistence-fuzz.mjs --profile=browser-qualification",
         "fuzz:persistence:soak": "node scripts/run-persistence-fuzz.mjs --profile=soak",
         "fuzz:persistence:replay": "node scripts/run-persistence-fuzz.mjs --profile=replay",
-        "test:persistence-fuzz": "node --test scripts/test-persistence-fuzz.mjs && npm run test:validator-repairs",
+        "test:persistence-fuzz": "node --test scripts/test-persistence-fuzz.mjs scripts/test-fuzz-*.mjs && npm run test:validator-repairs",
         "test:validator-repairs": "npm run check:persistence-policy-inventory && node scripts/persistence-fuzz/semantic-run.mjs producers",
         "generate:persistence-policy-inventory": "node --loader ./scripts/persistence-fuzz/typescript-loader.mjs scripts/persistence-fuzz/inventory.mjs",
         "check:persistence-policy-inventory": "node --loader ./scripts/persistence-fuzz/typescript-loader.mjs scripts/persistence-fuzz/inventory.mjs --check",
-        "verify:persistence-fuzz:controls": "node scripts/verify-persistence-fuzz-controls.mjs"
+        "verify:persistence-fuzz:controls": "node scripts/verify-persistence-fuzz-controls.mjs && node scripts/verify-fuzz-bootstrap-controls.mjs"
     },
     "dependencies": {
         "slick2d-ts": "https://codeload.github.com/meatfighter/slick2d-ts/tar.gz/03b6878aab0106702651f41259c250288c3eb345"

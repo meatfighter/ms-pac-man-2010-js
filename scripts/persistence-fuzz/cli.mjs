@@ -1,3 +1,4 @@
+import { protocolVersion } from "./failure-protocol.mjs";
 import { readFileSync } from "node:fs";
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -103,6 +104,7 @@ export function parseArgs(args, game) {
     if (!["controlled", "native"].includes(audio)) throw new Error("Unsupported audio lane");
     const seed = raw.seed ? seed32(raw.seed) : profile === "soak" ? randomBytes(4).readUInt32LE() : 0x20261004;
     const config = {
+        protocolVersion,
         game,
         requireLanes: true,
         command: [process.execPath, ...process.argv.slice(1)],
@@ -235,13 +237,13 @@ export async function main(args = process.argv.slice(2)) {
                     if (event.event === "finding") console.error(`Finding ${event.id}: ${event.category}, trial ${event.index}`);
                     else
                         console.log(
-                            `Trial ${event.index + 1}: ${event.summary.captures} captures; ${event.summary.writes} writes; ${event.summary.restores} restores; ${event.summary.issues} distinct issues`
+                            `Trial ${event.index + 1}: ${event.summary.captures} captures; ${event.summary.writes} writes; ${event.summary.restores} restores; ${event.summary.findings} game findings; ${event.summary.harnessErrors} harness errors; ${event.summary.issues} evidence signatures`
                         );
                 }
             }
         );
         if (config.shrink && summary.findings > 0 && !summary.infrastructureFailures && config.replaySpec) {
-            const target = config.replayTargetSignature ?? summary.issues.find((row) => row.category !== "INFRASTRUCTURE_FAILURE")?.signature;
+            const target = config.replayTargetSignature ?? summary.issues.find((row) => row.eligible === true)?.signature;
             if (target) {
                 const reduction = await minimizeTrial(
                     config.replaySpec,

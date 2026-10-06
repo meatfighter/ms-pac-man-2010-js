@@ -1,3 +1,4 @@
+import { protocolVersion, restoreWitness, errorDetails } from "./failure-protocol.mjs";
 /* global window, document, location, KeyboardEvent */
 // __PERSISTENCE_FUZZ_ONLY__. Served only by the dedicated loopback test plugin.
 import { Sys, Music, SoundStore, ResourceLoader, Renderer, Graphics, Color } from "slick2d-ts";
@@ -48,9 +49,23 @@ const originalPerformanceNow = Object.getOwnPropertyDescriptor(performance, "now
 const version = String(import.meta.env.VITE_FUZZ_APP_VERSION ?? "persistence-fuzz");
 const nativeAudio = () => spec?.audio === "native";
 const normalize = (snapshot) => normalizeSnapshot(snapshot, { nativeAudio: nativeAudio() });
-const errorDetails = (error) => ({ name: error?.name ?? "Error", message: String(error?.message ?? error), stack: String(error?.stack ?? "").slice(0, 12000) });
+const probe = { stage: "configure", restoreWitness: restoreWitness(), expectedText: null };
+let preparedBatch = null,
+    lastAck = null;
+const bootWitness = window.__persistenceFuzzBoot;
 function issue(category, extra = {}) {
-    findings.add({ category, phase: currentPhase, tick, ...extra });
+    findings.add({
+        protocolVersion,
+        domain: category === "RUNTIME_EXCEPTION" ? "runtime" : "persistence",
+        category,
+        trialId: pending?.trialId,
+        operation: pending?.operation,
+        documentId: bootWitness.documentId,
+        stage: currentPhase,
+        phase: currentPhase,
+        tick,
+        ...extra
+    });
 }
 function capture() {
     const value = adapter.serializer.createSnapshot(mounted.main, version);
@@ -195,7 +210,7 @@ function observe(forceWrite = false, canWrite = true) {
     if (invalid) {
         // One real writer attempt obtains failure-only production diagnostics.
         const signature = `invalid:${invalid}`;
-        if (!signatures.has(signature)) {
+        if (canWrite && !signatures.has(signature)) {
             signatures.add(signature);
             save(snapshot);
         }
@@ -258,7 +273,7 @@ async function boot(request) {
     Sys.getTime = () => clock;
     Date.now = () => 1_800_000_000_000 + clock;
     const activation = adapter.beginGameAudio(); // user-gesture handler, before await
-    mounted = await adapter.mount(request.restore === true, version);
+    mounted = await adapter.mount(request.restore === true, version, probe);
     // Independent test-only mutants; never imported by production entry points.
     if (request.mutant === "reject-valid") mounted.store.validateOutgoingSnapshot = () => false;
     if (request.mutant === "suppress-write") {
@@ -285,6 +300,8 @@ async function boot(request) {
         };
     }
 
+    if (probe.restoreWitness.returned === true) restores++;
+    probe.stage = "audio-activation";
     if (!(await activation.ready) || !(await adapter.commitGameAudio(activation))) throw new Error("Playback session was not accepted");
     mounted.container.setLoopSuspended(true);
     mounted.container.getInput().resume();
@@ -293,12 +310,12 @@ async function boot(request) {
     Date.now = () => 1_800_000_000_000 + clock;
     mounted.main.resetNextFrameTime();
     if (request.restore) {
-        restores++;
         actualPlacement = request.actualPlacement ?? { strategy: "fresh-document-restore" };
     } else {
         currentPhase = "setup";
         actualPlacement = adapter.seed(mounted, spec, step);
     }
+    probe.stage = "context-check";
     if (!mounted.main.isStateSaveReady()) throw new Error("READINESS_UNEXPECTED: initialized runtime is not save-ready");
     actualPlacement = { ...actualPlacement, stratum: adapter.observedStratum(mounted) };
     const expectedContext = request.restore ? request.captureContext : spec;
@@ -309,15 +326,18 @@ async function boot(request) {
     )
         throw new Error("SETUP: observed stratum differs from requested stratum");
     currentPhase = "setup-boundary";
-    const boundary = observe(true);
+    const boundary = request.restore ? observe(false, false) : observe(true);
     if (!boundary || adapter.validate(mounted.main, boundary)) throw new Error("SETUP: completed seed boundary is invalid");
     status = "running";
     return boundary;
 }
 window.__persistenceFuzz = {
+    protocolVersion,
     configure(request) {
-        if (status !== "ready") throw new Error("Fixture can be configured only once per document");
+        if (pending || status !== "ready") throw new Error("Fixture can be configured only once per document");
         pending = request;
+        if (request.fault === "configure") throw new Error("Injected configure failure");
+        probe.stage = "configure";
         if (request.clock !== undefined) {
             if (!Number.isFinite(request.clock) || request.clock < 1_000_000) throw new Error("Invalid replay clock");
             clock = request.clock;
@@ -325,9 +345,21 @@ window.__persistenceFuzz = {
             if (audio) audio.advance(clock - audio.now());
         }
         if (request.savedText !== undefined) localStorage.setItem(adapter.key, request.savedText);
+        probe.expectedText = request.restore ? (request.savedText ?? localStorage.getItem(adapter.key)) : null;
+        if (request.restore && typeof probe.expectedText !== "string") throw new Error("Missing restore bytes");
     },
     state() {
-        return { status, failure, actualPlacement, currentPhase, tick };
+        return {
+            status,
+            failure,
+            actualPlacement,
+            currentPhase,
+            tick,
+            writes,
+            probe: { stage: probe.stage, restoreWitness: probe.restoreWitness },
+            documentId: bootWitness.documentId,
+            protocolVersion
+        };
     },
     capture,
     context() {
@@ -428,14 +460,31 @@ window.__persistenceFuzz = {
     effects() {
         return { ...observation.metrics };
     },
-    drain() {
+    prepareDrain(batchId) {
+        if (typeof batchId !== "string" || batchId.length > 200) throw new Error("Invalid evidence batch identity");
+        if (preparedBatch) {
+            if (preparedBatch.batchId !== batchId) throw new Error("Evidence backpressure: acknowledge previous batch first");
+            return preparedBatch;
+        }
+        if (lastAck === batchId) throw new Error("Acknowledged batch cannot be prepared again");
         const value = this.result();
         const metrics = {};
         for (const [name, amount] of Object.entries(value.metrics))
             metrics[name] = ["saveMaxMs", "maxSnapshotChars"].includes(name) ? amount : amount - (drainedMetrics[name] ?? 0);
         const pendingIssues = findings.drain();
         drainedMetrics = { ...value.metrics };
-        return { ...value, issues: pendingIssues, metrics };
+        preparedBatch = { ...value, protocolVersion, documentId: bootWitness.documentId, batchId, issues: pendingIssues, metrics };
+        return preparedBatch;
+    },
+    ackDrain(batchId) {
+        if (lastAck === batchId) return true;
+        if (!preparedBatch || preparedBatch.batchId !== batchId) throw new Error("Evidence acknowledgement mismatch");
+        preparedBatch = null;
+        lastAck = batchId;
+        return true;
+    },
+    storedText() {
+        return localStorage.getItem(adapter.key);
     },
     departureReceipt() {
         return sessionStorage.getItem("persistence-fuzz-departure");
@@ -457,6 +506,7 @@ window.__persistenceFuzz = {
 };
 document.querySelector("#start").addEventListener("click", () => {
     if (!pending || status !== "ready") return;
+    probe.stage = "start";
     void boot(pending).catch((error) => {
         failure = errorDetails(error);
         status = "failed";
@@ -471,6 +521,15 @@ window.addEventListener("pagehide", () => {
     const saved = save();
     sessionStorage.setItem(
         "persistence-fuzz-departure",
-        JSON.stringify({ saved: saved !== null, milliseconds: performance.now() - started, issues: findings.drain() })
+        JSON.stringify({
+            protocolVersion,
+            documentId: bootWitness.documentId,
+            operation: pending.operation,
+            trialId: pending.trialId,
+            text: saved?.text,
+            saved: saved !== null,
+            milliseconds: performance.now() - started,
+            issues: findings.drain()
+        })
     );
 });

@@ -1,3 +1,4 @@
+import { eligibleFinding } from "./persistence-fuzz/failure-protocol.mjs";
 import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -19,7 +20,10 @@ spec.frames = spec.frames.map((frame, i) => ({ ...frame, mask: i % 24 < 12 ? 8 :
 spec.continuation = spec.continuation.map((frame) => ({ ...frame, mask: 8 }));
 const results = [];
 const failures = [];
-let branchCheckpoint;
+let branchCheckpoint,
+    extraEvidenceSequence = 0;
+const extraEvidence = (packet) =>
+    writeFileSync(resolve(directory, `additional-evidence-${++extraEvidenceSequence}.json`), JSON.stringify(packet), { flush: true });
 for (const [mutant, expected] of [
     [null, null],
     ["reject-valid", "SAVE_REJECTED"],
@@ -56,7 +60,11 @@ for (const [mutant, expected] of [
             !categories.some((name) => ["SETUP_FAILED", "BROWSER_PAGE_ERROR", "HARNESS_OR_RUNTIME_EXCEPTION"].includes(name)),
             JSON.stringify(categories)
         );
-        if (expected) assert.ok(categories.includes(expected), `${mutant}: expected ${expected}, got ${categories}`);
+        if (expected)
+            assert.ok(
+                observed.issues.some((issue) => issue.category === expected && eligibleFinding(issue)),
+                `${mutant}: expected ${expected}, got ${categories}`
+            );
         else if (["missing-coverage", "disable-gameplay", "drop-input"].includes(mutant)) {
             assert.equal(summary.exitCode, 2);
             assert.ok(summary.missingCoverage.length);
@@ -79,7 +87,7 @@ try {
             sourceIdentity: identity,
             spec: { ...spec, strategy: "accepted-corpus-branch", lane: "corpus", initialCheckpoint: branchCheckpoint, corpusParent: 0 }
         },
-        { timeoutMs: 180000 }
+        { timeoutMs: 180000, onEvidence: extraEvidence }
     );
     assert.equal(branch.setupComplete, true);
     assert.deepEqual(branch.issues, []);

@@ -5,7 +5,17 @@ import { fileURLToPath } from "node:url";
 const directory = fileURLToPath(new URL(".", import.meta.url));
 const normalizedDirectory = directory.replaceAll("\\", "/");
 const prefix = "/__persistence_fuzz__/";
-const modules = new Set(["browser.mjs", "adapter.mjs", "compare.mjs", "prng.mjs"]);
+const modules = new Set([
+    "browser.mjs",
+    "adapter.mjs",
+    "compare.mjs",
+    "prng.mjs",
+    "bootstrap.mjs",
+    "failure-protocol.mjs",
+    "findings.mjs",
+    "observation.mjs",
+    "transitions.mjs"
+]);
 /** This plugin is installed only by the test worker, never by a release config. */
 export function persistenceFuzzPlugin() {
     return {
@@ -25,12 +35,18 @@ export function persistenceFuzzPlugin() {
                 response.statusCode = 200;
                 response.setHeader("Content-Type", "text/html; charset=utf-8");
                 response.setHeader("Cache-Control", "no-store");
-                response.end(
-                    await server.transformIndexHtml(
-                        request.url,
-                        `<!doctype html><html><head><meta charset="utf-8"><title>Persistence fuzz — local test only</title><style>body{margin:0;background:#111;color:white}#game-host{width:800px;height:750px}canvas{outline:0}</style></head><body><button id="start">Start isolated trial</button><div id="game-host"></div><script type="module" src="${prefix}browser.mjs"></script></body></html>`
-                    )
-                );
+                try {
+                    response.end(
+                        await server.transformIndexHtml(
+                            request.url,
+                            `<!doctype html><html><head><meta charset="utf-8"><title>Persistence fuzz — local test only</title><style>body{margin:0;background:#111;color:white}#game-host{width:800px;height:750px}canvas{outline:0}</style></head><body><button id="start">Start isolated trial</button><div id="game-host"></div><script>window.__persistenceFuzzBoot={protocolVersion:3,documentToken:new URLSearchParams(location.search).get("document"),documentId:crypto.randomUUID(),stage:"entry",error:null};</script><script type="module" src="${prefix}bootstrap.mjs"></script></body></html>`
+                        )
+                    );
+                } catch (error) {
+                    server.config.logger.error(String(error).slice(0, 4000));
+                    response.statusCode = 500;
+                    response.end("Persistence fixture HTML transformation failed");
+                }
             });
         }
     };

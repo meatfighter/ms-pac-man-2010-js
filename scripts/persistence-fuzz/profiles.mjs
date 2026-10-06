@@ -132,6 +132,7 @@ export function evaluateCampaign(_config, summary) {
         !summary.planCompleted ||
         !summary.integrityVerified ||
         summary.infrastructureFailures ||
+        summary.harnessErrors ||
         summary.evidenceIncomplete ||
         summary.incomplete ||
         summary.completed === 0

@@ -1,3 +1,4 @@
+import { eligibleFinding } from "./failure-protocol.mjs";
 import { issueSignature } from "./compare.mjs";
 
 /** Bounded input/schedule reduction. Never changes geometry, counters or the seed recipe. */
@@ -30,7 +31,7 @@ export async function minimizeTrial(original, targetSignature, execute, { maxAtt
             !result.interrupted &&
             !result.incomplete &&
             result.setupComplete === true &&
-            (result.issues ?? []).some((issue) => issueSignature(issue) === targetSignature)
+            (result.issues ?? []).some((issue) => eligibleFinding(issue) && issueSignature(issue) === targetSignature)
         );
     };
     // Re-verify the original on this revision before trying to reduce anything.

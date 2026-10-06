@@ -132,3 +132,45 @@ points. Controlled audio does not model arbitrary native suspension clocks.
 Each adapter owns `transitions.mjs`, which projects its real mode/player/root and audio schema. Ordinary countdowns and audio cursors are excluded; completion, transport, voice membership and stage/region ownership trigger full writes.
 
 Input generator 3 excludes both `P` and NES Start/Enter from random gameplay recipes: either can toggle Pause. Explicit paired pause fixtures retain pause/resume coverage. Recipe/profile format remains 2.
+
+## Bootstrap and evidence protocol 3
+
+Recipe/profile format 2 and input generator 3 retain their existing schedules.
+Protocol/evidence 3 separately identifies the fixture and delivery contract.
+Every document carries its own token, identity, operation, phase, and production
+restore witness. Numeric readiness polling does not require animation frames.
+Caught import failures, navigation status/MIME, console/module errors and bounded
+late diagnostics live in per-trial context files. A private disposable Vite cache
+belongs to each worker; it does not clear ordinary development caches.
+
+Only a witnessed restore rejection with prepared resources and verified input
+bytes is a persistence restore finding. A missing bridge is a bootstrap failure;
+a restore that returned true remains successful if later activation fails.
+Immediate restored comparison is read-only, including invalid incoming states.
+Subsequent outgoing-save observation remains a separate experiment.
+
+One prepared browser batch is retained until the parent durably persists and
+acknowledges it. Retransmission counts each occurrence and metric once. Later
+terminal tails enrich the original finding without replacing its first cause.
+Variants have their own reproduction references. Unroundtripped snapshots are
+recovery evidence; only fully compared, drained, cleaned trials enter the corpus.
+
+Worker results remain provisional until actual exit and owned cleanup settle.
+Windows uses a kernel Job Object established before work starts; POSIX uses
+owned process groups, including the supported Playwright launcher process.
+Cleanup failure, lost evidence, interruption and late exploratory bootstrap
+failure cannot be hidden by earlier completed coverage. Exit codes are 0 complete
+and clean, 1 complete with game findings, 2 incomplete/infrastructure/evidence,
+and 130 interrupted. Actual findings survive an incomplete result.
+
+Replay preserves the original target signature as historical metadata and reports
+actual domains/stages/witnesses separately. Bootstrap, setup, transport and cleanup
+failures cannot establish gameplay reproduction, mutation kills or shrink targets.
+The historical Pac bridge-timeout recipe may be replayed with explicit source drift;
+a clean replay does not establish its original environmental cause. Never use that
+override for qualification, and never mutate the historical recipe.
+
+Focused protocol/evidence/process tests run through `test:persistence-fuzz`.
+`verify:persistence-fuzz:controls` also performs bounded real-resource Chromium
+and Firefox clean/fault controls. Kernel cleanup is platform-specific: a passing
+Windows run is not POSIX evidence or a guarantee for every future launcher.

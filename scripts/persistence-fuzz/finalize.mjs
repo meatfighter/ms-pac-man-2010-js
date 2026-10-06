@@ -17,8 +17,16 @@ export function finalizeCampaign(config, reporter, summary, integrityVerified) {
     if (summary.status === "incomplete" && !summary.stopReason) summary.stopReason = "infrastructure";
     if (config.replayTargetSignature)
         summary.replayTarget = {
+            protocolVersion: 3,
             signature: config.replayTargetSignature,
-            outcome: summary.issues.some((issue) => issue.signature === config.replayTargetSignature)
+            observations: summary.issues.map(({ domain, operation, stage, restoreWitness, signature }) => ({
+                domain,
+                operation,
+                stage,
+                restoreWitness,
+                signature
+            })),
+            outcome: summary.issues.some((issue) => issue.eligible === true && issue.signature === config.replayTargetSignature)
                 ? "reproduced"
                 : summary.status === "completed"
                   ? "not-observed"
@@ -41,8 +49,18 @@ export function finalizeCampaign(config, reporter, summary, integrityVerified) {
         summary.exitCode = summary.interrupted ? 130 : 2;
         summary.finalizationError = String(error);
     }
+    if (summary.finalizationError) {
+        try {
+            reporter.atomic("summary.json", summary);
+        } catch {
+            /* Reserved terminal still records failure. */
+        }
+    }
     try {
-        reporter.terminal(summary);
+        const receipt = reporter.terminal(summary);
+        summary.exitCode = receipt.exitCode;
+        summary.status = receipt.status;
+        summary.evidenceIncomplete ||= receipt.evidenceIncomplete;
     } catch (error) {
         summary.status = "incomplete";
         summary.exitCode = summary.interrupted ? 130 : 2;

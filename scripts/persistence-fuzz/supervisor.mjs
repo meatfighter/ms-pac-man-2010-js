@@ -1,124 +1,195 @@
-import { fork, spawnSync } from "node:child_process";
+import { fork } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { ownWorker } from "./process-owner.mjs";
+import { errorDetails, protocolVersion } from "./failure-protocol.mjs";
 
-export function killOwnedProcessTree(child, signal = "SIGTERM") {
-    if (!child?.pid) return;
-    if (process.platform === "win32") {
-        spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
-    } else {
-        try {
-            process.kill(-child.pid, signal);
-        } catch {
-            try {
-                child.kill(signal);
-            } catch {
-                /* Already exited. */
-            }
-        }
-    }
+function bounded(promise, ms, message) {
+    let timer;
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new Error(message)), ms);
+        })
+    ]).finally(() => clearTimeout(timer));
 }
-/** Each trial has a new process/browser/server; poisoned trials cannot taint later trials. */
+/** Result receipt is provisional until durable evidence, actual exit and cleanup join. */
 export function supervisedTrial(
     request,
-    { timeoutMs = 180000, signal, progress = () => {}, onEvidence = () => {}, workerUrl = new URL("./worker.mjs", import.meta.url) } = {}
+    {
+        timeoutMs = 180000,
+        exitGraceMs = 2000,
+        signal,
+        progress = () => {},
+        onEvidence = () => {
+            throw new Error("Durable evidence consumer required");
+        },
+        workerUrl = new URL("./worker.mjs", import.meta.url)
+    } = {}
 ) {
     return new Promise((resolve) => {
-        if (signal?.aborted) return resolve({ interrupted: true, issues: [], metrics: {}, coverage: [] });
+        if (signal?.aborted) return resolve({ protocolVersion, interrupted: true, incomplete: true, issues: [], metrics: {}, coverage: [] });
         const child = fork(fileURLToPath(workerUrl), [], {
             cwd: request.repo,
             detached: process.platform !== "win32",
             serialization: "advanced",
             stdio: ["ignore", "pipe", "pipe", "ipc"],
             windowsHide: true,
-            // Do not pass arbitrary test-runner flags or inspectors to the child.
             execArgv: []
         });
         const retained = new Map();
-        let lastEvidence = {};
-        let settled = false,
+        let owner,
+            pending,
+            failure,
+            lastEvidence = {},
             tail = "",
             phase = "spawn",
-            timer;
+            exited = false,
+            exitCode,
+            exitSignal;
+        let stopRequested = false,
+            completing = false,
+            evidence = Promise.resolve(),
+            timer,
+            grace;
         const append = (bytes) => {
-            tail = (tail + String(bytes)).slice(-24000);
+            tail = (tail + bytes).slice(-24000);
         };
         child.stdout.on("data", append);
         child.stderr.on("data", append);
-        const finish = (result, terminate = false) => {
-            if (settled) return;
-            settled = true;
+        const fail = (error) => {
+            failure ??= errorDetails(error);
+        };
+        const complete = async () => {
+            if (completing) return;
+            completing = true;
             clearTimeout(timer);
+            clearTimeout(grace);
             signal?.removeEventListener("abort", abort);
-            if (terminate) {
-                killOwnedProcessTree(child);
-                const hard = setTimeout(() => killOwnedProcessTree(child, "SIGKILL"), 1500);
-                child.once("exit", () => clearTimeout(hard));
-                hard.unref();
+            try {
+                await bounded(evidence, 5000, "Evidence persistence did not settle");
+            } catch (error) {
+                fail(error);
             }
-            const merged = new Map(retained);
-            for (const [index, issue] of (result.issues ?? []).entries()) merged.set(issue.evidenceId ?? `terminal:${index}`, issue);
+            try {
+                await owner?.close();
+            } catch (error) {
+                fail(error);
+            }
+            if (!owner) {
+                fail(new Error("Worker process ownership was not established"));
+                child.kill("SIGKILL");
+            }
+            if (!exited)
+                await new Promise((done) => {
+                    const deadline = setTimeout(() => {
+                        fail(new Error("Worker did not exit after owned cleanup"));
+                        done();
+                    }, 5000);
+                    child.once("exit", () => {
+                        clearTimeout(deadline);
+                        done();
+                    });
+                });
+            if (pending?.cleanup?.complete === false || pending?.evidenceComplete === false) fail(new Error("Worker reported incomplete evidence or cleanup"));
+            if (exited) {
+                try {
+                    owner?.cleanupCache();
+                } catch (error) {
+                    fail(error);
+                }
+            }
+            if (!pending) fail(new Error("Worker exited without a result"));
+            if (failure)
+                retained.set("supervisor", {
+                    protocolVersion,
+                    domain: "harness",
+                    category: failure.message.startsWith("Trial exceeded") ? "WORKER_TIMEOUT" : "WORKER_LIFETIME_FAILED",
+                    stage: "cleanup",
+                    error: failure,
+                    evidenceId: "supervisor"
+                });
+            if (exitCode !== 0 && !(signal?.aborted && exitCode === 130)) fail(new Error(`Worker exit ${exitCode}, signal ${exitSignal}`));
+            for (const [index, issue] of (pending?.issues ?? []).entries())
+                retained.set(issue.evidenceId ?? `terminal:${index}`, { ...retained.get(issue.evidenceId), ...issue });
             resolve({
                 ...lastEvidence,
-                ...result,
-                metrics: Object.keys(result.metrics ?? {}).length ? result.metrics : (lastEvidence.metrics ?? {}),
-                issues: [...merged.values()],
-                ...(signal?.aborted ? { interrupted: true } : {}),
+                ...pending,
+                protocolVersion,
+                issues: [...retained.values()],
+                metrics: pending?.metrics ?? lastEvidence.metrics ?? {},
+                coverage: pending?.coverage ?? lastEvidence.coverage ?? [],
                 workerTail: tail,
-                lastPhase: phase
+                lastPhase: phase,
+                workerExit: { code: exitCode, signal: exitSignal },
+                ...(failure ? { incomplete: true, infrastructureFailure: failure, acceptedCheckpoint: undefined } : {}),
+                ...(signal?.aborted ? { interrupted: true, incomplete: true, acceptedCheckpoint: undefined } : {})
             });
         };
-        const abort = () => {
-            clearTimeout(timer);
-            // Let browser/server cleanup settle before the bounded hard fallback.
-            if (child.connected) child.send({ type: "stop" }, () => {});
-            timer = setTimeout(() => finish({ interrupted: true, issues: [], metrics: {}, coverage: [] }, true), 2000);
+        const stop = (error) => {
+            fail(error);
+            if (stopRequested || completing) return;
+            stopRequested = true;
+            if (child.connected)
+                child.send({ type: "stop" }, (sendError) => {
+                    if (sendError) fail(sendError);
+                });
+            clearTimeout(grace);
+            grace = setTimeout(complete, exitGraceMs);
         };
+        const abort = () => stop(new Error("User interruption"));
         signal?.addEventListener("abort", abort, { once: true });
-        child.on("error", (error) => finish({ infrastructureFailure: { message: error.message }, issues: [], metrics: {}, coverage: [] }, true));
+        child.once("error", (error) => {
+            fail(error);
+            void complete();
+        });
         child.on("message", (message) => {
-            if (settled) return;
+            if (completing) return;
             if (message.type === "evidence") {
-                try {
-                    onEvidence(message.packet);
-                    for (const issue of message.packet.issues ?? []) retained.set(issue.evidenceId, issue);
+                evidence = evidence.then(async () => {
+                    if (message.packet.ownedCachePath) owner.registerCache(message.packet.ownedCachePath);
+                    if (message.packet.ownedBrowserPid) owner.register(message.packet.ownedBrowserPid);
+                    await onEvidence(message.packet);
+                    for (const issue of message.packet.issues ?? []) retained.set(issue.evidenceId, { ...retained.get(issue.evidenceId), ...issue });
                     lastEvidence = { ...lastEvidence, ...message.packet, issues: undefined };
-                    if (child.connected) child.send({ type: "evidence-ack", sequence: message.sequence }, () => {});
-                } catch (error) {
-                    finish(
-                        { incomplete: true, infrastructureFailure: { name: error.name, message: error.message }, issues: [], metrics: {}, coverage: [] },
-                        true
+                    if (!child.connected) throw new Error("Worker disconnected before durable ACK");
+                    await new Promise((done, reject) =>
+                        child.send({ type: "evidence-ack", sequence: message.sequence }, (error) => (error ? reject(error) : done()))
                     );
-                }
-                return;
-            }
-            if (message.type === "progress") {
+                });
+                evidence.catch((error) => stop(error));
+            } else if (message.type === "progress") {
                 phase = message.phase;
                 progress(message);
+            } else if (message.type === "result") {
+                if (pending) {
+                    stop(new Error("Duplicate terminal result"));
+                    return;
+                }
+                pending = message.result;
+                grace ??= setTimeout(() => {
+                    fail(new Error("Worker result received but process did not exit"));
+                    void complete();
+                }, exitGraceMs);
             }
-            if (message.type === "result") finish(message.result);
         });
-        child.on("exit", (code, exitSignal) => {
-            if (!settled)
-                finish({
-                    issues: [{ category: "WORKER_CRASH", phase, error: { name: "WorkerExit", message: `code=${code}; signal=${exitSignal}` } }],
-                    metrics: {},
-                    coverage: [],
-                    incomplete: true
+        child.once("exit", (code, sig) => {
+            exited = true;
+            exitCode = code;
+            exitSignal = sig;
+            void complete();
+        });
+        timer = setTimeout(() => stop(new Error(`Trial exceeded ${timeoutMs}ms`)), timeoutMs);
+        void ownWorker(child)
+            .then((value) => {
+                owner = value;
+                if (completing || signal?.aborted) return owner.close();
+                child.send(request, (error) => {
+                    if (error) stop(error);
                 });
-        });
-        timer = setTimeout(
-            () =>
-                finish(
-                    {
-                        issues: [{ category: "WORKER_TIMEOUT", phase, error: { name: "TrialTimeout", message: `Trial exceeded ${timeoutMs}ms` } }],
-                        metrics: {},
-                        coverage: [],
-                        incomplete: true
-                    },
-                    true
-                ),
-            timeoutMs
-        );
-        child.send(request);
+            })
+            .catch((error) => {
+                fail(error);
+                void complete();
+            });
     });
 }

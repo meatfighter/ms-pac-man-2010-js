@@ -56,7 +56,14 @@ export class FindingBuffer {
                 row.drained = row.occurrences;
             }
         if (this.omitted > this.reportedOmitted) {
-            rows.push({ category: "FINDING_EVIDENCE_LIMIT", phase: "evidence", omitted: this.omitted - this.reportedOmitted, sequence: ++this.sequence });
+            rows.push({
+                protocolVersion: 3,
+                domain: "evidence",
+                category: "FINDING_EVIDENCE_LIMIT",
+                phase: "evidence",
+                omitted: this.omitted - this.reportedOmitted,
+                sequence: ++this.sequence
+            });
             this.reportedOmitted = this.omitted;
         }
         return rows;
